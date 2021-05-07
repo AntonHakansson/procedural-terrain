@@ -1,0 +1,93 @@
+# Exported by Chalmers Graphics Group
+newmtl Floor
+Kd 0.145098 0.137255 0.176471
+Ks 0.537 0.537 0.537
+Pm 0
+Ps 0.268
+Pr 101.626
+Ke 0 0 0
+newmtl MiddlePLates
+Kd 0.588 0.588 0.588
+Ks 1 1 1
+Pm 1
+Ps 1
+Pr 101.626
+Ke 0 0 0
+newmtl OuterRing
+Kd 0.588 0.588 0.588
+Ks 0.919 0.919 0.919
+Pm 0.626
+Ps 0.451
+Pr 203.252
+Ke 0 0 0
+newmtl Bottom
+Kd 0.588 0.588 0.588
+Ks 0 0 0
+Pm 0
+Ps 0
+Pr 0
+Ke 0 0 0
+newmtl MiddlePLate
+Kd 1 1 0.988235
+Ks 1 1 1
+Pm 0
+Ps 0.073
+Pr 25000
+Ke 0 0 0
+newmtl Bumps
+Kd 0.588235 0.52549 0.52549
+Ks 0.484 0.484 0.484
+Pm 1
+Ps 0
+Pr 10975.6
+Ke 0 0 0
+newmtl TV_Frame
+Kd 0.180392 0.176471 0.172549
+Ks 0.549 0.549 0.549
+Pm 0
+Ps 0.512
+Pr 0
+Ke 0 0 0
+newmtl TV_BackPLate
+Kd 0.364706 0.360784 0.360784
+Ks 0.537 0.537 0.537
+Pm 0.541
+Ps 0.846
+Pr 14837.4
+Ke 0 0 0
+newmtl TV_Screen
+Kd 0.588 0.588 0.588
+Ks 0 0 0
+Pm 0
+Ps 0
+Pr 0
+Ke 1 1 1
+map_Ke tvTestCard.jpg
+newmtl TV_OuterCylinder
+Kd 0.803922 0.588235 0.588235
+Ks 1 1 1
+Pm 1
+Ps 1
+Pr 25000
+Ke 0 0 0
+newmtl TV_InnerCylinder
+Kd 1 1 1
+Ks 1 1 1
+Pm 1
+Ps 1
+Pr 25000
+Ke 0 0 0
+newmtl TV_Wires
+Kd 0 0 0
+Ks 1 1 1
+Pm 0
+Ps 0.268
+Pr 25000
+Ke 0 0 0
+newmtl TV_Holder
+Kd 1 1 1
+Ks 1 1 1
+Pm 1
+Ps 1
+Pr 25000
+Ke 0 0 0

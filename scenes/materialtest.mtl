@@ -1,0 +1,284 @@
+# Exported by Chalmers Graphics Group
+newmtl Text
+Kd 0.588 0.588 0.588
+Ks 0 0 0
+Pm 0
+Ps 0
+Pr 0
+Ke 10 10 10
+Tf 1 1 1
+
+
+newmtl Metal00
+Kd 0.89 0.46 0.28
+Ks 0.2 0.2 0.2
+Pm 1
+Ps 0.9
+Pr 0
+Ke 0 0 0
+Tf 1 1 1
+newmtl Metal01
+Kd 0.89 0.46 0.28
+Ks 0.2 0.2 0.2
+Pm 1
+Ps 0.9
+Pr 200
+Ke 0 0 0
+Tf 1 1 1
+newmtl Metal02
+Kd 0.89 0.46 0.28
+Ks 0.2 0.2 0.2
+Pm 1
+Ps 0.9
+Pr 2000
+Ke 0 0 0
+Tf 1 1 1
+newmtl Metal03
+Kd 0.89 0.46 0.28
+Ks 0.2 0.2 0.2
+Pm 1
+Ps 0.9
+Pr 20000
+Ke 0 0 0
+Tf 1 1 1
+
+newmtl Metal10
+Kd 0.89 0.46 0.28
+Ks 0.4 0.4 0.4
+Pm 1
+Ps 0.9
+Pr 0
+Ke 0 0 0
+Tf 1 1 1
+newmtl Metal11
+Kd 0.89 0.46 0.28
+Ks 0.4 0.4 0.4
+Pm 1
+Ps 0.9
+Pr 200
+Ke 0 0 0
+Tf 1 1 1
+newmtl Metal12
+Kd 0.89 0.46 0.28
+Ks 0.4 0.4 0.4
+Pm 1
+Ps 0.9
+Pr 2000
+Ke 0 0 0
+Tf 1 1 1
+newmtl Metal13
+Kd 0.89 0.46 0.28
+Ks 0.4 0.4 0.4
+Pm 1
+Ps 0.9
+Pr 20000
+Ke 0 0 0
+Tf 1 1 1
+
+newmtl Metal20
+Kd 0.89 0.46 0.28
+Ks 0.8 0.8 0.8
+Pm 1
+Ps 0.9
+Pr 0
+Ke 0 0 0
+Tf 1 1 1
+newmtl Metal21
+Kd 0.89 0.46 0.28
+Ks 0.8 0.8 0.8
+Pm 1
+Ps 0.9
+Pr 200
+Ke 0 0 0
+Tf 1 1 1
+newmtl Metal22
+Kd 0.89 0.46 0.28
+Ks 0.8 0.8 0.8
+Pm 1
+Ps 0.9
+Pr 2000
+Ke 0 0 0
+Tf 1 1 1
+newmtl Metal23
+Kd 0.89 0.46 0.28
+Ks 0.8 0.8 0.8
+Pm 1
+Ps 0.9
+Pr 20000
+Ke 0 0 0
+Tf 1 1 1
+
+newmtl Metal30
+Kd 0.89 0.46 0.28
+Ks 1.0 1.0 1.0
+Pm 1
+Ps 0.9
+Pr 0
+Ke 0 0 0
+Tf 1 1 1
+newmtl Metal31
+Kd 0.89 0.46 0.28
+Ks 1.0 1.0 1.0
+Pm 1
+Ps 0.9
+Pr 200
+Ke 0 0 0
+Tf 1 1 1
+newmtl Metal32
+Kd 0.89 0.46 0.28
+Ks 1.0 1.0 1.0
+Pm 1
+Ps 0.9
+Pr 2000
+Ke 0 0 0
+Tf 1 1 1
+newmtl Metal33
+Kd 0.89 0.46 0.28
+Ks 1.0 1.0 1.0
+Pm 1
+Ps 0.9
+Pr 20000
+Ke 0 0 0
+Tf 1 1 1
+
+
+newmtl Floor
+Kd 0.588 0.588 0.588
+Ks 0 0 0
+Pm 0
+Ps 0
+Pr 0
+Ke 0 0 0
+Tf 1 1 1
+
+newmtl Diel00
+Kd 0.89 0.46 0.28
+Ks 0.2 0.2 0.2
+Pm 0
+Ps 0.04
+Pr 0
+Ke 0 0 0
+Tf 1 1 1
+newmtl Diel01
+Kd 0.89 0.46 0.28
+Ks 0.2 0.2 0.2
+Pm 0
+Ps 0.04
+Pr 200
+Ke 0 0 0
+Tf 1 1 1
+newmtl Diel02
+Kd 0.89 0.46 0.28
+Ks 0.2 0.2 0.2
+Pm 0
+Ps 0.04
+Pr 2000
+Ke 0 0 0
+Tf 1 1 1
+newmtl Diel03
+Kd 0.89 0.46 0.28
+Ks 0.2 0.2 0.2
+Pm 0
+Ps 0.04
+Pr 20000
+Ke 0 0 0
+Tf 1 1 1
+
+newmtl Diel10
+Kd 0.89 0.46 0.28
+Ks 0.4 0.4 0.4
+Pm 0
+Ps 0.04
+Pr 0
+Ke 0 0 0
+Tf 1 1 1
+newmtl Diel11
+Kd 0.89 0.46 0.28
+Ks 0.4 0.4 0.4
+Pm 0
+Ps 0.04
+Pr 200
+Ke 0 0 0
+Tf 1 1 1
+newmtl Diel12
+Kd 0.89 0.46 0.28
+Ks 0.4 0.4 0.4
+Pm 0
+Ps 0.04
+Pr 2000
+Ke 0 0 0
+Tf 1 1 1
+newmtl Diel13
+Kd 0.89 0.46 0.28
+Ks 0.4 0.4 0.4
+Pm 0
+Ps 0.04
+Pr 20000
+Ke 0 0 0
+Tf 1 1 1
+
+newmtl Diel20
+Kd 0.89 0.46 0.28
+Ks 0.8 0.8 0.8
+Pm 0
+Ps 0.04
+Pr 0
+Ke 0 0 0
+Tf 1 1 1
+newmtl Diel21
+Kd 0.89 0.46 0.28
+Ks 0.8 0.8 0.8
+Pm 0
+Ps 0.04
+Pr 200
+Ke 0 0 0
+Tf 1 1 1
+newmtl Diel22
+Kd 0.89 0.46 0.28
+Ks 0.8 0.8 0.8
+Pm 0
+Ps 0.04
+Pr 2000
+Ke 0 0 0
+Tf 1 1 1
+newmtl Diel23
+Kd 0.89 0.46 0.28
+Ks 0.8 0.8 0.8
+Pm 0
+Ps 0.04
+Pr 20000
+Ke 0 0 0
+Tf 1 1 1
+
+newmtl Diel30
+Kd 0.89 0.46 0.28
+Ks 1.0 1.0 1.0
+Pm 0
+Ps 0.04
+Pr 0
+Ke 0 0 0
+Tf 1 1 1
+newmtl Diel31
+Kd 0.89 0.46 0.28
+Ks 1.0 1.0 1.0
+Pm 0
+Ps 0.04
+Pr 200
+Ke 0 0 0
+Tf 1 1 1
+newmtl Diel32
+Kd 0.89 0.46 0.28
+Ks 1.0 1.0 1.0
+Pm 0
+Ps 0.04
+Pr 2000
+Ke 0 0 0
+Tf 1 1 1
+newmtl Diel33
+Kd 0.89 0.46 0.28
+Ks 1.0 1.0 1.0
+Pm 0
+Ps 0.04
+Pr 20000
+Ke 0 0 0
+Tf 1 1 1
