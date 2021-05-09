@@ -22,10 +22,12 @@ using namespace glm;
 #include "hdr.h"
 #include "fbo.h"
 
+#define FNL_IMPL
+#include "FastNoiseLite.h"
+#undef FNL_IMPL
+
+#include "terrain.h"
 #include "ParticleSystem.h"
-
-
-
 
 using std::min;
 using std::max;
@@ -65,7 +67,6 @@ const std::string envmap_base_name = "001";
 ///////////////////////////////////////////////////////////////////////////////
 vec3 lightPosition;
 vec3 point_light_color = vec3(1.f, 1.f, 1.f);
-
 float point_light_intensity_multiplier = 10000.0f;
 
 
@@ -77,7 +78,7 @@ float point_light_intensity_multiplier = 10000.0f;
 ///////////////////////////////////////////////////////////////////////////////
 vec3 cameraPosition(-70.0f, 50.0f, 70.0f);
 vec3 cameraDirection = normalize(vec3(0.0f) - cameraPosition);
-float cameraSpeed = 10.f;
+float cameraSpeed = 30.f;
 
 vec3 worldUp(0.0f, 1.0f, 0.0f);
 
@@ -110,6 +111,9 @@ struct FighterState {
 };
 
 FighterState fighterState;
+
+Terrain terrain;
+
 
 void loadShaders(bool is_reload)
 {
@@ -163,6 +167,8 @@ void initGL()
 	glEnable(GL_DEPTH_TEST); // enable Z-buffering
 	glEnable(GL_CULL_FACE);  // enables backface culling
 
+	// init terrain
+	terrain.init();
 
 	// init particle system
 	particle_system = new ParticleSystem(100000);
@@ -212,23 +218,31 @@ void drawScene(GLuint currentShaderProgram,
 	// camera
 	labhelper::setUniformSlow(currentShaderProgram, "viewInverse", inverse(viewMatrix));
 
-	// landing pad
+	// Terrain
 	labhelper::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix",
-	                          projectionMatrix * viewMatrix * landingPadModelMatrix);
-	labhelper::setUniformSlow(currentShaderProgram, "modelViewMatrix", viewMatrix * landingPadModelMatrix);
+	                          projectionMatrix * viewMatrix * terrain.model_matrix);
+	labhelper::setUniformSlow(currentShaderProgram, "modelViewMatrix", viewMatrix * terrain.model_matrix);
 	labhelper::setUniformSlow(currentShaderProgram, "normalMatrix",
-	                          inverse(transpose(viewMatrix * landingPadModelMatrix)));
+	                          inverse(transpose(viewMatrix * terrain.model_matrix)));
+	terrain.render();
 
-	labhelper::render(landingpadModel);
+	// landing pad
+	// labhelper::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix",
+	//                           projectionMatrix * viewMatrix * landingPadModelMatrix);
+	// labhelper::setUniformSlow(currentShaderProgram, "modelViewMatrix", viewMatrix * landingPadModelMatrix);
+	// labhelper::setUniformSlow(currentShaderProgram, "normalMatrix",
+	//                           inverse(transpose(viewMatrix * landingPadModelMatrix)));
+
+	// labhelper::render(landingpadModel);
 
 	// Fighter
-	labhelper::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix",
-	                          projectionMatrix * viewMatrix * fighterModelMatrix);
-	labhelper::setUniformSlow(currentShaderProgram, "modelViewMatrix", viewMatrix * fighterModelMatrix);
-	labhelper::setUniformSlow(currentShaderProgram, "normalMatrix",
-	                          inverse(transpose(viewMatrix * fighterModelMatrix)));
+	// labhelper::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix",
+	//                           projectionMatrix * viewMatrix * fighterModelMatrix);
+	// labhelper::setUniformSlow(currentShaderProgram, "modelViewMatrix", viewMatrix * fighterModelMatrix);
+	// labhelper::setUniformSlow(currentShaderProgram, "normalMatrix",
+	//                           inverse(transpose(viewMatrix * fighterModelMatrix)));
 
-	labhelper::render(fighterModel);
+	// labhelper::render(fighterModel);
 }
 
 
@@ -439,7 +453,29 @@ void gui()
 		ImGui::Separator();
 	}
 
+	///////////////////////////////////////////////////////////////////////////
+	// Light and environment map
+	///////////////////////////////////////////////////////////////////////////
+	if(ImGui::CollapsingHeader("Light sources", "lights_ch", true, true))
+	{
+		ImGui::SliderFloat("Environment multiplier", &environment_multiplier, 0.0f, 10.0f);
+		ImGui::ColorEdit3("Point light color", &point_light_color.x);
+		ImGui::SliderFloat("Point light intensity multiplier", &point_light_intensity_multiplier, 0.0f,
+		                   10000.0f, "%.3f", 2.f);
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// A button for reloading the shaders
+	///////////////////////////////////////////////////////////////////////////
+	if(ImGui::Button("Reload Shaders"))
+	{
+		loadShaders(true);
+	}
+
+	terrain.draw_imgui(g_window);
+
 	particle_system->draw_imgui(g_window);
+
 
 	// Render the GUI.
 	ImGui::Render();

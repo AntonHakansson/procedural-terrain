@@ -16,8 +16,8 @@ add_executable ( ${PROJECT_NAME}
     fbo.cpp
     hdr.cpp
     heightfield.cpp
+    terrain.cpp
     ParticleSystem.cpp
-    ParticleSystem.h
     ${SHADERS}
     )
 
