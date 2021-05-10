@@ -40,6 +40,7 @@ struct TerrainChunk {
 struct Terrain {
 	std::vector<TerrainChunk> chunks;
 
+	float amplitude;
 	fnl_state noise;
 
 	glm::mat4 model_matrix;

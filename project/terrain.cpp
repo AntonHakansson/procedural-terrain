@@ -67,7 +67,7 @@ void TerrainChunk::init(int chunk_x, int chunk_z, Terrain *_terrain) {
 
             this->normals[this->indices[i + 0]] += normal;
             this->normals[this->indices[i + 1]] += normal;
-            this->normals[this->indices[i + 3]] += normal;
+            this->normals[this->indices[i + 2]] += normal;
         }
         for (size_t i = 0; i < this->indices_count; i++) {
             this->normals[i] = glm::normalize(this->normals[i]);
@@ -112,7 +112,6 @@ void TerrainChunk::upload() {
 }
 
 void TerrainChunk::render() {
-
     glBindVertexArray(this->vaob);
     glDrawElements(GL_TRIANGLES, this->indices_count, GL_UNSIGNED_SHORT, 0);
     glBindVertexArray(0);
@@ -141,6 +140,7 @@ void Terrain::init() {
         .m_emission_texture = {},
     };
 
+    this->amplitude = 5.f;
     this->noise = fnlCreateState();
     this->noise.noise_type = FNL_NOISE_OPENSIMPLEX2;
     this->noise.fractal_type = FNL_FRACTAL_FBM;
@@ -166,7 +166,7 @@ void Terrain::deinit() {
 }
 
 float Terrain::getHeight(float x, float z) {
-    return fnlGetNoise2D(&this->noise, x, z);
+    return fnlGetNoise2D(&this->noise, x, z) * this->amplitude;
 }
 
 void Terrain::render() {
@@ -214,6 +214,9 @@ void Terrain::draw_imgui(SDL_Window* window) {
 
         bool noise_changed = false;
 
+        if(ImGui::SliderFloat("Amplitude", &this->amplitude, 1.f, 100.f)) {
+            noise_changed = true;
+        };
         if(ImGui::SliderFloat("Frequency", &this->noise.frequency, 0.01f, 1.f)) {
             noise_changed = true;
         };
