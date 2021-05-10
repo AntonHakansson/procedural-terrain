@@ -15,53 +15,42 @@
 
 #include "FastNoiseLite.h"
 
-struct Terrain;
-
-struct TerrainChunk {
-	int chunkX, chunkZ;
-	uint32_t size;
-	uint32_t indices_count;
-
-	std::vector<glm::vec3> positions;
-	std::vector<glm::vec3> normals;
-	std::vector<uint16_t> indices;
-
-	// Buffers on GPU
-	uint32_t positions_bo;
-	uint32_t normals_bo;
-	uint32_t indices_bo; // NOTE(hak): this can be shared between chunks
-	// uint32_t texture_coordinates_bo;
-
-	// Vertex Array Object
-	uint32_t vaob;
-
-	void init(int chunk_x, int chunk_z, Terrain *_terrain);
-	void deinit();
-	void upload();
-	void render();
-};
-
 struct Terrain {
-	std::vector<TerrainChunk> chunks;
+	float terrain_size;
+	int indices_count;
+	int terrain_resolution;
+
+	bool wireframe;
 
 	float amplitude;
-	float tess_level;
 	float tess_multiplier;
-
 	fnl_state noise;
 
 	GLuint shader_program;
 
 	glm::mat4 model_matrix;
 
-    labhelper::Material material;
+	labhelper::Material material;
+	labhelper::Texture grass_texture;
+	labhelper::Texture rock_texture;
+
+	// Buffers on GPU
+	uint32_t positions_bo;
+	uint32_t normals_bo;
+	uint32_t indices_bo;
+
+	// Vertex Array Object
+	uint32_t vaob;
 
 	void init();
+	void init_mesh(bool is_reload);
 	void deinit();
 
 	float getHeight(float x, float z);
 
 	void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position);
+
+	void loadShader(bool is_reload);
 
 	void draw_imgui(SDL_Window* window);
 };

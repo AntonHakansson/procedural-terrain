@@ -78,7 +78,7 @@ float point_light_intensity_multiplier = 10000.0f;
 ///////////////////////////////////////////////////////////////////////////////
 vec3 cameraPosition(-70.0f, 50.0f, 70.0f);
 vec3 cameraDirection = normalize(vec3(0.0f) - cameraPosition);
-float cameraSpeed = 30.f;
+float cameraSpeed = 60.f;
 
 vec3 worldUp(0.0f, 1.0f, 0.0f);
 
@@ -466,6 +466,7 @@ void gui()
 	if(ImGui::Button("Reload Shaders"))
 	{
 		loadShaders(true);
+		terrain.loadShader(true);
 	}
 
 	terrain.draw_imgui(g_window);
