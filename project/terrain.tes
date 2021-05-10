@@ -1,5 +1,7 @@
 #version 420
 
+layout(triangles, equal_spacing, ccw) in;
+
 uniform mat4 viewProjectionMatrix;
 uniform float amplitude;
 

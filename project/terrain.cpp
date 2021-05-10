@@ -302,7 +302,6 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
 
     {
         glUseProgram(this->shader_program);
-        printf("Using terrain\n");
 
         camera_position.y = 0;
         this->model_matrix = glm::translate(camera_position - 256 / 2.0f);
@@ -316,7 +315,9 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
 
         labhelper::setUniformSlow(this->shader_program, "eyeWorldPos", camera_position);
 
-        glUniform1i(glGetUniformLocation(this->shader_program, "amplitude"), this->amplitude);
+        glUniform1fv(glGetUniformLocation(this->shader_program, "amplitude"), 1, &this->amplitude);
+        glUniform1fv(glGetUniformLocation(this->shader_program, "tessLevel"), 1, &this->tess_level);
+        glUniform1fv(glGetUniformLocation(this->shader_program, "tessMultiplier"), 1, &this->tess_multiplier);
 
         glUniform1i(glGetUniformLocation(this->shader_program, "has_color_texture"), 0);
         glUniform1i(glGetUniformLocation(this->shader_program, "has_diffuse_texture"), 0);
@@ -341,7 +342,6 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
     }
 
     glUseProgram(prev_program);
-    printf("prev\n");
 }
 
 void Terrain::draw_imgui(SDL_Window* window) {
