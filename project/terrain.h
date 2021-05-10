@@ -1,9 +1,13 @@
 #pragma once
 
-#include <GL/glew.h>
 #include <vector>
+#include <sstream>
+#include <fstream>
+
+#include <GL/glew.h>
 #include <glm/detail/type_vec3.hpp>
 #include <glm/mat4x4.hpp>
+#include <glm/gtx/transform.hpp>
 #include <imgui.h>
 
 #include <labhelper.h>
@@ -41,7 +45,12 @@ struct Terrain {
 	std::vector<TerrainChunk> chunks;
 
 	float amplitude;
+	float tess_level;
+	float tess_multiplier;
+
 	fnl_state noise;
+
+	GLuint shader_program;
 
 	glm::mat4 model_matrix;
 
@@ -52,7 +61,7 @@ struct Terrain {
 
 	float getHeight(float x, float z);
 
-	void render();
+	void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position);
 
 	void draw_imgui(SDL_Window* window);
 };

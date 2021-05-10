@@ -1,0 +1,42 @@
+#version 420
+
+uniform mat4 viewProjectionMatrix;
+uniform float amplitude;
+
+in vec3 WorldPos_ES_in[];
+in vec2 TexCoord_ES_in[];
+in vec3 Normal_ES_in[];
+
+out vec3 WorldPos_FS_in;
+out vec2 TexCoord_FS_in;
+out vec3 Normal_FS_in;
+
+float random2D(in vec2 st)
+{
+    vec3 seed = vec3(12312412, 123123, 124123);
+    return fract(sin(dot(st.xy, vec2(12.9898, 78.233) + seed.xy)) * 43758.5453123);
+}
+
+vec2 interpolate2D(vec2 v0, vec2 v1, vec2 v2)
+{
+    return vec2(gl_TessCoord.x) * v0 + vec2(gl_TessCoord.y) * v1 + vec2(gl_TessCoord.z) * v2;
+}
+
+vec3 interpolate3D(vec3 v0, vec3 v1, vec3 v2)
+{
+    return vec3(gl_TessCoord.x) * v0 + vec3(gl_TessCoord.y) * v1 + vec3(gl_TessCoord.z) * v2;
+}
+
+void main()
+{
+    // Interpolate the attributes of the output vertex using the barycentric coordinates
+    TexCoord_FS_in = interpolate2D(TexCoord_ES_in[0], TexCoord_ES_in[1], TexCoord_ES_in[2]);
+    Normal_FS_in = interpolate3D(Normal_ES_in[0], Normal_ES_in[1], Normal_ES_in[2]);
+    Normal_FS_in = normalize(Normal_FS_in);
+    WorldPos_FS_in = interpolate3D(WorldPos_ES_in[0], WorldPos_ES_in[1], WorldPos_ES_in[2]);
+
+    // Displace the vertex along the normal
+    float displacement = random2D(WorldPos_ES_in[0].xz);
+    WorldPos_FS_in += Normal_FS_in * displacement * amplitude;
+    gl_Position = viewProjectionMatrix * vec4(WorldPos_FS_in, 1.0);
+}

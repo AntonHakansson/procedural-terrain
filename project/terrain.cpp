@@ -113,14 +113,131 @@ void TerrainChunk::upload() {
 
 void TerrainChunk::render() {
     glBindVertexArray(this->vaob);
-    glDrawElements(GL_TRIANGLES, this->indices_count, GL_UNSIGNED_SHORT, 0);
+    glDrawElements(GL_PATCHES, this->indices_count, GL_UNSIGNED_SHORT, 0);
     glBindVertexArray(0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Terrain
 ///////////////////////////////////////////////////////////////////////////////
+//
+//
+
+GLuint load_program(const std::string& vertexShader, const std::string& fragmentShader, const std::string& tcsShaderName, const std::string& tesShaderName, bool allow_errors) {
+    GLuint vShader = glCreateShader(GL_VERTEX_SHADER);
+    GLuint fShader = glCreateShader(GL_FRAGMENT_SHADER);
+    GLuint tcsShader = glCreateShader(GL_TESS_CONTROL_SHADER);
+    GLuint tesShader = glCreateShader(GL_TESS_EVALUATION_SHADER);
+
+    std::ifstream vs_file(vertexShader);
+    std::string vs_src((std::istreambuf_iterator<char>(vs_file)), std::istreambuf_iterator<char>());
+
+    std::ifstream fs_file(fragmentShader);
+    std::string fs_src((std::istreambuf_iterator<char>(fs_file)), std::istreambuf_iterator<char>());
+
+
+    std::ifstream tcs_file(tcsShaderName);
+    std::string tcs_src((std::istreambuf_iterator<char>(tcs_file)), std::istreambuf_iterator<char>());
+
+    std::ifstream tes_file(tesShaderName);
+    std::string tes_src((std::istreambuf_iterator<char>(tes_file)), std::istreambuf_iterator<char>());
+
+    const char* vs = vs_src.c_str();
+    const char* fs = fs_src.c_str();
+    const char* tcs = tcs_src.c_str();
+    const char* tes = tes_src.c_str();
+
+    glShaderSource(vShader, 1, &vs, nullptr);
+    glShaderSource(fShader, 1, &fs, nullptr);
+    glShaderSource(tcsShader, 1, &tcs, nullptr);
+    glShaderSource(tesShader, 1, &tes, nullptr);
+    // text data is not needed beyond this point
+
+    glCompileShader(vShader);
+    int compileOk = 0;
+    glGetShaderiv(vShader, GL_COMPILE_STATUS, &compileOk);
+    if(!compileOk)
+    {
+        std::string err = labhelper::GetShaderInfoLog(vShader);
+        if(allow_errors)
+        {
+            labhelper::non_fatal_error(err, "Vertex Shader");
+        }
+        else
+        {
+            labhelper::fatal_error(err, "Vertex Shader");
+        }
+        return 0;
+    }
+
+    glCompileShader(fShader);
+    glGetShaderiv(fShader, GL_COMPILE_STATUS, &compileOk);
+    if(!compileOk)
+    {
+        std::string err = labhelper::GetShaderInfoLog(fShader);
+        if(allow_errors)
+        {
+            labhelper::non_fatal_error(err, "Fragment Shader");
+        }
+        else
+        {
+            labhelper::fatal_error(err, "Fragment Shader");
+        }
+        return 0;
+    }
+
+    glCompileShader(tcsShader);
+    glGetShaderiv(tcsShader, GL_COMPILE_STATUS, &compileOk);
+    if(!compileOk)
+    {
+        std::string err = labhelper::GetShaderInfoLog(tcsShader);
+        if(allow_errors)
+        {
+            labhelper::non_fatal_error(err, "TCS Shader");
+        }
+        else
+        {
+            labhelper::fatal_error(err, "TCS Shader");
+        }
+        return 0;
+    }
+    glCompileShader(tesShader);
+    glGetShaderiv(tesShader, GL_COMPILE_STATUS, &compileOk);
+    if(!compileOk)
+    {
+        std::string err = labhelper::GetShaderInfoLog(tesShader);
+        if(allow_errors)
+        {
+            labhelper::non_fatal_error(err, "TES Shader");
+        }
+        else
+        {
+            labhelper::fatal_error(err, "TES Shader");
+        }
+        return 0;
+    }
+
+
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, fShader);
+    glDeleteShader(fShader);
+    glAttachShader(shaderProgram, vShader);
+    glDeleteShader(vShader);
+    glAttachShader(shaderProgram, tcsShader);
+    glDeleteShader(tcsShader);
+    glAttachShader(shaderProgram, tesShader);
+    glDeleteShader(tesShader);
+    if(!allow_errors)
+        CHECK_GL_ERROR();
+
+    if(!labhelper::linkShaderProgram(shaderProgram, allow_errors))
+        return 0;
+
+    return shaderProgram;
+}
+
 void Terrain::init() {
+
     this->model_matrix = glm::mat4(1.0);
 
     this->material = labhelper::Material{
@@ -149,14 +266,24 @@ void Terrain::init() {
     this->noise.lacunarity = 2.5f;
     this->noise.gain = 1.0f;
 
-    for (auto z = -1; z < 2; z++) {
-        for (auto x = -1; x < 2; x++) {
-            this->chunks.emplace_back();
-            this->chunks.back().init(x, z, this);
-            this->chunks.back().upload();
-        }
-    }
+    // for (auto z = -1; z < 2; z++) {
+    //     for (auto x = -1; x < 2; x++) {
+    //         this->chunks.emplace_back();
+    //         this->chunks.back().init(x, z, this);
+    //         this->chunks.back().upload();
+    //     }
+    // }
+
+    this->chunks.emplace_back();
+    this->chunks.back().init(0, 0, this);
+    this->chunks.back().upload();
+
+    // OPENGL Setup
+    glPatchParameteri(GL_PATCH_VERTICES, 3);
+    this->shader_program = load_program("../project/terrain.vert", "../project/terrain.frag", "../project/terrain.tcs", "../project/terrain.tes", false);
 }
+
+
 
 void Terrain::deinit() {
     for (auto chunk : this->chunks) {
@@ -169,30 +296,52 @@ float Terrain::getHeight(float x, float z) {
     return fnlGetNoise2D(&this->noise, x, z) * this->amplitude;
 }
 
-void Terrain::render() {
-    GLint current_program = 0;
-    glGetIntegerv(GL_CURRENT_PROGRAM, &current_program);
+void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position) {
+    GLint prev_program = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &prev_program);
 
-    glUniform1i(glGetUniformLocation(current_program, "has_color_texture"), 0);
-    glUniform1i(glGetUniformLocation(current_program, "has_diffuse_texture"), 0);
-    glUniform1i(glGetUniformLocation(current_program, "has_reflectivity_texture"), 0);
-    glUniform1i(glGetUniformLocation(current_program, "has_metalness_texture"), 0);
-    glUniform1i(glGetUniformLocation(current_program, "has_fresnel_texture"), 0);
-    glUniform1i(glGetUniformLocation(current_program, "has_shininess_texture"), 0);
-    glUniform1i(glGetUniformLocation(current_program, "has_emission_texture"), 0);
+    {
+        glUseProgram(this->shader_program);
+        printf("Using terrain\n");
 
-    glUniform3fv(glGetUniformLocation(current_program, "material_color"), 1, &material.m_color.x);
-    glUniform3fv(glGetUniformLocation(current_program, "material_diffuse_color"), 1, &material.m_color.x);
-    glUniform3fv(glGetUniformLocation(current_program, "material_emissive_color"), 1, &material.m_color.x);
-    glUniform1fv(glGetUniformLocation(current_program, "material_reflectivity"), 1, &material.m_reflectivity);
-    glUniform1fv(glGetUniformLocation(current_program, "material_metalness"), 1, &material.m_metalness);
-    glUniform1fv(glGetUniformLocation(current_program, "material_fresnel"), 1, &material.m_fresnel);
-    glUniform1fv(glGetUniformLocation(current_program, "material_shininess"), 1, &material.m_shininess);
-    glUniform1fv(glGetUniformLocation(current_program, "material_emission"), 1, &material.m_emission);
+        camera_position.y = 0;
+        this->model_matrix = glm::translate(camera_position - 256 / 2.0f);
+        labhelper::setUniformSlow(this->shader_program, "viewProjectionMatrix",
+                                    projection_matrix * view_matrix);
+        labhelper::setUniformSlow(this->shader_program, "modelViewProjectionMatrix",
+                                    projection_matrix * view_matrix * this->model_matrix);
+        labhelper::setUniformSlow(this->shader_program, "modelViewMatrix", view_matrix * this->model_matrix);
+        labhelper::setUniformSlow(this->shader_program, "normalMatrix",
+                                    inverse(transpose(view_matrix * this->model_matrix)));
 
-    for (auto chunk : this->chunks) {
-        chunk.render();
+        labhelper::setUniformSlow(this->shader_program, "eyeWorldPos", camera_position);
+
+        glUniform1i(glGetUniformLocation(this->shader_program, "amplitude"), this->amplitude);
+
+        glUniform1i(glGetUniformLocation(this->shader_program, "has_color_texture"), 0);
+        glUniform1i(glGetUniformLocation(this->shader_program, "has_diffuse_texture"), 0);
+        glUniform1i(glGetUniformLocation(this->shader_program, "has_reflectivity_texture"), 0);
+        glUniform1i(glGetUniformLocation(this->shader_program, "has_metalness_texture"), 0);
+        glUniform1i(glGetUniformLocation(this->shader_program, "has_fresnel_texture"), 0);
+        glUniform1i(glGetUniformLocation(this->shader_program, "has_shininess_texture"), 0);
+        glUniform1i(glGetUniformLocation(this->shader_program, "has_emission_texture"), 0);
+
+        glUniform3fv(glGetUniformLocation(this->shader_program, "material_color"), 1, &material.m_color.x);
+        glUniform3fv(glGetUniformLocation(this->shader_program, "material_diffuse_color"), 1, &material.m_color.x);
+        glUniform3fv(glGetUniformLocation(this->shader_program, "material_emissive_color"), 1, &material.m_color.x);
+        glUniform1fv(glGetUniformLocation(this->shader_program, "material_reflectivity"), 1, &material.m_reflectivity);
+        glUniform1fv(glGetUniformLocation(this->shader_program, "material_metalness"), 1, &material.m_metalness);
+        glUniform1fv(glGetUniformLocation(this->shader_program, "material_fresnel"), 1, &material.m_fresnel);
+        glUniform1fv(glGetUniformLocation(this->shader_program, "material_shininess"), 1, &material.m_shininess);
+        glUniform1fv(glGetUniformLocation(this->shader_program, "material_emission"), 1, &material.m_emission);
+
+        for (auto chunk : this->chunks) {
+            chunk.render();
+        }
     }
+
+    glUseProgram(prev_program);
+    printf("prev\n");
 }
 
 void Terrain::draw_imgui(SDL_Window* window) {
@@ -215,7 +364,13 @@ void Terrain::draw_imgui(SDL_Window* window) {
         bool noise_changed = false;
 
         if(ImGui::SliderFloat("Amplitude", &this->amplitude, 1.f, 100.f)) {
-            noise_changed = true;
+            // noise_changed = true;
+        };
+        if(ImGui::SliderFloat("Tesselation Level", &this->tess_level, 1.f, 50.f)) {
+            // noise_changed = true;
+        };
+        if(ImGui::SliderFloat("Tesselation Multiplier", &this->tess_multiplier, 1.f, 50.f)) {
+            // noise_changed = true;
         };
         if(ImGui::SliderFloat("Frequency", &this->noise.frequency, 0.01f, 1.f)) {
             noise_changed = true;

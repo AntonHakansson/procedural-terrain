@@ -219,12 +219,7 @@ void drawScene(GLuint currentShaderProgram,
 	labhelper::setUniformSlow(currentShaderProgram, "viewInverse", inverse(viewMatrix));
 
 	// Terrain
-	labhelper::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix",
-	                          projectionMatrix * viewMatrix * terrain.model_matrix);
-	labhelper::setUniformSlow(currentShaderProgram, "modelViewMatrix", viewMatrix * terrain.model_matrix);
-	labhelper::setUniformSlow(currentShaderProgram, "normalMatrix",
-	                          inverse(transpose(viewMatrix * terrain.model_matrix)));
-	terrain.render();
+	terrain.render(projectionMatrix, viewMatrix, cameraPosition);
 
 	// landing pad
 	// labhelper::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix",
@@ -304,6 +299,7 @@ bool handleEvents(void)
 	// check events (keyboard among other)
 	SDL_Event event;
 	bool quitEvent = false;
+
 	while(SDL_PollEvent(&event))
 	{
 		if(event.type == SDL_QUIT || (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_ESCAPE))
