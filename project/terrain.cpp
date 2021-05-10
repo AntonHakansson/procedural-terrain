@@ -1,122 +1,5 @@
 #include "terrain.h"
 
-///////////////////////////////////////////////////////////////////////////////
-// Terrain Chunk
-///////////////////////////////////////////////////////////////////////////////
-// void TerrainChunk::init(int chunk_x, int chunk_z, Terrain *_terrain) {
-//   this->chunkX = chunk_x;
-//   this->chunkZ = chunk_z;
-//   this->size = 256;
-//   this->indices_count = (this->size - 1) * (this->size - 1) * 6;
-
-//   this->positions.resize(this->size * this->size);
-//   this->normals.resize(this->indices_count);
-//   this->indices.resize(this->indices_count);
-
-//   // init heightmap
-//   {
-//     size_t index = 0;
-//     float offset_x = (this->chunkX * (this->size - 1)) * res;
-//     float offset_z = this->chunkZ * (this->size - 1) * res;
-
-//     for (int z = 0; z < this->size; z++) {
-//       for (int x = 0; x < this->size; x++) {
-//         auto &pos = this->positions[index];
-
-//         pos.x = x*res + offset_x;
-//         pos.z = z*res + offset_z;
-//         // pos.y = _terrain->getHeight(pos.x, pos.z);
-//         pos.y = 0;
-
-//         index += 1;
-//       }
-//     }
-//   }
-
-//   // build triangles
-//   {
-//     size_t index = 0;
-//     for (size_t z = 0; z < this->size - 1; z++) {
-//       for (size_t x = 0; x < this->size - 1; x++) {
-
-//         auto start = z * this->size + x;
-
-//         auto top_left = start;
-//         auto top_right = start + 1;
-//         auto bot_left = start + this->size;
-//         auto bot_right = start + this->size + 1;
-
-//         this->indices[index++] = top_left;
-//         this->indices[index++] = bot_left;
-//         this->indices[index++] = bot_right;
-
-//         this->indices[index++] = top_right;
-//         this->indices[index++] = top_left;
-//         this->indices[index++] = bot_right;
-//       }
-//     }
-//   }
-
-//   // compute normals
-//   {
-//     for (size_t i = 0; i < this->indices_count; i += 3) {
-//       auto &v0 = this->positions[this->indices[i + 0]];
-//       auto &v1 = this->positions[this->indices[i + 1]];
-//       auto &v2 = this->positions[this->indices[i + 2]];
-
-//       auto normal = glm::normalize(glm::cross(v1 - v0, v2 - v0));
-
-//       this->normals[this->indices[i + 0]] += normal;
-//       this->normals[this->indices[i + 1]] += normal;
-//       this->normals[this->indices[i + 2]] += normal;
-//     }
-//     for (size_t i = 0; i < this->indices_count; i++) {
-//       this->normals[i] = glm::normalize(this->normals[i]);
-//     }
-//   }
-// }
-
-// void TerrainChunk::deinit() {
-//   glDeleteBuffers(1, &this->positions_bo);
-//   glDeleteBuffers(1, &this->normals_bo);
-//   glDeleteBuffers(1, &this->indices_bo);
-//   glDeleteVertexArrays(1, &this->vaob);
-// }
-
-// void TerrainChunk::upload() {
-//   glGenVertexArrays(1, &this->vaob);
-//   glBindVertexArray(this->vaob);
-
-//   glGenBuffers(1, &this->positions_bo);
-//   glBindBuffer(GL_ARRAY_BUFFER, this->positions_bo);
-//   glBufferData(GL_ARRAY_BUFFER, this->size * this->size * sizeof(glm::vec3), &this->positions[0], GL_STATIC_DRAW);
-//   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
-//   glEnableVertexAttribArray(0);
-
-//   glGenBuffers(1, &this->normals_bo);
-//   glBindBuffer(GL_ARRAY_BUFFER, this->normals_bo);
-//   glBufferData(GL_ARRAY_BUFFER, this->indices_count * sizeof(glm::vec3), &this->normals[0], GL_STATIC_DRAW);
-//   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
-//   glEnableVertexAttribArray(1);
-
-//   glGenBuffers(1, &this->indices_bo);
-//   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->indices_bo);
-//   glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->indices_count * sizeof(uint16_t), &this->indices[0], GL_STATIC_DRAW);
-
-//   glBindVertexArray(0);
-//   glBindBuffer(GL_ARRAY_BUFFER, 0);
-//   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-// }
-
-// void TerrainChunk::render() {
-// }
-
-///////////////////////////////////////////////////////////////////////////////
-// Terrain
-///////////////////////////////////////////////////////////////////////////////
-//
-//
-
 GLuint load_program(const std::string& vertexShader, const std::string& fragmentShader, const std::string& tcsShaderName, const std::string& tesShaderName, bool allow_errors) {
   GLuint vShader = glCreateShader(GL_VERTEX_SHADER);
   GLuint fShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -400,11 +283,25 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
   {
     glUseProgram(this->shader_program);
 
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, this->grass_texture.gl_id);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, this->rock_texture.gl_id);
+
     if (this->wireframe) {
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     }
 
-    this->model_matrix = glm::translate(glm::vec3(camera_position.x, 0, camera_position.z) - glm::vec3(1, 0, 1) * this->terrain_size / 2.0f);
+
+    float s = (this->terrain_size / this->terrain_resolution);
+
+    this->model_matrix = glm::translate(
+      glm::vec3(
+        glm::floor(camera_position.x / s) * s, 
+        0, 
+        glm::floor(camera_position.z / s) * s
+      ) - glm::vec3(1, 0, 1) * this->terrain_size / 2.0f
+    );
 
     // this->model_matrix = glm::mat4(1.0f);
     labhelper::setUniformSlow(this->shader_program, "viewProjectionMatrix",

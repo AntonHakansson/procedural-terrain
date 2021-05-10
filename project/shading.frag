@@ -206,6 +206,9 @@ void main()
 
 	vec3 shading = direct_illumination_term + indirect_illumination_term + emission_term;
 
-	fragmentColor = vec4(shading, 1.0);
+
+	float slope = dot(vec3(0, 1, 0), n);
+	fragmentColor = vec4(vec3(slope), 1.0);
+
 	return;
 }

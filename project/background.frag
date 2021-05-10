@@ -16,14 +16,20 @@ void main()
 	// Calculate the world-space position of this fragment on the near plane
 	vec4 pixel_world_pos = inv_PV * vec4(texCoord * 2.0 - 1.0, 1.0, 1.0);
 	pixel_world_pos = (1.0 / pixel_world_pos.w) * pixel_world_pos;
+
 	// Calculate the world-space direction from the camera to that position
 	vec3 dir = normalize(pixel_world_pos.xyz - camera_pos);
+
 	// Calculate the spherical coordinates of the direction
 	float theta = acos(max(-1.0f, min(1.0f, dir.y)));
 	float phi = atan(dir.z, dir.x);
-	if(phi < 0.0f)
+
+	if (phi < 0.0f)
 		phi = phi + 2.0f * PI;
+
+  float test = min(max(dot(normalize(vec3(0, 1, 0)), dir), 0) / 0.02, 1);
+
 	// Use these to lookup the color in the environment map
 	vec2 lookup = vec2(phi / (2.0 * PI), theta / PI);
-	fragmentColor = environment_multiplier * texture(environmentMap, lookup);
+	fragmentColor = vec4(mix(vec3(109.0 / 255.0, 116.0 / 255.0, 109.0 / 255.0), environment_multiplier * texture(environmentMap, lookup).xyz, test), 1);
 }

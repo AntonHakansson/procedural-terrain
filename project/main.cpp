@@ -178,11 +178,18 @@ void debugDrawLight(const glm::mat4& viewMatrix,
                     const glm::mat4& projectionMatrix,
                     const glm::vec3& worldSpaceLightPos)
 {
-	mat4 modelMatrix = glm::translate(worldSpaceLightPos);
+	// mat4 modelMatrix = glm::translate(worldSpaceLightPos);
+	mat4 modelMatrix = glm::translate(glm::vec3(0, 0, 0)) * glm::scale(glm::vec3(10));
 	glUseProgram(shaderProgram);
 	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix",
 	                          projectionMatrix * viewMatrix * modelMatrix);
-	labhelper::render(sphereModel);
+	// labhelper::render(sphereModel);
+
+	labhelper::setUniformSlow(shaderProgram, "modelViewProjectionMatrix", projectionMatrix * viewMatrix * modelMatrix);
+	labhelper::setUniformSlow(shaderProgram, "modelViewMatrix", viewMatrix * modelMatrix);
+	labhelper::setUniformSlow(shaderProgram, "normalMatrix", inverse(transpose(viewMatrix * modelMatrix)));
+
+	labhelper::render(fighterModel);
 }
 
 
