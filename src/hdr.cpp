@@ -59,4 +59,4 @@ namespace gpu {
 
     return texId;
   }
-}  // namespace labhelper
+}  // namespace gpu

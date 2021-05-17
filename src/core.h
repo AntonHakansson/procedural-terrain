@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+
 #include <cstddef>
 
 // Base Types
@@ -32,7 +33,6 @@ using isize = std::ptrdiff_t;
 #ifndef M_PI
 #  define M_PI 3.14159265358979323846f
 #endif
-
 
 // Defer statements
 //-----------------------------------------------

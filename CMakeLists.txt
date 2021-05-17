@@ -8,6 +8,10 @@ project(
   LANGUAGES CXX
 )
 
+# --- Import tools ----
+
+include(cmake/tools.cmake)
+
 # ---- Include guards ----
 
 if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
@@ -21,6 +25,8 @@ endif()
 # see https://github.com/TheLartians/CPM.cmake for more info
 
 include(cmake/CPM.cmake)
+
+CPMAddPackage("gh:TheLartians/Format.cmake@1.7.0")
 
 # Threads
 find_package(Threads REQUIRED)
@@ -46,38 +52,48 @@ CPMAddPackage(
 CPMAddPackage(
   NAME stb
   GITHUB_REPOSITORY nothings/stb
-  GIT_TAG b42009b3b9d4ca35bc703f5310eedc74f584be58
-  DOWNLOAD_ONLY
-  )
-
-if(stb_ADDED)
-  add_library(stb INTERFACE)
-  target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
-endif()
-
+  GIT_TAG master
+)
 
 # SDL2
-CPMAddPackage (NAME SDL2 GITHUB_REPOSITORY libsdl-org/SDL VERSION 2.0.15
+CPMAddPackage(
+  NAME SDL2
+  GITHUB_REPOSITORY libsdl-org/SDL
+  VERSION 2.0.15
   # 2.0.15 hasn't released yet, so let's use a specific commit
   GIT_TAG 62a562dea20728726a497b4af49d591a2fa385de
   OPTIONS "SDL_SHARED off"
 )
 
 # ImGui: https://github.com/ocornut/imgui
-CPMAddPackage(NAME imgui GIT_REPOSITORY https://github.com/ocornut/imgui VERSION 1.82 DOWNLOAD_ONLY TRUE)
+CPMAddPackage(
+  NAME imgui
+  GIT_REPOSITORY https://github.com/ocornut/imgui
+  VERSION 1.82
+  DOWNLOAD_ONLY TRUE
+)
 
-if (imgui_ADDED)
+if(imgui_ADDED)
   set(IMGUI_INCLUDE_DIR ${imgui_SOURCE_DIR}/)
   file(GLOB IMGUI_SOURCES ${imgui_SOURCE_DIR}/*.cpp)
   file(GLOB IMGUI_HEADERS ${imgui_SOURCE_DIR}/*.h)
-  add_library(imgui STATIC ${IMGUI_SOURCES} ${IMGUI_SOURCES} ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.cpp ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp)
+  add_library(
+    imgui STATIC ${IMGUI_SOURCES} ${IMGUI_SOURCES} ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.cpp
+                 ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+  )
   add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GLAD)
-  target_include_directories(imgui PUBLIC ${IMGUI_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR} ${SDL_INCLUDE_DIR} ${GLAD_INCLUDE_DIR})
+  target_include_directories(
+    imgui PUBLIC ${IMGUI_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR} ${SDL_INCLUDE_DIR} ${GLAD_INCLUDE_DIR}
+  )
   target_link_libraries(imgui PUBLIC ${OPENGL_LIBRARIES} SDL2-static glad)
 endif()
 
 # Tiny Obj Loader
-CPMAddPackage(NAME tinyobjloader GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader VERSION 1.0.6)
+CPMAddPackage(
+  NAME tinyobjloader
+  GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader
+  VERSION 1.0.6
+)
 
 # ---- Add source files ----
 
@@ -96,36 +112,18 @@ set_target_properties(AdvGfxProject PROPERTIES CXX_STANDARD 20)
 target_compile_options(AdvGfxProject PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive->")
 
 # Link dependencies
-target_link_libraries(AdvGfxProject PUBLIC ${CMAKE_DL_LIBS} glad SDL2-static imgui glm stb tinyobjloader)
+target_link_libraries(
+  AdvGfxProject
+  PUBLIC ${CMAKE_DL_LIBS}
+         glad
+         SDL2-static
+         imgui
+         glm
+         stb
+         tinyobjloader
+)
 
 target_include_directories(
   AdvGfxProject PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-                 $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
+                       $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
 )
-
-# Set warning levels to about the same level for MSVC, GCC, and Clang
-# if (MSVC)
-#     target_compile_options(AdvGfxProject PRIVATE /W4 /WX)
-# else ()
-#     target_compile_options(AdvGfxProject PRIVATE -Wall -Wextra -pedantic -Werror)
-# endif ()
-
-# ---- Create an installable target ----
-# this allows users to install and find the library via `find_package()`.
-
-# the location where the project's version header will be placed should match the project's regular
-# header paths
-# string(TOLOWER ${PROJECT_NAME}/version.h VERSION_HEADER_LOCATION)
-
-# packageProject(
-#   NAME ${PROJECT_NAME}
-#   VERSION ${PROJECT_VERSION}
-#   NAMESPACE ${PROJECT_NAME}
-#   BINARY_DIR ${PROJECT_BINARY_DIR}
-#   INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include
-#   INCLUDE_DESTINATION include/${PROJECT_NAME}-${PROJECT_VERSION}
-#   VERSION_HEADER "${VERSION_HEADER_LOCATION}"
-#   COMPATIBILITY SameMajorVersion
-# )
-
-# set(CMAKE_BUILD_TYPE Debug)

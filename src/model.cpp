@@ -468,4 +468,4 @@ namespace gpu {
       glDrawArrays(GL_TRIANGLES, mesh.m_start_index, (GLsizei)mesh.m_number_of_vertices);
     }
   }
-}  // namespace labhelper
+}  // namespace gpu

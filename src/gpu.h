@@ -126,7 +126,7 @@ namespace gpu {
                       const glm::vec3* values);
 
   size_t createSubdividedPlane(float size, unsigned int subdivisions, GLuint* out_vao,
-                             GLuint* out_vbo, GLuint* out_ebo);
+                               GLuint* out_vbo, GLuint* out_ebo);
 
   /**
    * Helper to draw a single quad (two triangles) that cover the entire screen

@@ -13,7 +13,7 @@
         packages.project = pkgs.stdenv.mkDerivation {
           pname = "AdvCompProject";
           version = "0.0.1";
-          nativeBuildInputs = with pkgs; [ cmake cgdb clang-tools cmake-format ];
+          nativeBuildInputs = with pkgs; [ cmake cgdb clang-tools cmake-format cppcheck include-what-you-use ];
           buildInputs = with pkgs; [ xorg.libX11 xorg.libXext libGL glm ];
           src = ./.;
           configurePhase = ''

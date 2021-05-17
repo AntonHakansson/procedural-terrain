@@ -47,7 +47,9 @@ void Terrain::init_mesh(bool is_reload) {
     glDeleteBuffers(1, &this->indices_bo);
     glDeleteVertexArrays(1, &this->vaob);
   }
-  this->indices_count = gpu::createSubdividedPlane(this->terrain_size, this->terrain_subdivision, &this->vaob, &this->positions_bo, &this->indices_bo);
+  this->indices_count
+      = gpu::createSubdividedPlane(this->terrain_size, this->terrain_subdivision, &this->vaob,
+                                   &this->positions_bo, &this->indices_bo);
 }
 
 void Terrain::loadShader(bool is_reload) {
@@ -217,7 +219,8 @@ void Terrain::draw_imgui(SDL_Window* window) {
       }
 
       static int selected_item = 0;
-      const std::vector<const char*> items = {"Noise 0", "Noise 1", "Noise 2", "Noise 3", "Noise 4", "Noise 5", "Noise 6", "Noise 7"};
+      const std::vector<const char*> items = {"Noise 0", "Noise 1", "Noise 2", "Noise 3",
+                                              "Noise 4", "Noise 5", "Noise 6", "Noise 7"};
       ImGui::ListBox("Noises", &selected_item, items.data(), this->noises.size());
 
       ImGui::DragFloat("Amplitude", &this->noises[selected_item].amplitude, 1.0f, 0.0f, 10000.f);

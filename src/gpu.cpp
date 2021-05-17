@@ -568,7 +568,7 @@ namespace gpu {
   }
 
   size_t createSubdividedPlane(float _size, unsigned int subdivisions, GLuint* out_vao,
-                             GLuint* out_vbo, GLuint* out_ebo) {
+                               GLuint* out_vbo, GLuint* out_ebo) {
     assert(out_vao != nullptr);
     assert(out_vbo != nullptr);
     assert(out_ebo != nullptr);
