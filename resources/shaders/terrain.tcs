@@ -1,0 +1,58 @@
+#version 420
+
+// define the number of CPs in the output patch
+layout (vertices = 3) out;
+
+uniform vec3 eyeWorldPos;
+uniform float tessLevel;
+uniform float tessMultiplier;
+
+// attributes of the input CPs
+in vec3 WorldPos_CS_in[];
+in vec2 TexCoord_CS_in[];
+// in vec3 Normal_CS_in[];
+
+// attributes of the output CPs
+out vec3 WorldPos_ES_in[];
+out vec2 TexCoord_ES_in[];
+// out vec3 Normal_ES_in[];
+
+float getTessLevel(float distance0, float distance1)
+{
+    float avgDistance = (distance0 + distance1) / 2.0;
+    // float maxDistance = 600.0;
+
+    float res = 0;
+    if (avgDistance > 400.0) {
+        res = 2;
+    }
+    else if (avgDistance > 200.0) {
+        res = 4;
+    }
+    else {
+        res = 8;
+    }
+
+    return 1 + res * tessMultiplier;
+    
+    // return 1 + max(pow((maxDistance - avgDistance) / maxDistance, 2), 0) * tessMultiplier;
+}
+
+void main()
+{
+    // Set the control points of the output patch
+    TexCoord_ES_in[gl_InvocationID] = TexCoord_CS_in[gl_InvocationID];
+    // Normal_ES_in[gl_InvocationID]   = Normal_CS_in[gl_InvocationID];
+    WorldPos_ES_in[gl_InvocationID] = WorldPos_CS_in[gl_InvocationID];
+
+    // Calculate the distance from the camera to the three control points
+    float eyeToVertexDistance0 = distance(eyeWorldPos, WorldPos_ES_in[0]);
+    float eyeToVertexDistance1 = distance(eyeWorldPos, WorldPos_ES_in[1]);
+    float eyeToVertexDistance2 = distance(eyeWorldPos, WorldPos_ES_in[2]);
+
+    // Calculate the tessellation levels
+    gl_TessLevelOuter[0] = getTessLevel(eyeToVertexDistance1, eyeToVertexDistance2);
+    gl_TessLevelOuter[1] = getTessLevel(eyeToVertexDistance2, eyeToVertexDistance0);
+    gl_TessLevelOuter[2] = getTessLevel(eyeToVertexDistance0, eyeToVertexDistance1);
+    gl_TessLevelInner[0] = gl_TessLevelOuter[2];
+}

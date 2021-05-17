@@ -1,0 +1,46 @@
+# SConscript - make sure that the data in scenes/ ends up at the right place
+
+from os.path import join as join_path;
+
+FILES = "*.obj *.mtl *.png *.tga *.jpg";
+DIRS = "maps/"
+
+Import( "env" );
+
+from SCript.Stages import build, install;
+
+dataFiles = [];
+for fileType in FILES.split():
+	dataFiles += env.Glob( fileType );
+	pass;
+
+dataDirs = {};
+for directory in DIRS.split():
+	dataDirs[directory] = env.Glob( join_path( directory, "*" ) );
+	pass;
+
+@build
+def build_files():
+	# The following lines ensure that files/dirs are moved to the build dir
+	dat = [env.File(data) for data in dataFiles];
+
+	for d,l in dataDirs.iteritems():
+		dat += [env.File(data) for data in l];
+		pass;
+
+	return dat; 
+
+@install
+def install_files():
+	dataPath = "#share/scenes";
+
+	idata = [env.Install( dataPath, data ) for data in dataFiles];
+
+	for d,l, in dataDirs.iteritems():
+		installIn = join_path( dataPath, str(d) );
+		idata += [env.Install( installIn, data ) for data in l];
+		pass;
+
+	return idata ;
+
+# EOF vim:syntax=python:foldmethod=marker:ts=4:noexpandtab

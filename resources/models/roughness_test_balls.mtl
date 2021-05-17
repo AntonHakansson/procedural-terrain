@@ -1,0 +1,137 @@
+# Exported by Chalmers Graphics Group
+newmtl Material
+Kd 0.050874 0.050874 0.050874
+Ks 0 0 0
+Pm 0
+Ps 0
+Pr 0
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.000
+Kd 0.112749 0.447981 0.128933
+Ks 1 1 1
+Pm 1
+Ps 1
+Pr 5
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.001
+Kd 0.112749 0.447981 0.128933
+Ks 1 1 1
+Pm 1
+Ps 1
+Pr 25
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.002
+Kd 0.112749 0.447981 0.128933
+Ks 1 1 1
+Pm 1
+Ps 1
+Pr 500
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.003
+Kd 0.112749 0.447981 0.128933
+Ks 1 1 1
+Pm 1
+Ps 1
+Pr 25000
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.004
+Kd 0.112749 0.447981 0.128933
+Ks 0.125 0.125 0.125
+Pm 0.666
+Ps 0.666
+Pr 5
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.005
+Kd 0.112749 0.447981 0.128933
+Ks 0.025 0.025 0.025
+Pm 0.333
+Ps 0.333
+Pr 5
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.006
+Kd 0.112749 0.447981 0.128933
+Ks 0 0 0
+Pm 0
+Ps 0.04
+Pr 5
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.007
+Kd 0.112749 0.447981 0.128933
+Ks 0.666 0.666 0.666
+Pm 0.666
+Ps 0.666
+Pr 25
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.008
+Kd 0.112749 0.447981 0.128933
+Ks 0.333 0.333 0.333
+Pm 0.333
+Ps 0.333
+Pr 25
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.009
+Kd 0.112749 0.447981 0.128933
+Ks 1 1 1
+Pm 0
+Ps 0.04
+Pr 25
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.010
+Kd 0.112749 0.447981 0.128933
+Ks 0.666 0.666 0.666
+Pm 0.666
+Ps 0.666
+Pr 500
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.011
+Kd 0.112749 0.447981 0.128933
+Ks 0.333 0.333 0.333
+Pm 0.333
+Ps 0.333
+Pr 500
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.012
+Kd 0.112749 0.447981 0.128933
+Ks 0.666 0.666 0.666
+Pm 0
+Ps 0.04
+Pr 500
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.013
+Kd 0.112749 0.447981 0.128933
+Ks 0.666 0.666 0.666
+Pm 0.666
+Ps 0.666
+Pr 25000
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.014
+Kd 0.112749 0.447981 0.128933
+Ks 0.333 0.333 0.333
+Pm 0.333
+Ps 0.333
+Pr 25000
+Ke 0 0 0
+Tf 0 0 0
+newmtl Material.015
+Kd 0.112749 0.447981 0.128933
+Ks 1 1 1
+Pm 0
+Ps 0.04
+Pr 25000
+Ke 0 0 0
+Tf 0 0 0
