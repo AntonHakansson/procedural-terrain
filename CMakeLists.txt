@@ -1,40 +1,131 @@
-cmake_minimum_required ( VERSION 3.0.2 )
+cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
-project ( computer-graphics-labs )
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+# ---- Project ----
 
-set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo" CACHE STRING "" FORCE)
+project(
+  AdvGfxProject
+  VERSION 1.0
+  LANGUAGES CXX
+)
 
-# For windows we use our bundled binaries.
-if(WIN32)
-    list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/external/embree2")
-    list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/external/sdl2")
-    list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/external/glew")
-    list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/external/glm")
-endif(WIN32)
+# ---- Include guards ----
 
-macro(config_build_output)
-    if(MSVC)
-        set(DLL_DIRECTORIES "${CMAKE_SOURCE_DIR}/external/bin")
-        set(MSVC_RUNTIME_DIR "${CMAKE_SOURCE_DIR}/bin")
-        set_target_properties( ${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY                "${MSVC_RUNTIME_DIR}" )
-        set_target_properties( ${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG          "${MSVC_RUNTIME_DIR}" )
-        set_target_properties( ${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE        "${MSVC_RUNTIME_DIR}" )
-        set_target_properties( ${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${MSVC_RUNTIME_DIR}" )
-        set_target_properties( ${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL     "${MSVC_RUNTIME_DIR}" )
-        set(vs_user_file "${PROJECT_BINARY_DIR}/${PROJECT_NAME}.vcxproj.user")
-        string(REGEX REPLACE "v([0-9][0-9])([0-9])" "\\1.\\2" "VS_TOOLSET_VERSION" "${CMAKE_VS_PLATFORM_TOOLSET}")
-        configure_file("${CMAKE_SOURCE_DIR}/VSUserTemplate.user" "${vs_user_file}" @ONLY)
-    endif(MSVC)
-endmacro(config_build_output)
+if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
+  message(
+    FATAL_ERROR
+      "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there."
+  )
+endif()
+
+# ---- Add dependencies via CPM ----
+# see https://github.com/TheLartians/CPM.cmake for more info
+
+include(cmake/CPM.cmake)
+
+# Threads
+find_package(Threads REQUIRED)
+
+# OpenGL
+find_package(OpenGL)
+
+# Glad: https://github.com/Dav1dde/glad
+CPMAddPackage(
+  NAME glad
+  GITHUB_REPOSITORY Dav1dde/glad
+  VERSION 0.1.34
+)
+
+# GLM
+CPMAddPackage(
+  NAME glm
+  GIT_TAG 0.9.9.8
+  GITHUB_REPOSITORY g-truc/glm
+)
+
+# stb
+CPMAddPackage(
+  NAME stb
+  GITHUB_REPOSITORY nothings/stb
+  GIT_TAG b42009b3b9d4ca35bc703f5310eedc74f584be58
+  DOWNLOAD_ONLY
+  )
+
+if(stb_ADDED)
+  add_library(stb INTERFACE)
+  target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
+endif()
 
 
+# SDL2
+CPMAddPackage (NAME SDL2 GITHUB_REPOSITORY libsdl-org/SDL VERSION 2.0.15
+  # 2.0.15 hasn't released yet, so let's use a specific commit
+  GIT_TAG 62a562dea20728726a497b4af49d591a2fa385de
+  OPTIONS "SDL_SHARED off"
+)
 
-add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
-add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-set ( CMAKE_EXPORT_COMPILE_COMMANDS ON )
-set ( CMAKE_BUILD_TYPE DEBUG )
-set ( CMAKE_CXX_STANDARD 11 )
+# ImGui: https://github.com/ocornut/imgui
+CPMAddPackage(NAME imgui GIT_REPOSITORY https://github.com/ocornut/imgui VERSION 1.82 DOWNLOAD_ONLY TRUE)
 
-add_subdirectory ( labhelper )
-add_subdirectory ( project )
+if (imgui_ADDED)
+  set(IMGUI_INCLUDE_DIR ${imgui_SOURCE_DIR}/)
+  file(GLOB IMGUI_SOURCES ${imgui_SOURCE_DIR}/*.cpp)
+  file(GLOB IMGUI_HEADERS ${imgui_SOURCE_DIR}/*.h)
+  add_library(imgui STATIC ${IMGUI_SOURCES} ${IMGUI_SOURCES} ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.cpp ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp)
+  add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GLAD)
+  target_include_directories(imgui PUBLIC ${IMGUI_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR} ${SDL_INCLUDE_DIR} ${GLAD_INCLUDE_DIR})
+  target_link_libraries(imgui PUBLIC ${OPENGL_LIBRARIES} SDL2-static glad)
+endif()
+
+# Tiny Obj Loader
+CPMAddPackage(NAME tinyobjloader GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader VERSION 1.0.6)
+
+# ---- Add source files ----
+
+# Note: globbing sources is considered bad practice as CMake's generators may not detect new files
+# automatically. Keep that in mind when changing files, or explicitly mention them here.
+file(GLOB_RECURSE headers CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
+file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+
+# ---- Create executable ----
+
+add_executable(AdvGfxProject ${headers} ${sources})
+
+set_target_properties(AdvGfxProject PROPERTIES CXX_STANDARD 20)
+
+# being a cross-platform target, we enforce standards conformance on MSVC
+target_compile_options(AdvGfxProject PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive->")
+
+# Link dependencies
+target_link_libraries(AdvGfxProject PUBLIC ${CMAKE_DL_LIBS} glad SDL2-static imgui glm stb tinyobjloader)
+
+target_include_directories(
+  AdvGfxProject PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                 $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
+)
+
+# Set warning levels to about the same level for MSVC, GCC, and Clang
+# if (MSVC)
+#     target_compile_options(AdvGfxProject PRIVATE /W4 /WX)
+# else ()
+#     target_compile_options(AdvGfxProject PRIVATE -Wall -Wextra -pedantic -Werror)
+# endif ()
+
+# ---- Create an installable target ----
+# this allows users to install and find the library via `find_package()`.
+
+# the location where the project's version header will be placed should match the project's regular
+# header paths
+# string(TOLOWER ${PROJECT_NAME}/version.h VERSION_HEADER_LOCATION)
+
+# packageProject(
+#   NAME ${PROJECT_NAME}
+#   VERSION ${PROJECT_VERSION}
+#   NAMESPACE ${PROJECT_NAME}
+#   BINARY_DIR ${PROJECT_BINARY_DIR}
+#   INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include
+#   INCLUDE_DESTINATION include/${PROJECT_NAME}-${PROJECT_VERSION}
+#   VERSION_HEADER "${VERSION_HEADER_LOCATION}"
+#   COMPATIBILITY SameMajorVersion
+# )
+
+# set(CMAKE_BUILD_TYPE Debug)

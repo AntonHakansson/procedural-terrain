@@ -8,21 +8,21 @@
 
   outputs = { self, nixpkgs, utils, }:
     utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs { inherit system; };
+      let pkgs = import nixpkgs { inherit system; };
       in rec {
-        devShell = pkgs.mkShell {
-          name = "advg";
-          nativeBuildInputs = with pkgs; [ cmake gdb cgdb vscode ];
-          buildInputs = with pkgs; [ SDL2 glm glew libGL ];
+        packages.project = pkgs.stdenv.mkDerivation {
+          pname = "AdvCompProject";
+          version = "0.0.1";
+          nativeBuildInputs = with pkgs; [ cmake cgdb clang-tools ];
+          buildInputs = with pkgs; [ xorg.libX11 xorg.libXext libGL glm ];
+          src = ./.;
+          configurePhase = ''
+            cmake -B build
+          '';
+          buildPhase = "cmake --build build";
         };
-        packages = {
-          project = pkgs.stdenv.mkDerivation {
-            name = "advg";
-            nativeBuildInputs = with pkgs; [ cmake ];
-            src = ./.;
-          };
-        };
-        defaultPackage = packages.javalette;
-      });
+
+        defaultPackage = packages.project;
+      }
+    );
 }
