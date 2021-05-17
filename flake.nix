@@ -14,7 +14,7 @@
           pname = "AdvCompProject";
           version = "0.0.1";
           nativeBuildInputs = with pkgs; [ cmake cgdb clang-tools cmake-format cppcheck include-what-you-use ];
-          buildInputs = with pkgs; [ xorg.libX11 xorg.libXext libGL glm ];
+          buildInputs = with pkgs; [ xorg.libX11 xorg.libXext libGL ];
           src = ./.;
           configurePhase = ''
             cmake -B build
