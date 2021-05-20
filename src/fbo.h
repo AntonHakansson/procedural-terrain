@@ -1,6 +1,9 @@
 #include <glad/glad.h>
 
+#include <array>
 #include <vector>
+
+#include "gpu.h"
 
 class FboInfo {
 public:

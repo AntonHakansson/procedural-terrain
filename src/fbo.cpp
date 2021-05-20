@@ -1,10 +1,5 @@
 #include "fbo.h"
 
-#include <array>
-#include <cstdint>
-
-#include "gpu.h"
-
 FboInfo::FboInfo(int numberOfColorBuffers)
     : isComplete(false), framebufferId(UINT32_MAX), depthBuffer(UINT32_MAX), width(0), height(0) {
   colorTextureTargets.resize(numberOfColorBuffers, UINT32_MAX);
