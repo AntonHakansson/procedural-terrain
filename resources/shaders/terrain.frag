@@ -197,6 +197,21 @@ float inverseLerp(float a, float b, float t) {
 	return min(max((t - a) / (b - a), 0), 1);
 }
 
+// Triplanar mapping of texture as naively projecting the texture on to the xz
+// plane will result in texture-stretching at steep angles
+// REVIEW: Can get the texture coordinates from the tessellation shader instead?
+vec3 triplanarSampling(sampler2D tex, vec3 worldpos, vec3 normal) {
+	vec3 scaled_worldpos = worldpos / (2048.0 / 32.0);
+
+	vec3 blend_axis = abs(normal);
+	blend_axis /= blend_axis.x + blend_axis.y + blend_axis.z;
+
+	vec3 x_projection = texture(tex, scaled_worldpos.yz).xyz * blend_axis.x;
+	vec3 y_projection = texture(tex, scaled_worldpos.xz).xyz * blend_axis.y;
+	vec3 z_projection = texture(tex, scaled_worldpos.xy).xyz * blend_axis.z;
+
+	return x_projection + y_projection + z_projection;
+}
 
 void main()
 {
@@ -216,55 +231,28 @@ void main()
 	float height = WorldPos_FS_in.y;
 	fragmentColor = vec4(vec3(height / amplitude), 1.0);
 	fragmentColor = vec4(shading, 1.0);
-	// fragmentColor = vec4(vec3(height / amplitude), 1.0);
-	// fragmentColor = vec4(Normal_FS_in, 1.0);
-	// fragmentColor = vec4(viewSpaceNormal, 1.0);
-
-	vec4 grassColor = texture2D(grass, WorldPos_FS_in.xz / (2048.0 / 32.0));
-	vec4 rockColor = texture2D(rock, WorldPos_FS_in.xz / (2048.0 / 32.0));
-
-	float transition = 0.2;
 
 	vec3 normal = Normal_FS_in;
 
+	vec3 grassColor = triplanarSampling(grass, WorldPos_FS_in, normal);
+	vec3 rockColor = triplanarSampling(rock, WorldPos_FS_in, normal);
+
+	float transition = 0.2;
+
 	float slope = dot(normal, vec3(0, 1, 0));
 	float blending = smoothstep(0.7, 0.9, slope);
-	// float blending = 1 - pow(1 - slope, 5); //smoothstep(0.3, 0.9, (slope) / 0.9);
 
-	fragmentColor = mix(rockColor, grassColor, blending);
+	fragmentColor = vec4(mix(rockColor, grassColor, blending), 1.0);
 
+	// fog
+	if (false) {
+		float dist = distance(WorldPos_FS_in, eyeWorldPos);
 
-	float maxDistance = 960.0;
-	float minDistance = 200.0;
-	float dist = distance(WorldPos_FS_in, eyeWorldPos);
+		float density = 0.0005;
+		float fog_factor = exp(-pow(density * dist, 2.0));
+		fog_factor = 1.0 - clamp(fog_factor, 0.0, 1.0);
 
-	// float fog_factor = max(min((dist - minDistance) / (maxDistance - minDistance), 1), 0);
-	float fog_factor = exp(-pow(0.0005 * dist, 2.0));
-	fog_factor = 1.0 - clamp(fog_factor, 0.0, 1.0);
-
-	vec3 fog_color = vec3(109.0 / 255.0, 116.0 / 255.0, 109.0 / 255.0);
-
-	fragmentColor = vec4(mix(fragmentColor.xyz, fog_color, fog_factor), 1.0f);
-	// fragmentColor = vec4(mix(fragmentColor.xyz, fog_color, clamp(1 - height / 10, 0, 1)), 1.0f);
-
-	// fragmentColor = vec4(0, 0, 0, 1);
-
-
-	// if (slope > 0.05)
-	// 	fragmentColor = vec4(1, 0, 0, 1);
-	// fragmentColor = vec4(vec3(blending), 1.0); //mix(rockColor, grassColor, blending);
-	// fragmentColor = vec4((vec3(1) + normal) / 2.0, 1.0); //mix(rockColor, grassColor, blending);
-
-	// fragmentColor = vec4(vec3(blending), 1.0); //mix(rockColor, grassColor, blending);
-
-	
-
-	// fragmentColor *= pow((300 - dist) / 300.0, 10);
-
-	// if (dist > 300.0) {
-	// 	fragmentColor *= vec4(vec3(0.1), 1);
-	// }
-	// else if (dist > 150.0) {
-	// 	fragmentColor *= vec4(vec3(0.4), 1);
-	// }
+		vec3 fog_color = vec3(109.0 / 255.0, 116.0 / 255.0, 109.0 / 255.0);
+		fragmentColor = vec4(mix(fragmentColor.xyz, fog_color, fog_factor), 1.0f);
+	}
 }

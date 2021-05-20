@@ -6,12 +6,14 @@ uniform mat4 viewProjectionMatrix;
 uniform mat4 modelMatrix;
 uniform vec3 eyeWorldPos;
 
-struct SimplexNoise {
+struct Noise {
+    int num_octaves;
     float amplitude;
     float frequency;
+    float persistence;
+    float lacunarity;
 };
-uniform SimplexNoise noises[8];
-uniform int noises_count;
+uniform Noise noise;
 
 in vec3 WorldPos_ES_in[];
 in vec2 TexCoord_ES_in[];
@@ -98,10 +100,6 @@ float snoise(vec2 v)
   return 130.0 * dot(m, g);
 }
 
-float simplex_noise(SimplexNoise noise, vec2 v) {
-    return snoise(v * noise.frequency * 0.01) * noise.amplitude;
-}
-
 const mat2 myt = mat2(.12121212, .13131313, -.13131313, .12121212);
 const vec2 mys = vec2(1e4, 1e6);
 
@@ -134,14 +132,17 @@ float voronoi2d(const in vec2 point) {
 
 
 float terrain_height(vec2 pos) {
-  // return voronoi2d(pos / 100.0 + vec2(10232, 1232)) * 10 + snoise(pos.xy / 5.0) * 10 + snoise(pos.xy * 3) * 0.2;
-  // return voronoi2d(pos / 100.0 + vec2(10232, 1232)) * 10 + simplex_noise(noises[0], pos) + simplex_noise(noises[1], pos);
+  float noise_value = 0;
+  float frequency = noise.frequency;
+  float amplitude = noise.amplitude;
 
-  float result = 0;
-  for (int i = 0; i < noises_count; i++) {
-      result += simplex_noise(noises[i], pos);
+  for (int i = 0; i < noise.num_octaves; i++) {
+      noise_value += (snoise(pos * frequency * 0.01) * 2.0 - 1.0) * amplitude;
+      amplitude *= noise.persistence;
+      frequency *= noise.lacunarity;
   }
-  return result;
+
+  return noise_value;
 }
 
 vec3 computeNormals(vec3 WorldPos)

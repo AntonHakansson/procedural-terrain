@@ -1,11 +1,6 @@
 #include "terrain.h"
 
 void Terrain::init() {
-  this->terrain_size = 2048.f;
-  this->terrain_subdivision = 24;
-
-  this->model_matrix = glm::mat4(1.0);
-
   this->material = gpu::Material{
       .m_name = std::string("Terrain"),
       .m_color = glm::vec3(0.0, 0.2, 0.0),
@@ -22,13 +17,6 @@ void Terrain::init() {
       .m_fresnel_texture = {},
       .m_emission_texture = {},
   };
-
-  this->noises.push_back(TerrainSimplexNoise{
-      .amplitude = 150.f,
-      .frequency = .0005f,
-  });
-
-  this->tess_multiplier = 16.0f;
 
   // Construct a chunk
   this->init_mesh(false);
@@ -56,12 +44,12 @@ void Terrain::loadShader(bool is_reload) {
   if (is_reload) {
     glDeleteProgram(this->shader_program);
   }
-  const std::array<ShaderInput, 4> program_shaders = {{
+  auto program_shaders = std::to_array<ShaderInput>({
       {"resources/shaders/terrain.vert", GL_VERTEX_SHADER},
       {"resources/shaders/terrain.frag", GL_FRAGMENT_SHADER},
       {"resources/shaders/terrain.tcs", GL_TESS_CONTROL_SHADER},
       {"resources/shaders/terrain.tes", GL_TESS_EVALUATION_SHADER},
-  }};
+  });
   this->shader_program = loadShaderProgram(program_shaders, is_reload);
 }
 
@@ -110,17 +98,11 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
 
     gpu::setUniformSlow(this->shader_program, "eyeWorldPos", camera_position);
 
-    gpu::setUniformSlow(this->shader_program, "noises_count", (GLint)this->noises.size());
-    for (int i = 0; i < this->noises.size(); i++) {
-      const auto noise = this->noises[i];
-      std::string noise_uniform = "noises[" + std::to_string(i);
-      std::string noise_amp = noise_uniform + "].amplitude";
-      std::string noise_freq = noise_uniform + "].frequency";
-      glUniform1fv(glGetUniformLocation(this->shader_program, noise_amp.c_str()), 1,
-                   &noise.amplitude);
-      glUniform1fv(glGetUniformLocation(this->shader_program, noise_freq.c_str()), 1,
-                   &noise.frequency);
-    }
+    gpu::setUniformSlow(this->shader_program, "noise.num_octaves", (GLint)noise.num_octaves);
+    gpu::setUniformSlow(this->shader_program, "noise.amplitude", noise.amplitude);
+    gpu::setUniformSlow(this->shader_program, "noise.frequency", noise.frequency);
+    gpu::setUniformSlow(this->shader_program, "noise.persistence", noise.persistence);
+    gpu::setUniformSlow(this->shader_program, "noise.lacunarity", noise.lacunarity);
 
     glUniform1fv(glGetUniformLocation(this->shader_program, "tessMultiplier"), 1,
                  &this->tess_multiplier);
@@ -181,18 +163,13 @@ void Terrain::draw_imgui(SDL_Window* window) {
 
     {
       ImGui::Text("Mesh");
-      bool noise_changed = false;
-
       ImGui::Text("Triangles: %d", this->indices_count / 3);
 
-      if (ImGui::SliderFloat("Size", &this->terrain_size, 512, 8192)) {
-        noise_changed = true;
-      };
-      if (ImGui::SliderInt("Subdivisions", &this->terrain_subdivision, 0, 256)) {
-        noise_changed = true;
-      };
+      bool mesh_changed = false;
+      mesh_changed |= ImGui::SliderFloat("Size", &this->terrain_size, 512, 8192);
+      mesh_changed |= ImGui::SliderInt("Subdivisions", &this->terrain_subdivision, 0, 256);
 
-      if (noise_changed) {
+      if (mesh_changed) {
         this->init_mesh(true);
       }
     }
@@ -201,30 +178,7 @@ void Terrain::draw_imgui(SDL_Window* window) {
 
     {
       ImGui::Text("Shader");
-
-      ImGui::SliderFloat("Tessellation Multiplier", &this->tess_multiplier, 0.0f, 64.f);
-
-      {
-        float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
-        if (ImGui::SmallButton("-")) {
-          this->noises.pop_back();
-        }
-        ImGui::SameLine(0.0f, spacing);
-        if (ImGui::SmallButton("+")) {
-          this->noises.push_back(TerrainSimplexNoise{
-              .amplitude = 0,
-              .frequency = 0,
-          });
-        }
-      }
-
-      static int selected_item = 0;
-      const std::vector<const char*> items = {"Noise 0", "Noise 1", "Noise 2", "Noise 3",
-                                              "Noise 4", "Noise 5", "Noise 6", "Noise 7"};
-      ImGui::ListBox("Noises", &selected_item, items.data(), this->noises.size());
-
-      ImGui::DragFloat("Amplitude", &this->noises[selected_item].amplitude, 1.0f, 0.0f, 10000.f);
-      ImGui::DragFloat("Frequency", &this->noises[selected_item].frequency, 0.001f, 0.0f, 10000.f);
+      this->noise.draw_imgui();
     }
 
     ImGui::Separator();

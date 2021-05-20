@@ -15,25 +15,38 @@
 #include "model.h"
 #include "shader.h"
 
-struct TerrainSimplexNoise {
-  float amplitude;
-  float frequency;
+struct TerrainNoise {
+  int num_octaves = 7;
+  float amplitude = 100.0;
+  float frequency = 0.1;
+  float persistence = .08;
+  float lacunarity = 8.0;
+
+  bool draw_imgui() {
+    auto did_change = false;
+    did_change |= ImGui::SliderInt("Octaves", &this->num_octaves, 1, 10);
+    did_change |= ImGui::DragFloat("Amplitude", &this->amplitude, 1.0f, 0.0f, 10000.f);
+    did_change |= ImGui::DragFloat("Frequency", &this->frequency, 0.001f, 0.0f, 10000.f);
+    did_change |= ImGui::DragFloat("Persistence", &this->persistence, 0.001f, 0.0f, 10000.f);
+    did_change |= ImGui::DragFloat("Lacunarity", &this->lacunarity, 0.05f, 0.0f, 20.f);
+    return did_change;
+  }
 };
 
 struct Terrain {
-  float terrain_size;
+  float terrain_size = 4096.0;
+  int terrain_subdivision = 24;
   int indices_count;
-  int terrain_subdivision;
 
-  bool wireframe;
+  bool wireframe = false;
 
-  std::vector<TerrainSimplexNoise> noises;
+  TerrainNoise noise;
 
-  float tess_multiplier;
+  float tess_multiplier = 16.0;
 
   GLuint shader_program;
 
-  glm::mat4 model_matrix;
+  glm::mat4 model_matrix = glm::mat4(1.0);
 
   gpu::Material material;
   gpu::Texture grass_texture;
