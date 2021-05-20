@@ -8,10 +8,6 @@ project(
   LANGUAGES CXX
 )
 
-# --- Import tools ----
-
-include(cmake/tools.cmake)
-
 # ---- Include guards ----
 
 if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
@@ -52,7 +48,7 @@ CPMAddPackage(
 CPMAddPackage(
   NAME stb
   GITHUB_REPOSITORY nothings/stb
-  GIT_TAG master
+  GIT_TAG c9064e317699d2e495f36ba4f9ac037e88ee371a
   DOWNLOAD_ONLY YES
 )
 
@@ -68,7 +64,6 @@ CPMAddPackage(
   VERSION 2.0.15
   # 2.0.15 hasn't released yet, so let's use a specific commit
   GIT_TAG 62a562dea20728726a497b4af49d591a2fa385de
-  OPTIONS "SDL_SHARED off"
 )
 
 # ImGui: https://github.com/ocornut/imgui
@@ -76,7 +71,6 @@ CPMAddPackage(
   NAME imgui
   GIT_REPOSITORY https://github.com/ocornut/imgui
   VERSION 1.82
-  DOWNLOAD_ONLY TRUE
 )
 
 if(imgui_ADDED)
@@ -87,7 +81,7 @@ if(imgui_ADDED)
     imgui STATIC ${IMGUI_SOURCES} ${IMGUI_SOURCES} ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.cpp
                  ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
   )
-  add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GLAD)
+  target_compile_definitions(imgui PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLAD=1)
   target_include_directories(
     imgui PUBLIC ${IMGUI_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR} ${SDL_INCLUDE_DIR} ${GLAD_INCLUDE_DIR}
   )
@@ -101,16 +95,22 @@ CPMAddPackage(
   VERSION 1.0.6
 )
 
+# --- Import tools ----
+
+include(cmake/tools.cmake)
+
 # ---- Add source files ----
 
 # Note: globbing sources is considered bad practice as CMake's generators may not detect new files
 # automatically. Keep that in mind when changing files, or explicitly mention them here.
 file(GLOB_RECURSE headers CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
 file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+file(GLOB_RECURSE shaders CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/*")
 
 # ---- Create executable ----
-
-add_executable(AdvGfxProject ${headers} ${sources})
+# list all files that will either be used for compilation or that should show up in the ide of your
+# choice
+add_executable(AdvGfxProject ${headers} ${sources} ${shaders})
 
 set_target_properties(AdvGfxProject PROPERTIES CXX_STANDARD 20)
 

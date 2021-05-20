@@ -2,7 +2,7 @@
 
 #include <iostream>
 #define TINYOBJLOADER_IMPLEMENTATION  // define this in only *one* .cc
-#include "tiny_obj_loader.h"
+#include <tiny_obj_loader.h>
 //#include <experimental/tinyobj_loader_opt.h>
 #include <glad/glad.h>
 #include <stb_image.h>

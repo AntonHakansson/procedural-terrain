@@ -9,9 +9,9 @@
 #include <glm/gtx/transform.hpp>
 
 #include "gpu.h"
-#include "imgui.h"
 using namespace glm;
 
+#include "camera.h"
 #include "core.h"
 #include "fbo.h"
 #include "hdr.h"
@@ -38,11 +38,12 @@ struct App {
     float intensity = 10000.0f;
   } light;
 
-  struct Camera {
-    vec3 position = vec3(-70.0f, 50.0f, 70.0f);
-    vec3 direction = normalize(vec3(0.0f) - position);
-    float speed = 60.f;
-  } camera;
+  struct Projection {
+    float far = 2000.0f;
+    float near = 5.0f;
+  } projection;
+
+  Camera camera;
 
   struct EnvironmentMap {
     float multiplier = 1.5f;
@@ -177,9 +178,9 @@ struct App {
     ///////////////////////////////////////////////////////////////////////////
     // setup matrices
     ///////////////////////////////////////////////////////////////////////////
-    mat4 projMatrix
-        = perspective(radians(45.0f), float(window.width) / float(window.height), 5.0f, 2000.0f);
-    mat4 viewMatrix = lookAt(camera.position, camera.position + camera.direction, worldUp);
+    mat4 projMatrix = perspective(radians(45.0f), float(window.width) / float(window.height),
+                                  projection.near, projection.far);
+    mat4 viewMatrix = camera.getViewMatrix();
 
     vec4 lightStartPosition = vec4(40.0f, 40.0f, 0.0f, 1.0f);
     light.position = vec3(rotate(current_time, worldUp) * lightStartPosition);
@@ -215,6 +216,8 @@ struct App {
     SDL_Event event;
     bool quitEvent = false;
 
+    ImGuiIO& io = ImGui::GetIO();
+
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT
           || (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_ESCAPE)) {
@@ -227,7 +230,7 @@ struct App {
         loadShaders(true);
       }
       if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT
-          && (!show_ui || !ImGui::GetIO().WantCaptureMouse)) {
+          && !io.WantCaptureMouse) {
         input.is_mouse_dragging = true;
         int x;
         int y;
@@ -244,11 +247,7 @@ struct App {
         // More info at https://wiki.libsdl.org/SDL_MouseMotionEvent
         int delta_x = event.motion.x - input.prev_mouse_pos.x;
         int delta_y = event.motion.y - input.prev_mouse_pos.y;
-        float rotationSpeed = 0.1f;
-        mat4 yaw = rotate(rotationSpeed * delta_time * -delta_x, worldUp);
-        mat4 pitch = rotate(rotationSpeed * delta_time * -delta_y,
-                            normalize(cross(camera.direction, worldUp)));
-        camera.direction = vec3(pitch * yaw * vec4(camera.direction, 0.0f));
+        camera.drag_event(delta_x, delta_y, delta_time);
         input.prev_mouse_pos.x = event.motion.x;
         input.prev_mouse_pos.y = event.motion.y;
       }
@@ -256,26 +255,7 @@ struct App {
 
     // check keyboard state (which keys are still pressed)
     const uint8_t* state = SDL_GetKeyboardState(nullptr);
-    vec3 cameraRight = cross(camera.direction, worldUp);
-
-    if (state[SDL_SCANCODE_W]) {
-      camera.position += camera.speed * delta_time * camera.direction;
-    }
-    if (state[SDL_SCANCODE_S]) {
-      camera.position -= camera.speed * delta_time * camera.direction;
-    }
-    if (state[SDL_SCANCODE_A]) {
-      camera.position -= camera.speed * delta_time * cameraRight;
-    }
-    if (state[SDL_SCANCODE_D]) {
-      camera.position += camera.speed * delta_time * cameraRight;
-    }
-    if (state[SDL_SCANCODE_Q]) {
-      camera.position -= camera.speed * delta_time * worldUp;
-    }
-    if (state[SDL_SCANCODE_E]) {
-      camera.position += camera.speed * delta_time * worldUp;
-    }
+    camera.key_event(state, delta_time);
 
     return quitEvent;
   }
@@ -285,23 +265,30 @@ struct App {
     ImGui_ImplSDL2_NewFrame(window.handle);
     ImGui::NewFrame();
 
-    if (ImGui::Button("Reload Shaders")) {
-      loadShaders(true);
+    if (show_ui) {
+      ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+                  1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+      if (ImGui::Button("Reload Shaders")) {
+        loadShaders(true);
+      }
+
+      if (ImGui::CollapsingHeader("Camera")) {
+        camera.draw_imgui();
+        ImGui::DragFloat("Near Projection", &projection.near, 0.02, 0.2);
+        ImGui::DragFloat("Far Projection", &projection.far, 200.0, 1000.0);
+      }
+
+      // Light and environment map
+      if (ImGui::CollapsingHeader("Light sources")) {
+        ImGui::SliderFloat("Environment multiplier", &environment_map.multiplier, 0.0f, 10.0f);
+        ImGui::ColorEdit3("Point light color", &light.color.x);
+        ImGui::SliderFloat("Point light intensity multiplier", &light.intensity, 0.0f, 10000.0f,
+                           "%.3f", ImGuiSliderFlags_Logarithmic);
+      }
+
+      terrain.draw_imgui(window.handle);
     }
-
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
-                ImGui::GetIO().Framerate);
-
-    // Light and environment map
-    if (ImGui::CollapsingHeader("Light sources")) {
-      ImGui::SliderFloat("Environment multiplier", &environment_map.multiplier, 0.0f, 10.0f);
-      ImGui::ColorEdit3("Point light color", &light.color.x);
-      ImGui::SliderFloat("Point light intensity multiplier", &light.intensity, 0.0f, 10000.0f,
-                         "%.3f", ImGuiSliderFlags_Logarithmic);
-    }
-
-    terrain.draw_imgui(window.handle);
-
     // Render the GUI.
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

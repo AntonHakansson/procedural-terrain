@@ -13,7 +13,17 @@
         packages.project = pkgs.stdenv.mkDerivation {
           pname = "AdvCompProject";
           version = "0.0.1";
-          nativeBuildInputs = with pkgs; [ cmake cgdb clang-tools cmake-format cppcheck include-what-you-use ];
+          nativeBuildInputs = with pkgs; [
+            pkgconfig
+            cmake
+            cmakeCurses
+            cgdb
+            clang-tools
+            cmake-format
+            cppcheck
+            include-what-you-use
+            cmake-language-server
+          ];
           buildInputs = with pkgs; [ xorg.libX11 xorg.libXext libGL ];
           src = ./.;
           configurePhase = ''
@@ -23,6 +33,5 @@
         };
 
         defaultPackage = packages.project;
-      }
-    );
+      });
 }

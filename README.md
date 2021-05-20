@@ -5,7 +5,8 @@
 ## Build
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build
-./build/AdvGfxProject
+cmake -B build
+cmake --build build -j 4
+./build/AdvGfxProject # run
 ```
+

@@ -1,5 +1,6 @@
 #include "fbo.h"
 
+#include <array>
 #include <cstdint>
 
 #include "gpu.h"
@@ -62,10 +63,11 @@ void FboInfo::resize(int w, int h) {
       glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D,
                              colorTextureTargets[i], 0);
     }
-    GLenum attachments[]
-        = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,
-           GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7};
-    glDrawBuffers(int(colorTextureTargets.size()), attachments);
+
+    auto attachments = std::to_array<GLenum>(
+        {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,
+         GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7});
+    glDrawBuffers(int(colorTextureTargets.size()), attachments.begin());
 
     // bind the texture as depth attachment (to the currently bound framebuffer)
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthBuffer, 0);
@@ -78,7 +80,7 @@ void FboInfo::resize(int w, int h) {
   }
 }
 
-bool FboInfo::checkFramebufferComplete(void) {
+bool FboInfo::checkFramebufferComplete() const {
   // Check that our FBO is correctly set up, this can fail if we have
   // incompatible formats in a buffer, or for example if we specify an
   // invalid drawbuffer, among things.
