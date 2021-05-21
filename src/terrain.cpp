@@ -2,7 +2,7 @@
 
 void Terrain::init() {
   // Construct a chunk
-  this->init_mesh(false);
+  this->buildMesh(false);
 
   // OpenGL Setup
   glPatchParameteri(GL_PATCH_VERTICES, 3);
@@ -12,15 +12,11 @@ void Terrain::init() {
   this->grass_texture.load("resources/textures/", "grass.jpg", 3);
 }
 
-void Terrain::init_mesh(bool is_reload) {
-  if (is_reload) {
-    glDeleteBuffers(1, &this->positions_bo);
-    glDeleteBuffers(1, &this->indices_bo);
-    glDeleteVertexArrays(1, &this->vaob);
-  }
-  this->indices_count
-      = gpu::createSubdividedPlane(this->terrain_size, this->terrain_subdivision, &this->vaob,
-                                   &this->positions_bo, &this->indices_bo);
+void Terrain::deinit() {
+  glDeleteBuffers(1, &this->positions_bo);
+  // glDeleteBuffers(1, &this->normals_bo);
+  glDeleteBuffers(1, &this->indices_bo);
+  glDeleteVertexArrays(1, &this->vaob);
 }
 
 void Terrain::loadShader(bool is_reload) {
@@ -36,11 +32,15 @@ void Terrain::loadShader(bool is_reload) {
   this->shader_program = loadShaderProgram(program_shaders, is_reload);
 }
 
-void Terrain::deinit() {
-  glDeleteBuffers(1, &this->positions_bo);
-  // glDeleteBuffers(1, &this->normals_bo);
-  glDeleteBuffers(1, &this->indices_bo);
-  glDeleteVertexArrays(1, &this->vaob);
+void Terrain::buildMesh(bool is_reload) {
+  if (is_reload) {
+    glDeleteBuffers(1, &this->positions_bo);
+    glDeleteBuffers(1, &this->indices_bo);
+    glDeleteVertexArrays(1, &this->vaob);
+  }
+  this->indices_count
+      = gpu::createSubdividedPlane(this->terrain_size, this->terrain_subdivision, &this->vaob,
+                                   &this->positions_bo, &this->indices_bo);
 }
 
 void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
@@ -106,12 +106,10 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
 void Terrain::gui(SDL_Window* window) {
   if (ImGui::CollapsingHeader("Terrain")) {
     ImGui::Text("Debug");
-    ImGui::Checkbox("Wireframe", &this->wireframe);
+    { ImGui::Checkbox("Wireframe", &this->wireframe); }
 
-    ImGui::Separator();
-
+    ImGui::Text("Mesh");
     {
-      ImGui::Text("Mesh");
       ImGui::Text("Triangles: %d", this->indices_count / 3);
 
       bool mesh_changed = false;
@@ -120,19 +118,17 @@ void Terrain::gui(SDL_Window* window) {
       ImGui::DragFloat("Tesselation Multiplier", &this->tess_multiplier, 1.0, 0.0);
 
       if (mesh_changed) {
-        this->init_mesh(true);
+        this->buildMesh(true);
       }
     }
 
-    ImGui::Separator();
-
+    ImGui::Text("Shader");
     {
-      ImGui::Text("Shader");
+      ImGui::Text("Noise");
       this->noise.gui();
+
       ImGui::Text("Sun");
       this->sun.gui();
     }
-
-    ImGui::Separator();
   }
 }

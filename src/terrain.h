@@ -75,14 +75,11 @@ struct Terrain {
   uint32_t vaob;
 
   void init();
-  void init_mesh(bool is_reload);
   void deinit();
 
-  float getHeight(float x, float z);
+  void loadShader(bool is_reload);
+  void buildMesh(bool is_reload);
 
   void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position);
-
-  void loadShader(bool is_reload);
-
   void gui(SDL_Window* window);
 };

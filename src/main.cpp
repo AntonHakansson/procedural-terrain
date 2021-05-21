@@ -217,6 +217,7 @@ struct App {
     ImGuiIO& io = ImGui::GetIO();
 
     while (SDL_PollEvent(&event)) {
+      ImGui_ImplSDL2_ProcessEvent(&event);
       if (event.type == SDL_QUIT
           || (event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_ESCAPE)) {
         quitEvent = true;
