@@ -17,6 +17,7 @@ using namespace glm;
 #include "hdr.h"
 #include "model.h"
 #include "terrain.h"
+#include "water.h"
 
 constexpr vec3 worldUp(0.0f, 1.0f, 0.0f);
 
@@ -58,6 +59,7 @@ struct App {
   } models;
 
   Terrain terrain;
+  Water water;
 
   float current_time = 0.0f;
   float previous_time = 0.0f;
@@ -85,6 +87,7 @@ struct App {
     if (shader != 0) shader_program = shader;
 
     this->terrain.loadShader(true);
+    this->water.loadShader(true);
   }
 
   void init() {
@@ -117,9 +120,12 @@ struct App {
     }
 
     terrain.init();
+    water.init();
   }
 
   void deinit() {
+    terrain.deinit();
+    water.deinit();
     gpu::freeModel(models.fighter);
     gpu::freeModel(models.landingpad);
     gpu::freeModel(models.sphere);
@@ -207,6 +213,9 @@ struct App {
     drawBackground(viewMatrix, projMatrix);
     drawScene(shader_program, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
     debugDrawLight(viewMatrix, projMatrix, vec3(light.position));
+
+    // Water
+    water.render(projMatrix, viewMatrix, camera.position);
   }
 
   bool handleEvents(void) {
