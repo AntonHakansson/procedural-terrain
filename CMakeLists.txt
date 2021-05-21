@@ -77,15 +77,9 @@ if(imgui_ADDED)
   set(IMGUI_INCLUDE_DIR ${imgui_SOURCE_DIR}/)
   file(GLOB IMGUI_SOURCES ${imgui_SOURCE_DIR}/*.cpp)
   file(GLOB IMGUI_HEADERS ${imgui_SOURCE_DIR}/*.h)
-  add_library(
-    imgui STATIC ${IMGUI_SOURCES} ${IMGUI_SOURCES} ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.cpp
-                 ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
-  )
+  add_library(imgui STATIC ${IMGUI_SOURCES})
   target_compile_definitions(imgui PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLAD=1)
-  target_include_directories(
-    imgui PUBLIC ${IMGUI_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR} ${SDL_INCLUDE_DIR} ${GLAD_INCLUDE_DIR}
-  )
-  target_link_libraries(imgui PUBLIC ${OPENGL_LIBRARIES} SDL2-static glad)
+  target_include_directories(imgui PUBLIC ${IMGUI_INCLUDE_DIR})
 endif()
 
 # Tiny Obj Loader
@@ -110,7 +104,7 @@ file(GLOB_RECURSE shaders CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/resourc
 # ---- Create executable ----
 # list all files that will either be used for compilation or that should show up in the ide of your
 # choice
-add_executable(AdvGfxProject ${headers} ${sources} ${shaders})
+add_executable(AdvGfxProject ${headers} ${sources} ${shaders} ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.cpp ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp)
 
 set_target_properties(AdvGfxProject PROPERTIES CXX_STANDARD 20)
 
@@ -122,14 +116,16 @@ target_link_libraries(
   AdvGfxProject
   PUBLIC ${CMAKE_DL_LIBS}
          glad
-         SDL2-static
-         imgui
          glm
          stb
+         SDL2-static
+         imgui
          tinyobjloader
 )
 
+if (FALSE)
 target_include_directories(
   AdvGfxProject PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                        $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
 )
+endif()

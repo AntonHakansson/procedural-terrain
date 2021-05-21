@@ -13,6 +13,9 @@
         packages.project = pkgs.stdenv.mkDerivation {
           pname = "AdvCompProject";
           version = "0.0.1";
+          LD_LIBRARY_PATH = with pkgs;
+            "${xorg.libX11}/lib:${xorg.libXext}/lib:${xorg.libXinerama}/lib:${xorg.libXi}/lib:${xorg.libXrandr}/lib:${libglvnd}/lib";
+
           nativeBuildInputs = with pkgs; [
             pkgconfig
             cmake
@@ -24,7 +27,14 @@
             include-what-you-use
             cmake-language-server
           ];
-          buildInputs = with pkgs; [ xorg.libX11 xorg.libXext libGL ];
+          buildInputs = with pkgs; [
+            libglvnd
+            xorg.libX11
+            xorg.libXext
+            xorg.libXinerama
+            xorg.libXi
+            xorg.libXrandr
+          ];
           src = ./.;
           configurePhase = ''
             cmake -B build

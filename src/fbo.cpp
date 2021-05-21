@@ -59,7 +59,7 @@ void FboInfo::resize(int w, int h) {
                              colorTextureTargets[i], 0);
     }
 
-    auto attachments = std::to_array<GLenum>(
+    std::array<GLenum, 8> attachments(
         {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,
          GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7});
     glDrawBuffers(int(colorTextureTargets.size()), attachments.begin());
