@@ -59,10 +59,9 @@ void FboInfo::resize(int w, int h) {
                              colorTextureTargets[i], 0);
     }
 
-    std::array<GLenum, 8> attachments(
-        {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,
+    std::array<GLenum, 8> attachments({GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,
          GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7});
-    glDrawBuffers(int(colorTextureTargets.size()), attachments.begin());
+    glDrawBuffers(int(colorTextureTargets.size()), &attachments[0]);
 
     // bind the texture as depth attachment (to the currently bound framebuffer)
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthBuffer, 0);
