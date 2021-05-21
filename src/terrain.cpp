@@ -1,23 +1,6 @@
 #include "terrain.h"
 
 void Terrain::init() {
-  this->material = gpu::Material{
-      .m_name = std::string("Terrain"),
-      .m_color = glm::vec3(0.0, 0.2, 0.0),
-      .m_reflectivity = 0.0,
-      .m_shininess = 0.0,
-      .m_metalness = 0.0,
-      .m_fresnel = 0.0,
-      .m_emission = 0.0,
-      .m_transparency = 0.0,
-      .m_color_texture = {},
-      .m_reflectivity_texture = {},
-      .m_shininess_texture = {},
-      .m_metalness_texture = {},
-      .m_fresnel_texture = {},
-      .m_emission_texture = {},
-  };
-
   // Construct a chunk
   this->init_mesh(false);
 
@@ -95,7 +78,6 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
     gpu::setUniformSlow(this->shader_program, "modelViewMatrix", view_matrix * this->model_matrix);
     gpu::setUniformSlow(this->shader_program, "normalMatrix",
                         inverse(transpose(view_matrix * this->model_matrix)));
-
     gpu::setUniformSlow(this->shader_program, "eyeWorldPos", camera_position);
 
     gpu::setUniformSlow(this->shader_program, "noise.num_octaves", (GLint)noise.num_octaves);
@@ -128,17 +110,6 @@ void Terrain::gui(SDL_Window* window) {
 
     ImGui::Separator();
 
-    ImGui::Text("Material");
-    ImGui::ColorEdit3("Color", &this->material.m_color.x);
-    ImGui::SliderFloat("Reflectivity", &this->material.m_reflectivity, 0.0f, 1.0f);
-    ImGui::SliderFloat("Metalness", &this->material.m_metalness, 0.0f, 1.0f);
-    ImGui::SliderFloat("Fresnel", &this->material.m_fresnel, 0.0f, 1.0f);
-    ImGui::SliderFloat("Shininess", &this->material.m_shininess, 0.0f, 25000.0f, "%.3f",
-                       ImGuiSliderFlags_Logarithmic);
-    ImGui::SliderFloat("Emission", &this->material.m_emission, 0.0f, 10.0f);
-
-    ImGui::Separator();
-
     {
       ImGui::Text("Mesh");
       ImGui::Text("Triangles: %d", this->indices_count / 3);
@@ -146,7 +117,7 @@ void Terrain::gui(SDL_Window* window) {
       bool mesh_changed = false;
       mesh_changed |= ImGui::SliderFloat("Size", &this->terrain_size, 512, 8192);
       mesh_changed |= ImGui::SliderInt("Subdivisions", &this->terrain_subdivision, 0, 256);
-      ImGui::DragFloat("Tesselation Multiplier", &this->tess_multiplier);
+      ImGui::DragFloat("Tesselation Multiplier", &this->tess_multiplier, 1.0, 0.0);
 
       if (mesh_changed) {
         this->init_mesh(true);

@@ -63,7 +63,6 @@ struct Terrain {
 
   glm::mat4 model_matrix = glm::mat4(1.0);
 
-  gpu::Material material;
   gpu::Texture grass_texture;
   gpu::Texture rock_texture;
 
