@@ -17,6 +17,7 @@ using namespace glm;
 #include "hdr.h"
 #include "model.h"
 #include "terrain.h"
+#include "shadowmap.h"
 
 constexpr vec3 worldUp(0.0f, 1.0f, 0.0f);
 
@@ -31,12 +32,6 @@ struct App {
     ivec2 prev_mouse_pos = {-1, -1};
     bool is_mouse_dragging = false;
   } input;
-
-  struct Light {
-    vec3 position = {0, 0, 0};
-    vec3 color = vec3(1.f, 1.f, 1.f);
-    float intensity = 10000.0f;
-  } light;
 
   struct Projection {
     float far = 2000.0f;
@@ -58,6 +53,7 @@ struct App {
   } models;
 
   Terrain terrain;
+  ShadowMap shadow_map;
 
   float current_time = 0.0f;
   float previous_time = 0.0f;
@@ -68,21 +64,29 @@ struct App {
   GLuint shader_program;         // Shader for rendering the final image
   GLuint simple_shader_program;  // Shader used to draw the shadow map
   GLuint background_program;
+  GLuint debug_program;
 
   mat4 fighter_model_matrix = mat4(1.0f);
 
   struct DrawScene {};
 
+
   void loadShaders(bool is_reload) {
     GLuint shader = gpu::loadShaderProgram("resources/shaders/simple.vert",
                                            "resources/shaders/simple.frag", is_reload);
     if (shader != 0) simple_shader_program = shader;
+
     shader = gpu::loadShaderProgram("resources/shaders/background.vert",
                                     "resources/shaders/background.frag", is_reload);
     if (shader != 0) background_program = shader;
+
     shader = gpu::loadShaderProgram("resources/shaders/shading.vert",
                                     "resources/shaders/shading.frag", is_reload);
     if (shader != 0) shader_program = shader;
+
+    shader = gpu::loadShaderProgram("resources/shaders/debug.vert",
+                                    "resources/shaders/debug.frag", is_reload);
+    if (shader != 0) debug_program = shader;
 
     this->terrain.loadShader(true);
   }
@@ -116,6 +120,7 @@ struct App {
           "resources/envmaps/" + environment_map.base_name + "_irradiance.hdr");
     }
 
+    shadow_map.init();
     terrain.init();
   }
 
@@ -148,14 +153,6 @@ struct App {
   void drawScene(GLuint currentShaderProgram, const mat4& viewMatrix, const mat4& projectionMatrix,
                  const mat4& lightViewMatrix, const mat4& lightProjectionMatrix) {
     glUseProgram(currentShaderProgram);
-    // Light source
-    vec4 viewSpaceLightPosition = viewMatrix * vec4(light.position, 1.0f);
-    gpu::setUniformSlow(currentShaderProgram, "point_light_color", light.color);
-    gpu::setUniformSlow(currentShaderProgram, "point_light_intensity_multiplier", light.intensity);
-    gpu::setUniformSlow(currentShaderProgram, "viewSpaceLightPosition",
-                        vec3(viewSpaceLightPosition));
-    gpu::setUniformSlow(currentShaderProgram, "viewSpaceLightDir",
-                        normalize(vec3(viewMatrix * vec4(-light.position, 0.0f))));
 
     // Environment
     gpu::setUniformSlow(currentShaderProgram, "environment_multiplier", environment_map.multiplier);
@@ -163,8 +160,13 @@ struct App {
     // camera
     gpu::setUniformSlow(currentShaderProgram, "viewInverse", inverse(viewMatrix));
 
+    // Bind shadow map FB
+    shadow_map.bindDepthBuffer(GL_TEXTURE10);
+    shadow_map.bindColorBuffer(GL_TEXTURE11);
+
     // Terrain
-    terrain.render(projectionMatrix, viewMatrix, camera.position);
+    mat4 lightMatrix = translate(vec3(0.5f)) * scale(vec3(0.5f)) * lightProjectionMatrix * lightViewMatrix * inverse(viewMatrix);
+    terrain.render(projectionMatrix, viewMatrix, camera.position, lightMatrix);
 
     // Fighter
     gpu::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix",
@@ -184,10 +186,12 @@ struct App {
                                   projection.near, projection.far);
     mat4 viewMatrix = camera.getViewMatrix();
 
-    vec4 lightStartPosition = vec4(40.0f, 40.0f, 0.0f, 1.0f);
-    light.position = vec3(rotate(current_time, worldUp) * lightStartPosition);
-    mat4 lightViewMatrix = lookAt(light.position, vec3(0.0f), worldUp);
-    mat4 lightProjMatrix = perspective(radians(45.0f), 1.0f, 25.0f, 100.0f);
+    vec3 light_pos = camera.position - terrain.sun.direction * 1000.f;
+
+    mat4 lightViewMatrix = lookAt(light_pos, camera.position, worldUp);
+    // mat4 lightProjMatrix = perspective(radians(45.0f), 1.0f, 5.0f, 1000.0f);
+    mat4 lightProjMatrix = ortho(-1000.f, 1000.f, -1000.f, 1000.f, -terrain.terrain_size / 2.f, terrain.terrain_size / 2.f);
+
 
     // Bind the environment map(s) to unused texture units
     glActiveTexture(GL_TEXTURE6);
@@ -198,6 +202,10 @@ struct App {
     glBindTexture(GL_TEXTURE_2D, environment_map.reflectionMap);
     glActiveTexture(GL_TEXTURE0);
 
+    shadow_map.begin();
+    drawScene(shader_program, lightViewMatrix, lightProjMatrix, lightViewMatrix, lightProjMatrix);
+    shadow_map.end();
+
     // Draw from camera
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, window.width, window.height);
@@ -206,7 +214,10 @@ struct App {
 
     drawBackground(viewMatrix, projMatrix);
     drawScene(shader_program, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
-    debugDrawLight(viewMatrix, projMatrix, vec3(light.position));
+    debugDrawLight(viewMatrix, projMatrix, light_pos);
+
+    glUseProgram(debug_program);
+    gpu::drawFullScreenQuad();
   }
 
   bool handleEvents(void) {
@@ -278,12 +289,12 @@ struct App {
       }
 
       // Light and environment map
-      if (ImGui::CollapsingHeader("Light sources")) {
-        ImGui::SliderFloat("Environment multiplier", &environment_map.multiplier, 0.0f, 10.0f);
-        ImGui::ColorEdit3("Point light color", &light.color.x);
-        ImGui::SliderFloat("Point light intensity multiplier", &light.intensity, 0.0f, 10000.0f,
-                           "%.3f", ImGuiSliderFlags_Logarithmic);
-      }
+      // if (ImGui::CollapsingHeader("Light sources")) {
+      //   ImGui::SliderFloat("Environment multiplier", &environment_map.multiplier, 0.0f, 10.0f);
+      //   ImGui::ColorEdit3("Point light color", &light.color.x);
+      //   ImGui::SliderFloat("Point light intensity multiplier", &light.intensity, 0.0f, 10000.0f,
+      //                      "%.3f", ImGuiSliderFlags_Logarithmic);
+      // }
 
       terrain.gui(window.handle);
     }

@@ -5,19 +5,24 @@ precision highp float;
 
 in DATA {
     vec3 world_pos;
+    vec3 view_pos;
+    vec4 shadow_coord;
     vec2 tex_coord;
     vec3 normal;
 } In;
 
 layout(binding = 0) uniform sampler2D grass;
 layout(binding = 1) uniform sampler2D rock;
+layout(binding = 10) uniform sampler2DShadow shadowMapTex;
 
 uniform mat4 normalMatrix;
+uniform mat4 viewMatrix;
 uniform mat4 modelMatrix;
 uniform mat4 modelViewMatrix;
 uniform mat4 modelViewProjectionMatrix;
 uniform mat4 viewProjectionMatrix;
 uniform vec3 eyeWorldPos;
+uniform vec3 viewSpaceLightPosition;
 
 struct Sun {
 	vec3 direction;
@@ -63,8 +68,12 @@ vec3 ambient() {
 }
 
 vec3 diffuse(vec3 world_pos, vec3 normal) {
+	// Shadow map
+	float visibility = textureProj(shadowMapTex, In.shadow_coord);
+
 	float diffuse_factor = max(0.0, dot(-sun.direction, normal));
-	vec3 diffuse = diffuse_factor * sun.color * sun.intensity;
+	vec3 diffuse = visibility * diffuse_factor * sun.color * sun.intensity;
+
 	return diffuse;
 }
 
@@ -73,6 +82,10 @@ void main() {
 	vec3 ambient = ambient();
 	vec3 diffuse = diffuse(In.world_pos, In.normal);
 	fragmentColor = vec4(terrain_color * (ambient + diffuse), 1.0);
+
+	// float visibility = textureProj(shadowMapTex, In.shadow_coord);
+	// fragmentColor = vec4(normalize(vec3(visibility)), 1);
+
 
 	// fog
 	if (false) {

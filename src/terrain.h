@@ -34,7 +34,7 @@ struct TerrainNoise {
 };
 
 struct Sun {
-  glm::vec3 direction = glm::vec3(0.0, -1.0, 0.0);
+  glm::vec3 direction = glm::vec3(0.702, -0.713, 0.0);
   glm::vec3 color = glm::vec3(1.0, 1.0, 1.0);
   float intensity = 0.4;
 
@@ -82,6 +82,6 @@ struct Terrain {
   void loadShader(bool is_reload);
   void buildMesh(bool is_reload);
 
-  void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position);
+  void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position, glm::mat4 light_matrix);
   void gui(SDL_Window* window);
 };

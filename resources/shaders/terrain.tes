@@ -8,7 +8,10 @@ in DATA {
 } In[];
 
 uniform mat4 viewProjectionMatrix;
+uniform mat4 lightMatrix;
 uniform mat4 modelMatrix;
+uniform mat4 viewMatrix;
+uniform mat4 modelViewMatrix;
 uniform vec3 eyeWorldPos;
 
 struct Noise {
@@ -22,6 +25,8 @@ uniform Noise noise;
 
 out DATA {
     vec3 world_pos;
+    vec3 view_pos;
+    vec4 shadow_coord;
     vec2 tex_coord;
     vec3 normal;
 } Out;
@@ -167,8 +172,11 @@ void main() {
     // Displace the vertex along the normal
     float displacement = terrain_height(Out.world_pos.xz);
     Out.world_pos += vec3(0.0, 1.0, 0.0) * displacement;
+    Out.view_pos = (viewMatrix * vec4(Out.world_pos, 1.0)).xyz;
 
     Out.normal = computeNormals(Out.world_pos);
+
+    Out.shadow_coord = lightMatrix * vec4(Out.view_pos, 1.f);
 
     gl_Position = viewProjectionMatrix * vec4(Out.world_pos, 1.0);
 }
