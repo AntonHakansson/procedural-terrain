@@ -109,7 +109,7 @@ add_executable(
                 ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
-set_target_properties(AdvGfxProject PROPERTIES CXX_STANDARD 20)
+set_target_properties(AdvGfxProject PROPERTIES CXX_STANDARD 17)
 
 # being a cross-platform target, we enforce standards conformance on MSVC
 target_compile_options(AdvGfxProject PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive->")

@@ -23,10 +23,10 @@ void Terrain::loadShader(bool is_reload) {
     glDeleteProgram(this->shader_program);
   }
   std::array<ShaderInput, 4> program_shaders({
-      {"resources/shaders/terrain.vert", GL_VERTEX_SHADER},
-      {"resources/shaders/terrain.frag", GL_FRAGMENT_SHADER},
-      {"resources/shaders/terrain.tcs", GL_TESS_CONTROL_SHADER},
-      {"resources/shaders/terrain.tes", GL_TESS_EVALUATION_SHADER},
+      ShaderInput{"resources/shaders/terrain.vert", GL_VERTEX_SHADER},
+      ShaderInput{"resources/shaders/terrain.frag", GL_FRAGMENT_SHADER},
+      ShaderInput{"resources/shaders/terrain.tcs", GL_TESS_CONTROL_SHADER},
+      ShaderInput{"resources/shaders/terrain.tes", GL_TESS_EVALUATION_SHADER},
   });
   this->shader_program = loadShaderProgram(program_shaders, is_reload);
 }
