@@ -71,6 +71,8 @@ struct App {
 
   mat4 fighter_model_matrix = mat4(1.0f);
 
+  struct DrawScene {};
+
   void loadShaders(bool is_reload) {
     GLuint shader = gpu::loadShaderProgram("resources/shaders/simple.vert",
                                            "resources/shaders/simple.frag", is_reload);
@@ -102,9 +104,11 @@ struct App {
     {
       const int roughnesses = 8;
       std::vector<std::string> filenames;
-      for (int i = 0; i < roughnesses; i++)
+      filenames.reserve(roughnesses);
+      for (int i = 0; i < roughnesses; i++) {
         filenames.push_back("resources/envmaps/" + environment_map.base_name + "_dl_"
                             + std::to_string(i) + ".hdr");
+      }
       environment_map.reflectionMap = gpu::loadHdrMipmapTexture(filenames);
       environment_map.environmentMap
           = gpu::loadHdrTexture("resources/envmaps/" + environment_map.base_name + ".hdr");
@@ -175,9 +179,7 @@ struct App {
   void display(void) {
     SDL_GetWindowSize(window.handle, &window.width, &window.height);
 
-    ///////////////////////////////////////////////////////////////////////////
     // setup matrices
-    ///////////////////////////////////////////////////////////////////////////
     mat4 projMatrix = perspective(radians(45.0f), float(window.width) / float(window.height),
                                   projection.near, projection.far);
     mat4 viewMatrix = camera.getViewMatrix();
@@ -187,9 +189,7 @@ struct App {
     mat4 lightViewMatrix = lookAt(light.position, vec3(0.0f), worldUp);
     mat4 lightProjMatrix = perspective(radians(45.0f), 1.0f, 25.0f, 100.0f);
 
-    ///////////////////////////////////////////////////////////////////////////
     // Bind the environment map(s) to unused texture units
-    ///////////////////////////////////////////////////////////////////////////
     glActiveTexture(GL_TEXTURE6);
     glBindTexture(GL_TEXTURE_2D, environment_map.environmentMap);
     glActiveTexture(GL_TEXTURE7);
@@ -198,9 +198,7 @@ struct App {
     glBindTexture(GL_TEXTURE_2D, environment_map.reflectionMap);
     glActiveTexture(GL_TEXTURE0);
 
-    ///////////////////////////////////////////////////////////////////////////
     // Draw from camera
-    ///////////////////////////////////////////////////////////////////////////
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, window.width, window.height);
     glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
@@ -232,14 +230,13 @@ struct App {
       if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT
           && !io.WantCaptureMouse) {
         input.is_mouse_dragging = true;
-        int x;
-        int y;
+        int x, y;
         SDL_GetMouseState(&x, &y);
         input.prev_mouse_pos.x = x;
         input.prev_mouse_pos.y = y;
       }
 
-      if (!(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT))) {
+      if ((SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON(SDL_BUTTON_LEFT)) == 0U) {
         input.is_mouse_dragging = false;
       }
 
@@ -274,7 +271,7 @@ struct App {
       }
 
       if (ImGui::CollapsingHeader("Camera")) {
-        camera.draw_imgui();
+        camera.gui();
         ImGui::DragFloat("Near Projection", &projection.near, 0.02, 0.2);
         ImGui::DragFloat("Far Projection", &projection.far, 200.0, 1000.0);
       }
@@ -287,7 +284,7 @@ struct App {
                            "%.3f", ImGuiSliderFlags_Logarithmic);
       }
 
-      terrain.draw_imgui(window.handle);
+      terrain.gui(window.handle);
     }
     // Render the GUI.
     ImGui::Render();

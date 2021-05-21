@@ -104,33 +104,11 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
     gpu::setUniformSlow(this->shader_program, "noise.persistence", noise.persistence);
     gpu::setUniformSlow(this->shader_program, "noise.lacunarity", noise.lacunarity);
 
+    gpu::setUniformSlow(this->shader_program, "sun.direction", sun.direction);
+    gpu::setUniformSlow(this->shader_program, "sun.color", sun.color);
+
     glUniform1fv(glGetUniformLocation(this->shader_program, "tessMultiplier"), 1,
                  &this->tess_multiplier);
-
-    glUniform1i(glGetUniformLocation(this->shader_program, "has_color_texture"), 0);
-    glUniform1i(glGetUniformLocation(this->shader_program, "has_diffuse_texture"), 0);
-    glUniform1i(glGetUniformLocation(this->shader_program, "has_reflectivity_texture"), 0);
-    glUniform1i(glGetUniformLocation(this->shader_program, "has_metalness_texture"), 0);
-    glUniform1i(glGetUniformLocation(this->shader_program, "has_fresnel_texture"), 0);
-    glUniform1i(glGetUniformLocation(this->shader_program, "has_shininess_texture"), 0);
-    glUniform1i(glGetUniformLocation(this->shader_program, "has_emission_texture"), 0);
-
-    glUniform3fv(glGetUniformLocation(this->shader_program, "material_color"), 1,
-                 &material.m_color.x);
-    glUniform3fv(glGetUniformLocation(this->shader_program, "material_diffuse_color"), 1,
-                 &material.m_color.x);
-    glUniform3fv(glGetUniformLocation(this->shader_program, "material_emissive_color"), 1,
-                 &material.m_color.x);
-    glUniform1fv(glGetUniformLocation(this->shader_program, "material_reflectivity"), 1,
-                 &material.m_reflectivity);
-    glUniform1fv(glGetUniformLocation(this->shader_program, "material_metalness"), 1,
-                 &material.m_metalness);
-    glUniform1fv(glGetUniformLocation(this->shader_program, "material_fresnel"), 1,
-                 &material.m_fresnel);
-    glUniform1fv(glGetUniformLocation(this->shader_program, "material_shininess"), 1,
-                 &material.m_shininess);
-    glUniform1fv(glGetUniformLocation(this->shader_program, "material_emission"), 1,
-                 &material.m_emission);
 
     // Draw the terrain
     glBindVertexArray(this->vaob);
@@ -143,7 +121,7 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
   glUseProgram(prev_program);
 }
 
-void Terrain::draw_imgui(SDL_Window* window) {
+void Terrain::gui(SDL_Window* window) {
   if (ImGui::CollapsingHeader("Terrain")) {
     ImGui::Text("Debug");
     ImGui::Checkbox("Wireframe", &this->wireframe);
@@ -168,6 +146,7 @@ void Terrain::draw_imgui(SDL_Window* window) {
       bool mesh_changed = false;
       mesh_changed |= ImGui::SliderFloat("Size", &this->terrain_size, 512, 8192);
       mesh_changed |= ImGui::SliderInt("Subdivisions", &this->terrain_subdivision, 0, 256);
+      ImGui::DragFloat("Tesselation Multiplier", &this->tess_multiplier);
 
       if (mesh_changed) {
         this->init_mesh(true);
@@ -178,7 +157,9 @@ void Terrain::draw_imgui(SDL_Window* window) {
 
     {
       ImGui::Text("Shader");
-      this->noise.draw_imgui();
+      this->noise.gui();
+      ImGui::Text("Sun");
+      this->sun.gui();
     }
 
     ImGui::Separator();

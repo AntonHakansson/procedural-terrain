@@ -27,9 +27,7 @@ void main()
 	if (phi < 0.0f)
 		phi = phi + 2.0f * PI;
 
-  float test = min(max(dot(normalize(vec3(0, 1, 0)), dir), 0) / 0.02, 1);
-
 	// Use these to lookup the color in the environment map
 	vec2 lookup = vec2(phi / (2.0 * PI), theta / PI);
-	fragmentColor = vec4(mix(vec3(109.0 / 255.0, 116.0 / 255.0, 109.0 / 255.0), environment_multiplier * texture(environmentMap, lookup).xyz, test), 1);
+	fragmentColor = vec4(environment_multiplier * texture(environmentMap, lookup).xyz, 1);
 }

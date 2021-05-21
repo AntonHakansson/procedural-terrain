@@ -22,13 +22,27 @@ struct TerrainNoise {
   float persistence = .08;
   float lacunarity = 8.0;
 
-  bool draw_imgui() {
+  bool gui() {
     auto did_change = false;
     did_change |= ImGui::SliderInt("Octaves", &this->num_octaves, 1, 10);
     did_change |= ImGui::DragFloat("Amplitude", &this->amplitude, 1.0f, 0.0f, 10000.f);
     did_change |= ImGui::DragFloat("Frequency", &this->frequency, 0.001f, 0.0f, 10000.f);
     did_change |= ImGui::DragFloat("Persistence", &this->persistence, 0.001f, 0.0f, 10000.f);
     did_change |= ImGui::DragFloat("Lacunarity", &this->lacunarity, 0.05f, 0.0f, 20.f);
+    return did_change;
+  }
+};
+
+struct Sun {
+  glm::vec3 direction = glm::vec3(0.0, -1.0, 0.0);
+  glm::vec3 color = glm::vec3(1.0, 1.0, 1.0);
+
+  bool gui() {
+    auto did_change = false;
+    did_change |= ImGui::DragFloat3("Direction", &direction.x, 0.04);
+    did_change |= ImGui::ColorPicker3("Color", &color.x);
+
+    direction = glm::normalize(direction);
     return did_change;
   }
 };
@@ -41,6 +55,7 @@ struct Terrain {
   bool wireframe = false;
 
   TerrainNoise noise;
+  Sun sun;
 
   float tess_multiplier = 16.0;
 
@@ -70,5 +85,5 @@ struct Terrain {
 
   void loadShader(bool is_reload);
 
-  void draw_imgui(SDL_Window* window);
+  void gui(SDL_Window* window);
 };

@@ -104,7 +104,10 @@ file(GLOB_RECURSE shaders CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/resourc
 # ---- Create executable ----
 # list all files that will either be used for compilation or that should show up in the ide of your
 # choice
-add_executable(AdvGfxProject ${headers} ${sources} ${shaders} ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.cpp ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp)
+add_executable(
+  AdvGfxProject ${headers} ${sources} ${shaders} ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.cpp
+                ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+)
 
 set_target_properties(AdvGfxProject PROPERTIES CXX_STANDARD 20)
 
@@ -123,9 +126,9 @@ target_link_libraries(
          tinyobjloader
 )
 
-if (FALSE)
-target_include_directories(
-  AdvGfxProject PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-                       $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
-)
+if(FALSE)
+  target_include_directories(
+    AdvGfxProject PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                         $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
+  )
 endif()

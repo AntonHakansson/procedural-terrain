@@ -64,7 +64,7 @@ struct Camera {
 
   mat4 getViewMatrix() { return lookAt(position, position + direction, world_up); }
 
-  void draw_imgui() {
+  void gui() {
     ImGui::SliderFloat("Movement Speed", &this->speed, 80.0, 350.0);
     ImGui::SliderFloat("Rotate Speed", &this->rotation_speed, 0.05, 2.0);
   }
