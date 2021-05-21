@@ -1,7 +1,6 @@
 #include "terrain.h"
 
 void Terrain::init() {
-  // Construct a chunk
   this->buildMesh(false);
 
   // OpenGL Setup
@@ -16,7 +15,7 @@ void Terrain::deinit() {
   glDeleteBuffers(1, &this->positions_bo);
   // glDeleteBuffers(1, &this->normals_bo);
   glDeleteBuffers(1, &this->indices_bo);
-  glDeleteVertexArrays(1, &this->vaob);
+  glDeleteVertexArrays(1, &this->vao);
 }
 
 void Terrain::loadShader(bool is_reload) {
@@ -36,10 +35,10 @@ void Terrain::buildMesh(bool is_reload) {
   if (is_reload) {
     glDeleteBuffers(1, &this->positions_bo);
     glDeleteBuffers(1, &this->indices_bo);
-    glDeleteVertexArrays(1, &this->vaob);
+    glDeleteVertexArrays(1, &this->vao);
   }
   this->indices_count
-      = gpu::createSubdividedPlane(this->terrain_size, this->terrain_subdivision, &this->vaob,
+      = gpu::createSubdividedPlane(this->terrain_size, this->terrain_subdivision, &this->vao,
                                    &this->positions_bo, &this->indices_bo);
 }
 
@@ -88,12 +87,13 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
 
     gpu::setUniformSlow(this->shader_program, "sun.direction", sun.direction);
     gpu::setUniformSlow(this->shader_program, "sun.color", sun.color);
+    gpu::setUniformSlow(this->shader_program, "sun.intensity", sun.intensity);
 
     glUniform1fv(glGetUniformLocation(this->shader_program, "tessMultiplier"), 1,
                  &this->tess_multiplier);
 
     // Draw the terrain
-    glBindVertexArray(this->vaob);
+    glBindVertexArray(this->vao);
     glDrawElements(GL_PATCHES, this->indices_count, GL_UNSIGNED_SHORT, 0);
     glBindVertexArray(0);
   }

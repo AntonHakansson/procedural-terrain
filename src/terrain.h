@@ -36,10 +36,12 @@ struct TerrainNoise {
 struct Sun {
   glm::vec3 direction = glm::vec3(0.0, -1.0, 0.0);
   glm::vec3 color = glm::vec3(1.0, 1.0, 1.0);
+  float intensity = 0.4;
 
   bool gui() {
     auto did_change = false;
     did_change |= ImGui::DragFloat3("Direction", &direction.x, 0.04);
+    did_change |= ImGui::DragFloat("Intensity", &intensity, 0.05);
     did_change |= ImGui::ColorPicker3("Color", &color.x);
 
     direction = glm::normalize(direction);
@@ -68,11 +70,11 @@ struct Terrain {
 
   // Buffers on GPU
   uint32_t positions_bo;
-  uint32_t normals_bo;
+  // uint32_t normals_bo;
   uint32_t indices_bo;
 
   // Vertex Array Object
-  uint32_t vaob;
+  uint32_t vao;
 
   void init();
   void deinit();

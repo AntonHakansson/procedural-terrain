@@ -20,6 +20,7 @@ uniform vec3 eyeWorldPos;
 struct Sun {
 	vec3 direction;
 	vec3 color;
+	float intensity;
 };
 uniform Sun sun;
 
@@ -54,15 +55,14 @@ vec3 terrainColor(vec3 world_pos, vec3 normal) {
 	return mix(rock_color, grass_color, blending);
 }
 
-vec3 ambient(vec3 light_color) {
-	float ambientStrength = 0.2;
-    vec3 ambient = ambientStrength * light_color;
+vec3 ambient() {
+    vec3 ambient = sun.color * sun.intensity;
     return ambient;
 }
 
-vec3 diffuse(vec3 light_dir, vec3 light_color, vec3 world_pos, vec3 normal) {
-	float diffuse_factor = max(0.0, dot(-light_dir, normal));
-	vec3 diffuse = diffuse_factor * light_color * 0.75;
+vec3 diffuse(vec3 world_pos, vec3 normal) {
+	float diffuse_factor = max(0.0, dot(-sun.direction, normal));
+	vec3 diffuse = diffuse_factor * sun.color * sun.intensity;
 	return diffuse;
 }
 
@@ -70,8 +70,8 @@ void main()
 {
 	vec3 normal = Normal_FS_in;
 	vec3 terrain_color = terrainColor(WorldPos_FS_in, normal);
-	vec3 ambient = ambient(sun.color);
-	vec3 diffuse = diffuse(sun.direction, sun.color, WorldPos_FS_in, normal);
+	vec3 ambient = ambient();
+	vec3 diffuse = diffuse(WorldPos_FS_in, normal);
 	fragmentColor = vec4(terrain_color * (ambient + diffuse), 1.0);
 
 	// fog
