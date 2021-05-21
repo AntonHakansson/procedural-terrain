@@ -3,9 +3,11 @@
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
 
-// in vec2 TexCoord_FS_in;
-in vec3 Normal_FS_in;
-in vec3 WorldPos_FS_in;
+in DATA {
+    vec3 world_pos;
+    vec2 tex_coord;
+    vec3 normal;
+} In;
 
 layout(binding = 0) uniform sampler2D grass;
 layout(binding = 1) uniform sampler2D rock;
@@ -66,17 +68,15 @@ vec3 diffuse(vec3 world_pos, vec3 normal) {
 	return diffuse;
 }
 
-void main()
-{
-	vec3 normal = Normal_FS_in;
-	vec3 terrain_color = terrainColor(WorldPos_FS_in, normal);
+void main() {
+	vec3 terrain_color = terrainColor(In.world_pos, In.normal);
 	vec3 ambient = ambient();
-	vec3 diffuse = diffuse(WorldPos_FS_in, normal);
+	vec3 diffuse = diffuse(In.world_pos, In.normal);
 	fragmentColor = vec4(terrain_color * (ambient + diffuse), 1.0);
 
 	// fog
 	if (false) {
-		float dist = distance(WorldPos_FS_in, eyeWorldPos);
+		float dist = distance(In.world_pos, eyeWorldPos);
 
 		float density = 0.0005;
 		float fog_factor = exp(-pow(density * dist, 2.0));

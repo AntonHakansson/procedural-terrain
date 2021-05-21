@@ -1,6 +1,11 @@
 #version 420
 
 layout(triangles, equal_spacing, ccw) in;
+in DATA {
+    vec3 world_pos;
+    vec2 tex_coord;
+    vec3 normal;
+} In[];
 
 uniform mat4 viewProjectionMatrix;
 uniform mat4 modelMatrix;
@@ -15,14 +20,11 @@ struct Noise {
 };
 uniform Noise noise;
 
-in vec3 WorldPos_ES_in[];
-in vec2 TexCoord_ES_in[];
-// in vec3 Normal_ES_in[];
-
-out vec3 WorldPos_FS_in;
-out vec2 TexCoord_FS_in;
-out vec3 Normal_FS_in;
-out float height;
+out DATA {
+    vec3 world_pos;
+    vec2 tex_coord;
+    vec3 normal;
+} Out;
 
 float random2D(in vec2 st) {
     vec3 seed = vec3(12312412, 123123, 124123);
@@ -145,8 +147,7 @@ float terrain_height(vec2 pos) {
   return noise_value;
 }
 
-vec3 computeNormals(vec3 WorldPos)
-{
+vec3 computeNormals(vec3 WorldPos) {
   vec2 eps = vec2(0.1, 0.0);
   return normalize(
     vec3(
@@ -157,23 +158,17 @@ vec3 computeNormals(vec3 WorldPos)
   );
 }
 
-void main()
-{
+void main() {
     // Interpolate the attributes of the output vertex using the barycentric coordinates
-    TexCoord_FS_in = interpolate2D(TexCoord_ES_in[0], TexCoord_ES_in[1], TexCoord_ES_in[2]);
-    // Normal_FS_in = interpolate3D(Normal_ES_in[0], Normal_ES_in[1], Normal_ES_in[2]);
-    // Normal_FS_in = normalize(Normal_FS_in);
-    WorldPos_FS_in = interpolate3D(WorldPos_ES_in[0], WorldPos_ES_in[1], WorldPos_ES_in[2]);
+    Out.world_pos = interpolate3D(In[0].world_pos, In[1].world_pos, In[2].world_pos);
+    Out.tex_coord = interpolate2D(In[0].tex_coord, In[1].tex_coord, In[2].tex_coord);
+    // Out.normal = interpolate3D(Normal_ES_in[0], Normal_ES_in[1], Normal_ES_in[2]);
 
     // Displace the vertex along the normal
-    // vec4 test = viewProjectionMatrix * vec4(WorldPos_FS_in, 1.0);
-    // float displacement = terrain_height(test.xz * frequency);
+    float displacement = terrain_height(Out.world_pos.xz);
+    Out.world_pos += vec3(0.0, 1.0, 0.0) * displacement;
 
-    // float displacement = 0; //terrain_height(WorldPos_FS_in.xz * frequency);
-    float displacement = terrain_height(WorldPos_FS_in.xz); //terrain_height(WorldPos_FS_in.xz * frequency);
-    WorldPos_FS_in += vec3(0.0, 1.0, 0.0) * displacement;
+    Out.normal = computeNormals(Out.world_pos);
 
-    Normal_FS_in = computeNormals(WorldPos_FS_in);
-
-    gl_Position = viewProjectionMatrix * vec4(WorldPos_FS_in, 1.0);
+    gl_Position = viewProjectionMatrix * vec4(Out.world_pos, 1.0);
 }
