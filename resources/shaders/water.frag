@@ -186,7 +186,7 @@ void main() {
     vec3 view_water_point = view_water_point_h.xyz / view_water_point_h.w;
 
     float dist_to_water;
-    bool intersected = rayPlaneIntersection(vec3(0.0, 0.0, 0.0), view_dir, view_water_point, view_water_normal, dist_to_water);
+    bool intersected = rayPlaneIntersection(vec3(view_pos.xy, 0.0), view_dir, view_water_point, view_water_normal, dist_to_water);
 
     // Calculate the reflected ray direction on the water surface
     vec3 reflected_dir = normalize(reflect(view_dir, view_water_normal));
