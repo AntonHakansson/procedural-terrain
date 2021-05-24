@@ -21,14 +21,17 @@ struct Water {
   }
 
   void loadShader(bool is_reload) {
-    if (is_reload) {
-      glDeleteProgram(this->shader_program);
-    }
     std::array<ShaderInput, 2> program_shaders({
         {"resources/shaders/water.vert", GL_VERTEX_SHADER},
         {"resources/shaders/water.frag", GL_FRAGMENT_SHADER},
     });
-    this->shader_program = loadShaderProgram(program_shaders, is_reload);
+    auto program = loadShaderProgram(program_shaders, is_reload);
+    if (program != 0) {
+      if (is_reload) {
+        glDeleteProgram(this->shader_program);
+      }
+      this->shader_program = program;
+    }
   }
 
   void begin(int width, int height) {
@@ -50,7 +53,7 @@ struct Water {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
-  void render(float current_time, glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position, float z_near) {
+  void render(float current_time, glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position, float z_near, float z_far) {
     GLint prev_program = 0;
     glGetIntegerv(GL_CURRENT_PROGRAM, &prev_program);
 
@@ -68,7 +71,7 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "camera_position", camera_position);
     gpu::setUniformSlow(this->shader_program, "water.height", height);
     gpu::setUniformSlow(this->shader_program, "water.foam_distance", foam_distance);
-    ssr.upload(this->shader_program, screen_fbo.width, screen_fbo.height, z_near);
+    ssr.upload(this->shader_program, screen_fbo.width, screen_fbo.height, z_near, z_far);
 
     gpu::drawFullScreenQuad();
 
@@ -81,9 +84,9 @@ struct Water {
       ImGui::DragFloat("Water Level Height", &height, 0.1);
       ImGui::DragFloat("Water Foam Distance", &foam_distance, 0.1);
       ImGui::Text("Color Attachment");
-      ImGui::Image((void*)(intptr_t)screen_fbo.colorTextureTargets[0], ImVec2(252, 252), ImVec2(0, 1), ImVec2(1,0));
+      ImGui::Image((void*)(intptr_t)screen_fbo.colorTextureTargets[0], ImVec2(252, 252), ImVec2(0, 1), ImVec2(1, 0));
       ImGui::Text("Depth Attachment");
-      ImGui::Image((void*)(intptr_t)screen_fbo.depthBuffer, ImVec2(252, 252), ImVec2(0, 1), ImVec2(1,0));
+      ImGui::Image((void*)(intptr_t)screen_fbo.depthBuffer, ImVec2(252, 252), ImVec2(0, 1), ImVec2(1, 0));
     }
   }
 
@@ -92,29 +95,35 @@ struct Water {
     // REVIEW: maybe remove these
     glm::ivec2 depth_buffer_size;
     float z_near;
+    float z_far;
 
     float z_thickness = 0.01;
     float stride = 1.05;
+    float jitter = 0.2;
     float max_steps = 30.0;
     float max_distance = 200.0;
 
-    void upload(GLuint program, int width, int height, float z_near) {
+    void upload(GLuint program, int width, int height, float z_near, float z_far) {
       this->depth_buffer_size = glm::ivec2(width, height);
       this->z_near = z_near;
+      this->z_far = z_far;
 
       gpu::setUniformSlow(program, "ssr.depth_buffer_size", depth_buffer_size);
       gpu::setUniformSlow(program, "ssr.z_near", z_near);
+      gpu::setUniformSlow(program, "ssr.z_far", z_far);
       gpu::setUniformSlow(program, "ssr.z_thickness", z_thickness);
       gpu::setUniformSlow(program, "ssr.stride", stride);
+      gpu::setUniformSlow(program, "ssr.jitter", jitter);
       gpu::setUniformSlow(program, "ssr.max_steps", max_steps);
       gpu::setUniformSlow(program, "ssr.max_distance", max_distance);
     }
 
     void gui() {
       ImGui::Text("Buffer size: %dx%d", depth_buffer_size.x, depth_buffer_size.y);
-      ImGui::Text("Near: %f", z_near);
-      ImGui::DragFloat("z thickness", &z_thickness, 0.1);
-      ImGui::DragFloat("stride", &stride, 0.1);
+      ImGui::Text("Near: %f, Far: %d", z_near, z_far);
+      ImGui::DragFloat("z thickness", &z_thickness, 0.0001);
+      ImGui::DragFloat("stride", &stride, 0.0001);
+      ImGui::SliderFloat("jitter", &jitter, 0.0, 1.0);
       ImGui::DragFloat("Max steps", &max_steps, 0.1);
       ImGui::DragFloat("Max distance", &max_distance, 0.1);
     }
@@ -125,7 +134,7 @@ struct Water {
   int indices_count;
 
   // Height of the water level
-  float height = 0.5;
+  float height = -100;
 
   GLuint shader_program;
 

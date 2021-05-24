@@ -219,7 +219,7 @@ struct App {
       debugDrawLight(viewMatrix, projMatrix, vec3(light.position));
     }
     water.end();
-    water.render(current_time, projMatrix, viewMatrix, camera.position, projection.near);
+    water.render(current_time, projMatrix, viewMatrix, camera.position, projection.near, projection.far);
   }
 
   bool handleEvents(void) {

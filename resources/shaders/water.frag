@@ -23,11 +23,14 @@ uniform Water water;
 struct ScreenSpaceReflection {
     ivec2 depth_buffer_size;
     float z_near;
+    float z_far;
 
     // Thickness to assign each pixel in the depth buffer
     float z_thickness;
     // The camera-space distance to step in each iteration
     float stride;
+    // Number between 0 and 1 for how far to bump the ray in stride units to conceal banding artifacts
+    float jitter;
     // Max number of trace iterations
     float max_steps;
     // Maximum camera-space distance to trace before returning a miss
@@ -65,6 +68,13 @@ float distanceSquared(vec3 a, vec3 b)
 {
     a -= b;
     return dot(a, a);
+}
+
+float linearizeDepth(float hyperbolic_depth)
+{
+    float z_n = 2.0 * hyperbolic_depth - 1.0;
+    float z_e = 2.0 * ssr.z_near * ssr.z_far / (ssr.z_far + ssr.z_near - z_n * (ssr.z_far - ssr.z_near));
+    return z_e;
 }
 
 // bool traceScreenSpaceRay(
@@ -169,6 +179,118 @@ bool rayPlaneIntersection(vec3 ray_origin, vec3 ray_dir, vec3 point_on_plane, ve
     return false;
 }
 
+// paper approach
+bool trace(vec3 ray_origin, vec3 ray_dir, ScreenSpaceReflection ssr, mat4 pixel_projection, out vec2 hit_pixel, out vec3 hit_point) {
+    // Clip to the near plane
+    float ray_length = ((ray_origin.z + ray_dir.z * ssr.max_distance) > ssr.z_near) ?
+        (ssr.z_near - ray_origin.z) / ray_dir.z : ssr.max_distance;
+    vec3 end_point = ray_origin + ray_dir * ray_length;
+
+    // Init to off screen
+    hit_pixel = vec2(-1.0);
+
+    // Project into homogeneous clip space
+    vec4 H0 = pixel_projection * vec4(ray_origin, 1.0);
+    vec4 H1 = pixel_projection * vec4(end_point, 1.0);
+
+    float k0 = 1.0 / H0.w;
+    float k1 = 1.0 / H1.w;
+
+    // The interpolated homogeneous version of the camera-space points
+    vec3 Q0 = ray_origin * k0;
+    vec3 Q1 = end_point * k1;
+
+    // Screen-space endpoints
+    vec2 P0 = H0.xy * k0;
+    vec2 P1 = H1.xy * k1;
+
+    P1 += vec2(distanceSquared(P0, P1) < 0.0001 ? 0.01 : 0.0);
+    vec2 delta = P1 - P0;
+
+    // the primary iteration is in x direction so permute P if vertical line
+    bool permute = false;
+    if (abs(delta.x) < abs(delta.y)) {
+        // more-vertical line
+        permute = true;
+        delta = delta.yx;
+        P0 = P0.yx;
+        P1 = P1.yx;
+    }
+
+    float step_dir = sign(delta.x);
+    float invdx = step_dir / delta.x;
+
+    // derivatives of Q and k
+    vec3 dQ = (Q1 - Q0) * invdx;
+    float dk = (k1 - k0) * invdx;
+    vec2 dP = vec2(step_dir, delta.y * invdx);
+
+    //
+    dP *= ssr.stride;
+    dQ *= ssr.stride;
+    dk *= ssr.stride;
+
+    // Offset starting point by the jitter
+    P0 += dP * ssr.jitter;
+    Q0 += dQ * ssr.jitter;
+    k0 += dk * ssr.jitter;
+
+    // Slide P from P0 to P1, Q from Q0 to Q1, k from k0 to k1
+    vec2 P = P0;
+    vec3 Q = Q0;
+    float k = k0;
+
+    float end = P1.x * step_dir;
+
+    float step_count = 0.0;
+    float prev_z_max_estimate = ray_origin.z;
+    float ray_z_min = prev_z_max_estimate;
+    float ray_z_max = prev_z_max_estimate;
+    float scene_z_max = ray_z_max + 1e4;
+
+    // trace until intersection reached max steps
+    while (((P.x * step_dir) <= end) && (step_count < ssr.max_steps) && ((ray_z_max < (scene_z_max - ssr.z_thickness)) || (ray_z_min > scene_z_max)) && (scene_z_max != 0.0)) {
+        ray_z_min = prev_z_max_estimate;
+        ray_z_max = (dQ.z * 0.5 + Q.z) / (dk * 0.5 + k);
+        prev_z_max_estimate = ray_z_max;
+
+        if (ray_z_min > ray_z_max) {
+            swap(ray_z_min, ray_z_max);
+        }
+
+        hit_pixel = permute ? P.yx : P;
+
+        {
+            float z_b = texelFetch(depth_buffer, ivec2(hit_pixel), 0).r;
+            float z_n = 2.0 * z_b - 1.0;
+            float z_e = 2.0 * ssr.z_near * ssr.z_far / (ssr.z_far + ssr.z_near - z_n * (ssr.z_far - ssr.z_near));
+            scene_z_max = z_e;
+        }
+
+        // Step
+        P += dP;
+        Q.z += dQ.z;
+        k += dk;
+        step_count++;
+    }
+
+    // Advance Q based on the number of steps
+    Q.xy += dQ.xy * step_count;
+    hit_point = Q * (1.0 / k);
+    return (ray_z_max >= scene_z_max - ssr.z_thickness) && (ray_z_min < scene_z_max);
+}
+
+
+vec3 naive_impl(vec3 ray_origin, vec3 ray_dir, ScreenSpaceReflection ssr) {
+    return vec3(0);
+}
+
+vec3 getScreenPos(vec3 view_pos) {
+    vec4 screen_pos_h = projection_matrix * vec4(view_pos, 1.0);
+    vec3 screen_pos = screen_pos_h.xyz / screen_pos_h.w;
+    return screen_pos + vec3(1.0) / 2.0;
+}
+
 void main() {
     // REVIEW: Does `texture` filter the result? maybe opt for `texelFetch` to get unfiltered value
     vec3 color = texture(pixel_buffer, In.tex_coord, 0).xyz;
@@ -198,7 +320,8 @@ void main() {
     vec4 world = inverse(view_matrix) * vec4(view_dir * dist_to_water, 1.0);
     vec4 view_normal_offset = view_matrix * vec4(sin(world.x / 10) * 0.05, 0, 0, 0.0);
 
-    vec3 reflected_dir = normalize(reflect(view_dir, view_water_normal + view_normal_offset.xyz));
+    // vec3 reflection_dir = normalize(reflect(view_dir, view_water_normal + view_normal_offset.xyz));
+    vec3 reflection_dir = normalize(reflect(view_dir, view_water_normal));
 
     float foam_mask;
     vec3 out_color = color;
@@ -212,14 +335,69 @@ void main() {
 
             foam_mask += max(1.0 - f / (water.foam_distance / 2.0), 0);
 
-            out_color = normalize((inverse(view_matrix) * vec4(reflected_dir, 0.0)).xyz);
+            out_color = normalize((inverse(view_matrix) * vec4(reflection_dir, 0.0)).xyz);
+
+            // reflection based on paper
+            // -----------
+            vec2 hit_pixel;
+            vec3 view_hit_point;
+            bool reflection_hit = trace(view_dir * abs(dist_to_water-0.01), reflection_dir, ssr, hit_pixel, view_hit_point);
+            vec4 reflection_color = texture(pixel_buffer, hit_pixel);
+
+            if (reflection_hit) {
+                out_color = mix(reflection_color.xyz, out_color, 0.1);
+                // out_color = vec3(normalize(hit_pixel), 0.0);
+                // out_color = normalize(reflection_dir);
+            }
+            else {
+                out_color = vec3(0.0, 0.0, 0.0);
+                out_color = normalize(reflection_dir);
+            }
+
+            // naive reflection
+            // -----------
+            // {
+            //     vec3 screen_pos = getScreenPos(view_pos);
+            //     vec2 screen_tex_pos = screen_pos.xy;
+
+            //     float texture_depth = texture(depth_buffer, screen_tex_pos).x;
+            //     float world_depth = screen_pos.z;
+
+            //     bool run = true;
+            //     int count = 0;
+            //     vec3 P = view_pos;
+            //     while (run) {
+            //         // texture_depth = linearizeDepth(texture(depth_buffer, screen_tex_pos).x);
+            //         texture_depth = texture(depth_buffer, screen_tex_pos).x;
+            //         world_depth = screen_pos.z;
+
+            //         if (texture_depth < world_depth) {
+            //             screen_tex_pos.y = 1.0 - screen_tex_pos.y;
+            //             out_color = texture(pixel_buffer, screen_tex_pos).xyz;
+            //             break;
+            //         }
+
+            //         P += reflection_dir * ssr.stride;
+            //         screen_pos = getScreenPos(P);
+            //         screen_tex_pos = screen_pos.xy;
+
+            //         count += 1;
+            //         run = count < ssr.max_steps;
+            //     }
+
+            //     if (!run) {
+            //         out_color = vec3(0.0, 1.0, 0.0);
+            //     }
+            // }
         }
     }
 
-    fragmentColor = vec4(out_color + vec3(foam_mask * 0.5), 1.0);
     // fragmentColor = vec4(reflected_dir, 1.0);
 
     // out_color = dist_to_water * color;
     // out_color = (dot(view_dir, view_water_normal) + 1.0)/2.0 * color;
     // fragmentColor = vec4(vec3(abs(view_pos.z), 0.0, 0.0) / water_height, 1.0);
+
+    fragmentColor = vec4(out_color, 1.0);
+    // fragmentColor = vec4(out_color + vec3(foam_mask * 0.5), 1.0);
 }
