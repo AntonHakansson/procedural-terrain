@@ -12,6 +12,7 @@ in DATA {
     vec2 tex_coord;
 } In;
 
+uniform float current_time;
 
 struct Water {
     float height;
@@ -194,7 +195,10 @@ void main() {
     bool intersected = rayPlaneIntersection(vec3(0), view_dir, view_water_point, view_water_normal, dist_to_water);
 
     // Calculate the reflected ray direction on the water surface
-    vec3 reflected_dir = normalize(reflect(view_dir, view_water_normal));
+    vec4 world = inverse(view_matrix) * vec4(view_dir * dist_to_water, 1.0);
+    vec4 view_normal_offset = view_matrix * vec4(sin(world.x / 10) * 0.05, 0, 0, 0.0);
+
+    vec3 reflected_dir = normalize(reflect(view_dir, view_water_normal + view_normal_offset.xyz));
 
     float foam_mask;
     vec3 out_color = color;
@@ -203,14 +207,18 @@ void main() {
         if (dist_to_water < length(view_pos)) {
             float f = length(view_pos) - dist_to_water;
 
-            foam_mask = max(1.0 - (f) / water.foam_distance, 0) 
-                * max(sin(f / 2.0), 0);
+            foam_mask += max(1.0 - f / water.foam_distance, 0);
+            foam_mask *= max(sin(f / 1.5 + sin(current_time * 1.0) * 4), 0);
 
-            out_color = mix(out_color, vec3(0, 0.6, 0.8), 0.6);
+            foam_mask += max(1.0 - f / (water.foam_distance / 2.0), 0);
+
+            out_color = normalize((inverse(view_matrix) * vec4(reflected_dir, 0.0)).xyz);
         }
     }
 
     fragmentColor = vec4(out_color + vec3(foam_mask * 0.5), 1.0);
+    // fragmentColor = vec4(reflected_dir, 1.0);
+
     // out_color = dist_to_water * color;
     // out_color = (dot(view_dir, view_water_normal) + 1.0)/2.0 * color;
     // fragmentColor = vec4(vec3(abs(view_pos.z), 0.0, 0.0) / water_height, 1.0);

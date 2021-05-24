@@ -50,7 +50,7 @@ struct Water {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
-  void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position, float z_near) {
+  void render(float current_time, glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position, float z_near) {
     GLint prev_program = 0;
     glGetIntegerv(GL_CURRENT_PROGRAM, &prev_program);
 
@@ -62,6 +62,7 @@ struct Water {
     glBindTexture(GL_TEXTURE_2D, screen_fbo.depthBuffer);
 
     glUseProgram(this->shader_program);
+    gpu::setUniformSlow(this->shader_program, "current_time", current_time);
     gpu::setUniformSlow(this->shader_program, "view_matrix", view_matrix);
     gpu::setUniformSlow(this->shader_program, "projection_matrix", projection_matrix);
     gpu::setUniformSlow(this->shader_program, "camera_position", camera_position);
@@ -120,7 +121,7 @@ struct Water {
   } ssr;
 
   float water_size = 512.0;
-  float foam_distance = 10.f;
+  float foam_distance = 30.f;
   int indices_count;
 
   // Height of the water level
