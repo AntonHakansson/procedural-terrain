@@ -65,7 +65,8 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "view_matrix", view_matrix);
     gpu::setUniformSlow(this->shader_program, "projection_matrix", projection_matrix);
     gpu::setUniformSlow(this->shader_program, "camera_position", camera_position);
-    gpu::setUniformSlow(this->shader_program, "water_height", height);
+    gpu::setUniformSlow(this->shader_program, "water.height", height);
+    gpu::setUniformSlow(this->shader_program, "water.foam_distance", foam_distance);
     ssr.upload(this->shader_program, screen_fbo.width, screen_fbo.height, z_near);
 
     gpu::drawFullScreenQuad();
@@ -77,6 +78,7 @@ struct Water {
     if (ImGui::CollapsingHeader("Water")) {
       ssr.gui();
       ImGui::DragFloat("Water Level Height", &height, 0.1);
+      ImGui::DragFloat("Water Foam Distance", &foam_distance, 0.1);
       ImGui::Text("Color Attachment");
       ImGui::Image((void*)(intptr_t)screen_fbo.colorTextureTargets[0], ImVec2(252, 252), ImVec2(0, 1), ImVec2(1,0));
       ImGui::Text("Depth Attachment");
@@ -118,6 +120,7 @@ struct Water {
   } ssr;
 
   float water_size = 512.0;
+  float foam_distance = 10.f;
   int indices_count;
 
   // Height of the water level
