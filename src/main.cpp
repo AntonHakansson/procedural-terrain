@@ -205,17 +205,21 @@ struct App {
     glActiveTexture(GL_TEXTURE0);
 
     // Draw from camera
+    water.begin(window.width, window.height);
+    {
+#if 0
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, window.width, window.height);
     glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#endif
 
-    drawBackground(viewMatrix, projMatrix);
-    drawScene(shader_program, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
-    debugDrawLight(viewMatrix, projMatrix, vec3(light.position));
-
-    // Water
-    water.render(projMatrix, viewMatrix, camera.position);
+      drawBackground(viewMatrix, projMatrix);
+      drawScene(shader_program, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
+      debugDrawLight(viewMatrix, projMatrix, vec3(light.position));
+    }
+    water.end();
+    water.render(projMatrix, viewMatrix, camera.position, projection.near);
   }
 
   bool handleEvents(void) {
@@ -295,6 +299,7 @@ struct App {
       }
 
       terrain.gui(window.handle);
+      water.gui();
     }
     // Render the GUI.
     ImGui::Render();
