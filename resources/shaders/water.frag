@@ -430,7 +430,10 @@ void main() {
 
 
   float foam_mask;
+  float ocean_mask;
   vec3 out_color = color;
+  vec3 ocean_blue = vec3(0, 0.3, 1);
+  vec3 ocean_blue_deep = vec3(0, 0.2, 0.6);
 
   if (intersected) {
     if (dist_to_water < length(view_pos)) {
@@ -440,6 +443,8 @@ void main() {
       foam_mask *= max(sin(f / 1.5 + sin(current_time * 1.0) * 4), 0);
 
       foam_mask += max(1.0 - f / (water.foam_distance / 2.0), 0);
+
+      ocean_mask = min(max((f - 100) / 1200.0, 0), 0.18) / 0.18;
 
       vec3 point_on_water = view_dir * abs(dist_to_water);
 
@@ -518,8 +523,12 @@ void main() {
       }
 
       vec3 fresnel_color = mix(reflection_color, refraction_color, max(-dot(view_dir, view_water_normal), 0.0));
-      out_color = fresnel_color;
-      fragmentColor = vec4(out_color + (foam_mask * 0.4), 1.0);
+
+      out_color = mix(fresnel_color, ocean_blue, 0.5);
+      out_color = out_color + (foam_mask * 1.4);
+
+      out_color = mix(out_color.xyz, ocean_blue_deep, ocean_mask);
+      // fragmentColor = vec4(vec3(ocean_mask), 1.0);
 #endif
 
 #if 0
@@ -541,6 +550,18 @@ void main() {
             return;
 #endif
     }
+  }
+
+
+  if (dist_to_water > 3000 && length(view_pos) > 3000) {
+    float f = clamp((length(view_pos) - 3000) / 1000, 0, 1);
+    float f2 = clamp((dist_to_water - 8000) / 20000, 0, 1);
+
+    vec4 world_dir = inverse(view_matrix) * vec4(view_dir, 0);
+    float horizon_dot = dot(world_dir.xyz / world_dir.w, vec3(0, 1, 0));
+
+    out_color = mix(out_color, mix(ocean_blue_deep, out_color, f2), f);
+    // out_color = vec3(world_dir.y);
   }
 
   fragmentColor = vec4(out_color, 1.0);

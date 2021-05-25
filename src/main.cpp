@@ -40,7 +40,7 @@ struct App {
   } light;
 
   struct Projection {
-    float far = 2000.0f;
+    float far = 5000.0f;
     float near = 5.0f;
   } projection;
 
@@ -186,14 +186,14 @@ struct App {
     SDL_GetWindowSize(window.handle, &window.width, &window.height);
 
     // setup matrices
-    mat4 projMatrix = perspective(radians(45.0f), float(window.width) / float(window.height),
+    mat4 projMatrix = perspective(radians(70.0f), float(window.width) / float(window.height),
                                   projection.near, projection.far);
     mat4 viewMatrix = camera.getViewMatrix();
 
     vec4 lightStartPosition = vec4(40.0f, 40.0f, 0.0f, 1.0f);
     light.position = vec3(rotate(current_time, worldUp) * lightStartPosition);
     mat4 lightViewMatrix = lookAt(light.position, vec3(0.0f), worldUp);
-    mat4 lightProjMatrix = perspective(radians(45.0f), 1.0f, 25.0f, 100.0f);
+    mat4 lightProjMatrix = perspective(radians(70.0f), 1.0f, 25.0f, 100.0f);
 
     // Bind the environment map(s) to unused texture units
     glActiveTexture(GL_TEXTURE6);
