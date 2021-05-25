@@ -13,7 +13,7 @@ struct Water {
     indices_count = gpu::createSubdividedPlane(this->water_size, 0, &this->vao, &this->positions_bo,
                                                &this->indices_bo);
     loadShader(false);
-    dudv_map.load("resources/textures/", "water_dudv.jpg", 3);
+    dudv_map.load("resources/textures/", "water_dudv.png", 3);
   }
 
   void deinit() {
