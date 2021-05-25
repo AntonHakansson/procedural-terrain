@@ -98,10 +98,10 @@ struct Water {
     float z_far;
 
     float z_thickness = 0.01;
-    float stride = 1.05;
-    float jitter = 0.2;
-    float max_steps = 30.0;
-    float max_distance = 200.0;
+    float stride = 1.00;
+    float jitter = 0.0;
+    float max_steps = 500.0;
+    float max_distance = 1000.0;
 
     void upload(GLuint program, int width, int height, float z_near, float z_far) {
       this->depth_buffer_size = glm::ivec2(width, height);
