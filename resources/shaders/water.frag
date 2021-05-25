@@ -16,6 +16,9 @@ uniform float current_time;
 struct Water {
   float height;
   float foam_distance;
+  float wave_speed;
+  float wave_strength;
+  float wave_scale;
 };
 uniform Water water;
 
@@ -448,6 +451,7 @@ void main() {
 
       vec3 point_on_water = view_dir * abs(dist_to_water);
 
+      // `pixel_projection` projects from view space to pixel coordinate
       mat4 pixel_projection;
       {
         float sx = float(ssr.depth_buffer_size.x) / 2.0;
@@ -463,8 +467,23 @@ void main() {
         pixel_projection = warp_to_screen_space * projection_matrix;
       }
 
-      vec3 reflection_dir = normalize(reflect(view_dir, view_water_normal));
-      vec3 refraction_dir = normalize(reflection_dir - 2 * normalize(view_water_normal));
+      // Compute dudv
+#if 1
+      vec3 dudv;
+      {
+          vec4 world_pos_h = inverse(view_matrix) * vec4(point_on_water, 1.0);
+          vec3 world_pos = world_pos_h.xyz / world_pos_h.w;
+          vec3 dudv_x = texture(dudv_map, world_pos.xz / water.wave_scale + vec2(current_time, 0) * water.wave_speed).rgb;
+          vec3 dudv_y = texture(dudv_map, world_pos.xz / water.wave_scale + vec2(0, current_time) * water.wave_speed).rgb;
+          dudv_x = (dudv_x * 2.0 - 1.0);
+          dudv_y = (dudv_y * 2.0 - 1.0);
+          dudv = normalize(dudv_x + dudv) * water.wave_strength;
+      }
+#endif
+
+
+      vec3 reflection_dir = normalize(reflect(view_dir, view_water_normal)) + dudv;
+      vec3 refraction_dir = normalize(reflection_dir - 2 * normalize(view_water_normal)) + dudv;
 
 // reflection based on paper
 // -----------
@@ -529,13 +548,6 @@ void main() {
 
       out_color = mix(out_color.xyz, ocean_blue_deep, ocean_mask);
       // fragmentColor = vec4(vec3(ocean_mask), 1.0);
-#endif
-
-#if 0
-      {
-          fragmentColor = vec4(texture(dudv_map, point_on_water.xy).rgb, 1.0);
-          return;
-      }
 #endif
 
 // debug pixel_projection

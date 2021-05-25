@@ -10,8 +10,6 @@
 
 struct Water {
   void init() {
-    indices_count = gpu::createSubdividedPlane(this->water_size, 0, &this->vao, &this->positions_bo,
-                                               &this->indices_bo);
     loadShader(false);
     dudv_map.load("resources/textures/", "water_dudv.png", 3);
   }
@@ -76,8 +74,12 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "view_matrix", view_matrix);
     gpu::setUniformSlow(this->shader_program, "projection_matrix", projection_matrix);
     gpu::setUniformSlow(this->shader_program, "camera_position", camera_position);
+
     gpu::setUniformSlow(this->shader_program, "water.height", height);
     gpu::setUniformSlow(this->shader_program, "water.foam_distance", foam_distance);
+    gpu::setUniformSlow(this->shader_program, "water.wave_speed", wave_speed);
+    gpu::setUniformSlow(this->shader_program, "water.wave_strength", wave_strength);
+    gpu::setUniformSlow(this->shader_program, "water.wave_scale", wave_scale);
     ssr.upload(this->shader_program, screen_fbo.width, screen_fbo.height, z_near, z_far);
 
     gpu::drawFullScreenQuad();
@@ -87,9 +89,13 @@ struct Water {
 
   void gui() {
     if (ImGui::CollapsingHeader("Water")) {
-      ssr.gui();
       ImGui::DragFloat("Water Level Height", &height, 0.1);
       ImGui::DragFloat("Water Foam Distance", &foam_distance, 0.1);
+      ImGui::DragFloat("Wave speed", &wave_speed, 0.003);
+      ImGui::DragFloat("Wave strength", &wave_strength, 0.003);
+      ImGui::DragFloat("Wave scale", &wave_scale);
+
+      ssr.gui();
       ImGui::Text("Color Attachment");
       ImGui::Image((void*)(intptr_t)screen_fbo.colorTextureTargets[0], ImVec2(252, 252), ImVec2(0, 1), ImVec2(1, 0));
       ImGui::Text("Depth Attachment");
@@ -136,12 +142,14 @@ struct Water {
     }
   } ssr;
 
-  float water_size = 512.0;
-  float foam_distance = 30.f;
   int indices_count;
 
   // Height of the water level
   float height = -100;
+  float foam_distance = 30.f;
+  float wave_speed = 0.07;
+  float wave_strength = 0.2;
+  float wave_scale = 500;
   gpu::Texture dudv_map;
 
   GLuint shader_program;
