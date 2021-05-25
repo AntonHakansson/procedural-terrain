@@ -26,8 +26,8 @@ struct Water {
 
   void loadShader(bool is_reload) {
     std::array<ShaderInput, 2> program_shaders({
-        {"resources/shaders/water.vert", GL_VERTEX_SHADER},
-        {"resources/shaders/water.frag", GL_FRAGMENT_SHADER},
+        ShaderInput{"resources/shaders/water.vert", GL_VERTEX_SHADER},
+        ShaderInput{"resources/shaders/water.frag", GL_FRAGMENT_SHADER},
     });
     auto program = loadShaderProgram(program_shaders, is_reload);
     if (program != 0) {
