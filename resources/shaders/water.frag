@@ -401,6 +401,15 @@ bool trace(vec3 ray_origin, vec3 ray_dir, ScreenSpaceReflection ssr, mat4 pixel_
   return (ray_z_max >= scene_z_max - ssr.z_thickness) && (ray_z_min < scene_z_max);
 }
 
+vec3 getDuDv(vec2 tex_coord) {
+    vec3 dudv_x = texture(dudv_map, (tex_coord / water.wave_scale) + vec2(current_time * water.wave_speed, 0)).rgb;
+    vec3 dudv_y = texture(dudv_map, (tex_coord / water.wave_scale) + vec2(0, current_time * water.wave_speed)).rgb;
+    dudv_x = (dudv_x * 2.0 - 1.0);
+    dudv_y = (dudv_y * 2.0 - 1.0);
+    vec3 dudv = normalize(dudv_x + dudv_y) * water.wave_strength;
+    return dudv;
+}
+
 void main() {
   // REVIEW: Does `texture` filter the result? maybe opt for `texelFetch` to get unfiltered value
   vec3 color = texture(pixel_buffer, In.tex_coord, 0).xyz;
@@ -419,6 +428,7 @@ void main() {
   vec3 view_dir = normalize(view_pos);
 
   // Intersection with water plane
+
   vec3 view_water_normal = normalize((view_matrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
   vec4 view_water_point_h = view_matrix * vec4(0.0, water.height, 0.0, 1.0);
   vec3 view_water_point = view_water_point_h.xyz / view_water_point_h.w;
@@ -467,24 +477,15 @@ void main() {
         pixel_projection = warp_to_screen_space * projection_matrix;
       }
 
-      // Compute dudv
-#if 1
-      vec3 dudv;
-      {
-          vec4 world_pos_h = inverse(view_matrix) * vec4(point_on_water, 1.0);
-          vec3 world_pos = world_pos_h.xyz / world_pos_h.w;
-          vec3 dudv_x = texture(dudv_map, world_pos.xz / water.wave_scale + vec2(current_time, 0) * water.wave_speed).rgb;
-          vec3 dudv_y = texture(dudv_map, world_pos.xz / water.wave_scale + vec2(0, current_time) * water.wave_speed).rgb;
-          dudv_x = (dudv_x * 2.0 - 1.0);
-          dudv_y = (dudv_y * 2.0 - 1.0);
-          dudv = normalize(dudv_x + dudv) * water.wave_strength;
-      }
-#endif
+      vec4 world_pos_h = inverse(view_matrix) * vec4(point_on_water, 1.0);
+      vec3 world_pos = world_pos_h.xyz / world_pos_h.w;
 
+      vec3 dudv = getDuDv(world_pos.xz);
+      vec3 reflection_dir = normalize(reflect(view_dir, view_water_normal));
+      vec3 refraction_dir = normalize(reflection_dir - 2 * normalize(view_water_normal));
 
-      vec3 reflection_dir = normalize(reflect(view_dir, view_water_normal)) + dudv;
-      vec3 refraction_dir = normalize(reflection_dir - 2 * normalize(view_water_normal)) + dudv;
-
+      reflection_dir = normalize(reflection_dir + dudv);
+      refraction_dir = normalize(refraction_dir + dudv);
 // reflection based on paper
 // -----------
 #if 0
