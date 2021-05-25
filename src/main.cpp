@@ -18,6 +18,7 @@ using namespace glm;
 #include "model.h"
 #include "terrain.h"
 #include "shadowmap.h"
+#include "debug.h"
 
 constexpr vec3 worldUp(0.0f, 1.0f, 0.0f);
 
@@ -68,6 +69,11 @@ struct App {
 
   mat4 fighter_model_matrix = mat4(1.0f);
 
+  mat4 static_camera_proj;
+  mat4 static_camera_view;
+  vec3 static_camera_pos;
+  bool static_set = false;
+
   struct DrawScene {};
 
 
@@ -88,7 +94,9 @@ struct App {
                                     "resources/shaders/debug.frag", is_reload);
     if (shader != 0) debug_program = shader;
 
-    this->terrain.loadShader(true);
+    this->terrain.loadShader(is_reload);
+
+    DebugDrawer::instance()->loadShaders(is_reload);
   }
 
   void init() {
@@ -120,7 +128,7 @@ struct App {
           "resources/envmaps/" + environment_map.base_name + "_irradiance.hdr");
     }
 
-    shadow_map.init();
+    shadow_map.init(projection.near, projection.far);
     terrain.init();
   }
 
@@ -150,7 +158,39 @@ struct App {
     gpu::drawFullScreenQuad();
   }
 
-  void drawScene(GLuint currentShaderProgram, const mat4& viewMatrix, const mat4& projectionMatrix,
+  void shadowPass(GLuint currentShaderProgram, const mat4& view_matrix, const mat4& proj_matrix,
+                  const mat4& light_view_matrix) {
+    shadow_map.calcOrthoProjs(view_matrix, light_view_matrix, window.width, window.height,
+                              45.0f);
+
+    glUseProgram(currentShaderProgram);
+
+    for (uint i = 0 ; i < NUM_CASCADES ; i++) {
+      // Bind and clear the current cascade
+      shadow_map.bindWrite(i);
+      glClear(GL_DEPTH_BUFFER_BIT);
+      glViewport(0, 0, shadow_map.resolution, shadow_map.resolution);
+
+      OrthoProjInfo info = shadow_map.m_shadowOrthoProjInfo[i];
+      // mat4 light_proj_matrix = perspective(radians(45.0f), 1.0f, 5.0f, 1000.0f);
+      // mat4 light_proj_matrix = perspective(radians(45.0f), 1.0f, projection.near, projection.far);
+      mat4 light_proj_matrix = ortho(info.l, info.r, info.b, info.t, info.n, info.f);
+
+      // Terrain
+      terrain.render(light_proj_matrix, light_view_matrix, vec3(0), mat4());
+
+      // Fighter
+      gpu::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix",
+                          light_proj_matrix * light_view_matrix * fighter_model_matrix);
+      gpu::setUniformSlow(currentShaderProgram, "modelViewMatrix", light_view_matrix * fighter_model_matrix);
+      gpu::setUniformSlow(currentShaderProgram, "normalMatrix",
+                          inverse(transpose(light_view_matrix * fighter_model_matrix)));
+
+      gpu::render(models.fighter);
+    }
+  }
+
+  void renderPass(GLuint currentShaderProgram, const mat4& viewMatrix, const mat4& projectionMatrix,
                  const mat4& lightViewMatrix, const mat4& lightProjectionMatrix) {
     glUseProgram(currentShaderProgram);
 
@@ -161,8 +201,10 @@ struct App {
     gpu::setUniformSlow(currentShaderProgram, "viewInverse", inverse(viewMatrix));
 
     // Bind shadow map FB
-    shadow_map.bindDepthBuffer(GL_TEXTURE10);
-    shadow_map.bindColorBuffer(GL_TEXTURE11);
+    shadow_map.bindRead(GL_TEXTURE10, GL_TEXTURE11, GL_TEXTURE12);
+    shadow_map.setUniforms(terrain.shader_program, projectionMatrix, lightViewMatrix);
+
+
 
     // Terrain
     mat4 lightMatrix = translate(vec3(0.5f)) * scale(vec3(0.5f)) * lightProjectionMatrix * lightViewMatrix * inverse(viewMatrix);
@@ -178,19 +220,50 @@ struct App {
     gpu::render(models.fighter);
   }
 
+  bool rayPlaneIntersection(vec3 ray_origin, vec3 ray_dir, vec3 point_on_plane, vec3 plane_normal, float &hit_depth) {
+      float denom = dot(plane_normal, ray_dir);
+
+      if (denom < -1e-6) {
+          float t = dot(point_on_plane - ray_origin, plane_normal) / denom;
+
+          hit_depth = t;
+
+          return true;
+      }
+
+      return false;
+  } 
+
   void display(void) {
     SDL_GetWindowSize(window.handle, &window.width, &window.height);
 
     // setup matrices
     mat4 projMatrix = perspective(radians(45.0f), float(window.width) / float(window.height),
                                   projection.near, projection.far);
+
     mat4 viewMatrix = camera.getViewMatrix();
 
-    vec3 light_pos = camera.position - terrain.sun.direction * 1000.f;
+    if (!static_set) {
+      static_camera_proj = projMatrix;
+      static_camera_view = viewMatrix;
+      static_camera_pos = camera.position;
+      static_set = true;
+    }
 
-    mat4 lightViewMatrix = lookAt(light_pos, camera.position, worldUp);
-    // mat4 lightProjMatrix = perspective(radians(45.0f), 1.0f, 5.0f, 1000.0f);
-    mat4 lightProjMatrix = ortho(-1000.f, 1000.f, -1000.f, 1000.f, -terrain.terrain_size / 2.f, terrain.terrain_size / 2.f);
+    float dist;
+    bool intersect = rayPlaneIntersection(camera.position, camera.direction, vec3(0), vec3(0, 1, 0), dist);
+    float max_dist = sqrt(camera.position.y * camera.position.y + terrain.terrain_size * terrain.terrain_size);
+    dist = intersect ? max(0.f, min(dist, max_dist)) : max_dist;
+
+    vec3 light_origin = camera.position + camera.direction * dist;
+    vec3 light_pos = light_origin - terrain.sun.direction * 1000.f;
+    mat4 lightViewMatrix = lookAt(vec3(0), -terrain.sun.direction, worldUp);
+    mat4 lightProjMatrix = perspective(radians(45.0f), 1.0f, 5.0f, 1000.0f);
+    // mat4 lightProjMatrix = ortho(-2000.f, 2000.f, -1000.f, 1000.f, -terrain.terrain_size / 2.f, terrain.terrain_size / 2.f);
+
+
+    shadowPass(shader_program, viewMatrix, projMatrix, lightViewMatrix);
+
 
 
     // Bind the environment map(s) to unused texture units
@@ -202,9 +275,8 @@ struct App {
     glBindTexture(GL_TEXTURE_2D, environment_map.reflectionMap);
     glActiveTexture(GL_TEXTURE0);
 
-    shadow_map.begin();
-    drawScene(shader_program, lightViewMatrix, lightProjMatrix, lightViewMatrix, lightProjMatrix);
-    shadow_map.end();
+
+
 
     // Draw from camera
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -213,11 +285,17 @@ struct App {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     drawBackground(viewMatrix, projMatrix);
-    drawScene(shader_program, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
-    debugDrawLight(viewMatrix, projMatrix, light_pos);
 
-    glUseProgram(debug_program);
-    gpu::drawFullScreenQuad();
+    renderPass(shader_program, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
+    debugDrawLight(viewMatrix, projMatrix, light_pos);
+    // DebugDrawer::instance()->drawOrthographicFrustum(static_camera_view, static_camera_proj);
+
+
+    // DebugDrawer::instance()->setCamera(viewMatrix, projMatrix);
+    // shadow_map.debugProjs(static_camera_view, static_camera_proj, lightViewMatrix);
+
+    // glUseProgram(debug_program);
+    // gpu::drawFullScreenQuad();
   }
 
   bool handleEvents(void) {
@@ -266,6 +344,17 @@ struct App {
     const uint8_t* state = SDL_GetKeyboardState(nullptr);
     camera.key_event(state, delta_time);
 
+
+    if (state[SDL_SCANCODE_C]) {
+      static_camera_proj = perspective(radians(45.0f), float(window.width) / float(window.height),
+                                    projection.near, projection.far);
+
+      // static_camera_proj = ortho(-200.f, 200.f, -100.f, 100.f, -terrain.terrain_size / 2.f, terrain.terrain_size / 2.f);
+
+      static_camera_view = camera.getViewMatrix();
+      static_camera_pos = camera.position;
+    }
+
     return quitEvent;
   }
 
@@ -297,6 +386,8 @@ struct App {
       // }
 
       terrain.gui(window.handle);
+
+      shadow_map.gui(window.handle);
     }
     // Render the GUI.
     ImGui::Render();

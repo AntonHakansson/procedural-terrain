@@ -10,6 +10,7 @@ uniform mat4 modelViewMatrix;
 uniform mat4 modelViewProjectionMatrix;
 uniform vec3 eyeWorldPos;
 
+// Out data
 out DATA {
 	vec3 world_pos;
 	vec2 tex_coord;

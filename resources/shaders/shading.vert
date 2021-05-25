@@ -21,6 +21,8 @@ out vec3 viewSpaceNormal;
 out vec3 viewSpacePosition;
 
 
+out float ClipSpacePosZ;
+
 void main()
 {
 	gl_Position = modelViewProjectionMatrix * vec4(position, 1.0);
@@ -28,4 +30,5 @@ void main()
 	viewSpaceNormal = (normalMatrix * vec4(normalIn, 0.0)).xyz;
 	viewSpacePosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
 
+	ClipSpacePosZ = -gl_Position.z;
 }

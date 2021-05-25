@@ -13,7 +13,7 @@ in DATA {
 
 layout(binding = 0) uniform sampler2D grass;
 layout(binding = 1) uniform sampler2D rock;
-layout(binding = 10) uniform sampler2DShadow shadowMapTex;
+// layout(binding = 10) uniform sampler2DShadow shadowMapTex;
 
 uniform mat4 normalMatrix;
 uniform mat4 viewMatrix;
@@ -24,6 +24,8 @@ uniform mat4 viewProjectionMatrix;
 uniform vec3 eyeWorldPos;
 uniform vec3 viewSpaceLightPosition;
 
+
+// Cascading shadow map
 struct Sun {
 	vec3 direction;
 	vec3 color;
@@ -31,8 +33,22 @@ struct Sun {
 };
 uniform Sun sun;
 
+const int NUM_CASCADES = 3;
+
+in vec4 LightSpacePos[NUM_CASCADES];
+in float ClipSpacePosZ;
+
+uniform sampler2D gShadowMap[NUM_CASCADES];
+uniform float gCascadeEndClipSpace[NUM_CASCADES];
+
+
 // Output color
 layout(location = 0) out vec4 fragmentColor;
+
+
+
+
+
 
 // Triplanar mapping of texture as naively projecting the texture on to the xz
 // plane will result in texture-stretching at steep angles
@@ -69,7 +85,7 @@ vec3 ambient() {
 
 vec3 diffuse(vec3 world_pos, vec3 normal) {
 	// Shadow map
-	float visibility = textureProj(shadowMapTex, In.shadow_coord);
+	float visibility = 1; //textureProj(shadowMapTex, In.shadow_coord);
 
 	float diffuse_factor = max(0.0, dot(-sun.direction, normal));
 	vec3 diffuse = visibility * diffuse_factor * sun.color * sun.intensity;
@@ -77,15 +93,54 @@ vec3 diffuse(vec3 world_pos, vec3 normal) {
 	return diffuse;
 }
 
+
+float CalcShadowFactor(int CascadeIndex, vec4 LightSpacePos)
+{
+    vec3 ProjCoords = LightSpacePos.xyz / LightSpacePos.w;
+
+    vec2 UVCoords;
+    UVCoords.x = 0.5 * ProjCoords.x + 0.5;
+    UVCoords.y = 0.5 * ProjCoords.y + 0.5;
+
+    float z = 0.5 * ProjCoords.z + 0.5;
+    float Depth = texture(gShadowMap[CascadeIndex], UVCoords).x;
+
+    if (Depth < z - 0.000001)
+        return 0.5;
+    else
+        return 1.0;
+}
+
+
 void main() {
+	float shadow_factor = 0.0;
+	vec4 CascadeIndicator = vec4(0.0, 0.0, 1, 0.0);
+
+	for (int i = 0; i < NUM_CASCADES; i++) {
+		if (-ClipSpacePosZ >= gCascadeEndClipSpace[i]) {
+			shadow_factor = CalcShadowFactor(i, LightSpacePos[i]);
+
+			if (i == 0) 
+					CascadeIndicator = vec4(1, 0.0, 0.0, 0.0);
+			else if (i == 1)
+					CascadeIndicator = vec4(0.0, 1, 0.0, 0.0);
+			else if (i == 2)
+					CascadeIndicator = vec4(0.0, 0.0, 1, 0.0);
+
+			break;
+		}
+	}
+
+
+
 	vec3 terrain_color = terrainColor(In.world_pos, In.normal);
 	vec3 ambient = ambient();
 	vec3 diffuse = diffuse(In.world_pos, In.normal);
-	fragmentColor = vec4(terrain_color * (ambient + diffuse), 1.0);
+
+	fragmentColor = vec4(terrain_color * shadow_factor * (ambient + diffuse), 1.0);
 
 	// float visibility = textureProj(shadowMapTex, In.shadow_coord);
 	// fragmentColor = vec4(normalize(vec3(visibility)), 1);
-
 
 	// fog
 	if (false) {
