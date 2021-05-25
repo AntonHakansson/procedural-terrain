@@ -3,19 +3,10 @@
 ShadowMap::ShadowMap(void) {}
 
 void ShadowMap::init(float z_near, float z_far) {
-  this->fbo_old.resize(this->resolution, this->resolution);
-
-  m_cascadeEnd[0] = z_near;
-  m_cascadeEnd[1] = 400.0f,
-  m_cascadeEnd[2] = 1000.0f;
-  m_cascadeEnd[3] = z_far;
-
-  glBindTexture(GL_TEXTURE_2D, this->fbo_old.depthBuffer);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  cascadeSplits[0] = z_near;
+  cascadeSplits[1] = 400.0f,
+  cascadeSplits[2] = 1000.0f;
+  cascadeSplits[3] = z_far;
 
   // Create the depth buffer
   glGenTextures(NUM_CASCADES, shadow_maps);
@@ -29,9 +20,7 @@ void ShadowMap::init(float z_near, float z_far) {
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
       glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, resolution, resolution, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-      // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, resolution, resolution, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
   }
-
 
   // Layered texture
   /*
@@ -40,46 +29,20 @@ void ShadowMap::init(float z_near, float z_far) {
   glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_DEPTH_COMPONENT32F, resolution, resolution, NUM_CASCADES);
   */
 
-
-
-
-
-  // glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-  // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadow_maps[0], 0);
-
   // Create the FBO
   glGenFramebuffers(1, &fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-  // glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_tex, 0);
 
   for (uint i = 0 ; i < NUM_CASCADES; i++) {
-    // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, shadow_maps[i], 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadow_maps[i], 0);
   }
 
   glDrawBuffer(GL_NONE);
 
-  // std::array<GLenum, 8> attachments(
-  //     {GL_COLOR_ATTACHMENT0});
-  // glDrawBuffers(NUM_CASCADES, &attachments[0]);
-
-  // Disable writes to the color buffer
-  // glDrawBuffer(GL_NONE);
-  // glReadBuffer(GL_NONE);
-
   bool isComplete = checkFramebufferComplete();
 
   // restore default FBO
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-  // for (unsigned int i = 0; i < NUM_CASCADES; ++i)
-  // {
-  //     GLfloat p = (i + 1) / static_cast<GLfloat>(NUM_CASCADES);
-  //     GLfloat log = minZ * std::pow(ratio, p);
-  //     GLfloat uniform = minZ + range * p;
-  //     GLfloat d = lambda * (log - uniform) + uniform;
-  //     cascadeSplits[i] = (d - nearClip) / clipRange;
-  // }
 }
 
 bool ShadowMap::checkFramebufferComplete() const {
@@ -118,12 +81,12 @@ void ShadowMap::setUniforms(GLuint shader_program, mat4 proj_matrix, mat4 light_
 
   glUseProgram(shader_program);
   for (uint i = 0 ; i < NUM_CASCADES ; i++) {
-    vec4 vView(0.0f, 0.0f, m_cascadeEnd[i + 1], 1.0f);
+    vec4 vView(0.0f, 0.0f, cascadeSplits[i + 1], 1.0f);
     vec4 vClip = proj_matrix * vView;
 
     gpu::setUniformSlow(shader_program, ("gCascadeEndClipSpace[" + std::to_string(i) + "]").c_str(), vClip.z);
 
-    OrthoProjInfo info = m_shadowOrthoProjInfo[i];
+    OrthoProjInfo info = shadow_ortho_info[i];
     mat4 light_proj_matrix = ortho(info.l, info.r, info.b, info.t, info.n, info.f);
 
     gpu::setUniformSlow(shader_program, ("gLightWVP[" + std::to_string(i) + "]").c_str(), light_proj_matrix * light_view_matrix);
@@ -152,9 +115,9 @@ void ShadowMap::debugProjs(mat4 view_matrix, mat4 proj_matrix, mat4 light_view_m
   float ar = proj_matrix[1][1] / proj_matrix[0][0];
 
   for (uint i = 0; i < NUM_CASCADES; i++) {
-    mat4 proj = perspective(fovy, ar, m_cascadeEnd[i], m_cascadeEnd[i + 1]);
+    mat4 proj = perspective(fovy, ar, cascadeSplits[i], cascadeSplits[i + 1]);
 
-    OrthoProjInfo info = m_shadowOrthoProjInfo[i];
+    OrthoProjInfo info = shadow_ortho_info[i];
 
     mat4 light_proj_matrix = ortho(info.l, info.r, info.b, info.t, info.n, info.f);
 
@@ -163,7 +126,7 @@ void ShadowMap::debugProjs(mat4 view_matrix, mat4 proj_matrix, mat4 light_view_m
   }
 }
 
-void ShadowMap::calcOrthoProjs(mat4 view_matrix, mat4 light_view_matrix, int width, int height, float fovy) {
+void ShadowMap::calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_matrix, int width, int height, float fovy) {
   mat4 view_inverse = inverse(view_matrix);
 
   float ar = width / (float)height;
@@ -172,23 +135,23 @@ void ShadowMap::calcOrthoProjs(mat4 view_matrix, mat4 light_view_matrix, int wid
   float tanHalfVFov = glm::tan(glm::radians(fovy / 2.0));
 
   for (uint i = 0; i < NUM_CASCADES; i++) {
-    float xn = m_cascadeEnd[i] * tanHalfHFov;
-    float xf = m_cascadeEnd[i + 1] * tanHalfHFov;
-    float yn = m_cascadeEnd[i] * tanHalfVFov;
-    float yf = m_cascadeEnd[i + 1] * tanHalfVFov;
+    float xn = cascadeSplits[i] * tanHalfHFov;
+    float xf = cascadeSplits[i + 1] * tanHalfHFov;
+    float yn = cascadeSplits[i] * tanHalfVFov;
+    float yf = cascadeSplits[i + 1] * tanHalfVFov;
 
     vec4 frustum_corners[NUM_FRUSTUM_CORNERS] = {
         // near face
-        view_inverse * vec4(xn, yn, -m_cascadeEnd[i], 1.0), 
-        view_inverse * vec4(-xn, yn, -m_cascadeEnd[i], 1.0),
-        view_inverse * vec4(xn, -yn, -m_cascadeEnd[i], 1.0), 
-        view_inverse * vec4(-xn, -yn, -m_cascadeEnd[i], 1.0),
+        view_inverse * vec4(xn, yn, -cascadeSplits[i], 1.0), 
+        view_inverse * vec4(-xn, yn, -cascadeSplits[i], 1.0),
+        view_inverse * vec4(xn, -yn, -cascadeSplits[i], 1.0), 
+        view_inverse * vec4(-xn, -yn, -cascadeSplits[i], 1.0),
 
         // far face
-        view_inverse * vec4(xf, yf, -m_cascadeEnd[i + 1], 1.0), 
-        view_inverse * vec4(-xf, yf, -m_cascadeEnd[i + 1], 1.0),
-        view_inverse * vec4(xf, -yf, -m_cascadeEnd[i + 1], 1.0), 
-        view_inverse * vec4(-xf, -yf, -m_cascadeEnd[i + 1], 1.0)};
+        view_inverse * vec4(xf, yf, -cascadeSplits[i + 1], 1.0), 
+        view_inverse * vec4(-xf, yf, -cascadeSplits[i + 1], 1.0),
+        view_inverse * vec4(xf, -yf, -cascadeSplits[i + 1], 1.0), 
+        view_inverse * vec4(-xf, -yf, -cascadeSplits[i + 1], 1.0)};
 
     vec4 frustum_corners_l[NUM_FRUSTUM_CORNERS];
 
@@ -211,12 +174,12 @@ void ShadowMap::calcOrthoProjs(mat4 view_matrix, mat4 light_view_matrix, int wid
       maxZ = max(maxZ, frustum_corners_l[j].z);
     }
 
-    m_shadowOrthoProjInfo[i].r = maxX;
-    m_shadowOrthoProjInfo[i].l = minX;
-    m_shadowOrthoProjInfo[i].b = minY;
-    m_shadowOrthoProjInfo[i].t = maxY;
-    m_shadowOrthoProjInfo[i].f = -maxZ;
-    m_shadowOrthoProjInfo[i].n = -minZ;
+    shadow_ortho_info[i].r = maxX;
+    shadow_ortho_info[i].l = minX;
+    shadow_ortho_info[i].b = minY;
+    shadow_ortho_info[i].t = maxY;
+    shadow_ortho_info[i].f = -maxZ;
+    shadow_ortho_info[i].n = -minZ;
   }
 }
 
@@ -237,4 +200,10 @@ void ShadowMap::gui(SDL_Window* window) {
 
     ImGui::NewLine();
   }
+}
+
+
+mat4 ShadowMap::getLightProjMatrix(uint cascade_index) {
+  OrthoProjInfo info = shadow_ortho_info[cascade_index];
+  return ortho(info.l, info.r, info.b, info.t, info.n, info.f);
 }

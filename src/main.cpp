@@ -160,7 +160,7 @@ struct App {
 
   void shadowPass(GLuint currentShaderProgram, const mat4& view_matrix, const mat4& proj_matrix,
                   const mat4& light_view_matrix) {
-    shadow_map.calcOrthoProjs(view_matrix, light_view_matrix, window.width, window.height,
+    shadow_map.calculateLightProjMatrices(view_matrix, light_view_matrix, window.width, window.height,
                               45.0f);
 
     glUseProgram(currentShaderProgram);
@@ -171,10 +171,7 @@ struct App {
       glClear(GL_DEPTH_BUFFER_BIT);
       glViewport(0, 0, shadow_map.resolution, shadow_map.resolution);
 
-      OrthoProjInfo info = shadow_map.m_shadowOrthoProjInfo[i];
-      // mat4 light_proj_matrix = perspective(radians(45.0f), 1.0f, 5.0f, 1000.0f);
-      // mat4 light_proj_matrix = perspective(radians(45.0f), 1.0f, projection.near, projection.far);
-      mat4 light_proj_matrix = ortho(info.l, info.r, info.b, info.t, info.n, info.f);
+      mat4 light_proj_matrix = shadow_map.getLightProjMatrix(i);
 
       // Terrain
       terrain.render(light_proj_matrix, light_view_matrix, vec3(0), mat4());
@@ -191,7 +188,7 @@ struct App {
   }
 
   void renderPass(GLuint currentShaderProgram, const mat4& viewMatrix, const mat4& projectionMatrix,
-                 const mat4& lightViewMatrix, const mat4& lightProjectionMatrix) {
+                 const mat4& lightViewMatrix) {
     glUseProgram(currentShaderProgram);
 
     // Environment
@@ -200,14 +197,12 @@ struct App {
     // camera
     gpu::setUniformSlow(currentShaderProgram, "viewInverse", inverse(viewMatrix));
 
-    // Bind shadow map FB
+    // Bind shadow map textures
     shadow_map.bindRead(GL_TEXTURE10, GL_TEXTURE11, GL_TEXTURE12);
     shadow_map.setUniforms(terrain.shader_program, projectionMatrix, lightViewMatrix);
 
-
-
     // Terrain
-    mat4 lightMatrix = translate(vec3(0.5f)) * scale(vec3(0.5f)) * lightProjectionMatrix * lightViewMatrix * inverse(viewMatrix);
+    mat4 lightMatrix = mat4(1);
     terrain.render(projectionMatrix, viewMatrix, camera.position, lightMatrix);
 
     // Fighter
@@ -250,21 +245,9 @@ struct App {
       static_set = true;
     }
 
-    float dist;
-    bool intersect = rayPlaneIntersection(camera.position, camera.direction, vec3(0), vec3(0, 1, 0), dist);
-    float max_dist = sqrt(camera.position.y * camera.position.y + terrain.terrain_size * terrain.terrain_size);
-    dist = intersect ? max(0.f, min(dist, max_dist)) : max_dist;
-
-    vec3 light_origin = camera.position + camera.direction * dist;
-    vec3 light_pos = light_origin - terrain.sun.direction * 1000.f;
+    // Draw from cascaded light sources
     mat4 lightViewMatrix = lookAt(vec3(0), -terrain.sun.direction, worldUp);
-    mat4 lightProjMatrix = perspective(radians(45.0f), 1.0f, 5.0f, 1000.0f);
-    // mat4 lightProjMatrix = ortho(-2000.f, 2000.f, -1000.f, 1000.f, -terrain.terrain_size / 2.f, terrain.terrain_size / 2.f);
-
-
     shadowPass(shader_program, viewMatrix, projMatrix, lightViewMatrix);
-
-
 
     // Bind the environment map(s) to unused texture units
     glActiveTexture(GL_TEXTURE6);
@@ -275,9 +258,6 @@ struct App {
     glBindTexture(GL_TEXTURE_2D, environment_map.reflectionMap);
     glActiveTexture(GL_TEXTURE0);
 
-
-
-
     // Draw from camera
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, window.width, window.height);
@@ -286,16 +266,7 @@ struct App {
 
     drawBackground(viewMatrix, projMatrix);
 
-    renderPass(shader_program, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
-    debugDrawLight(viewMatrix, projMatrix, light_pos);
-    // DebugDrawer::instance()->drawOrthographicFrustum(static_camera_view, static_camera_proj);
-
-
-    // DebugDrawer::instance()->setCamera(viewMatrix, projMatrix);
-    // shadow_map.debugProjs(static_camera_view, static_camera_proj, lightViewMatrix);
-
-    // glUseProgram(debug_program);
-    // gpu::drawFullScreenQuad();
+    renderPass(shader_program, viewMatrix, projMatrix, lightViewMatrix);
   }
 
   bool handleEvents(void) {
@@ -348,8 +319,6 @@ struct App {
     if (state[SDL_SCANCODE_C]) {
       static_camera_proj = perspective(radians(45.0f), float(window.width) / float(window.height),
                                     projection.near, projection.far);
-
-      // static_camera_proj = ortho(-200.f, 200.f, -100.f, 100.f, -terrain.terrain_size / 2.f, terrain.terrain_size / 2.f);
 
       static_camera_view = camera.getViewMatrix();
       static_camera_pos = camera.position;

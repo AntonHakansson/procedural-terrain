@@ -41,41 +41,34 @@ struct OrthoProjInfo
 class ShadowMap {
 public:
   int resolution = 2024;
-  int clamp_mode = ShadowClampMode::Border;
-  bool clamp_border_shadowed = false;
   bool use_polygon_offset = true;
-  bool use_soft_falloff = false;
-  bool use_hardware_pcfg = false;
   float polygon_offset_factor = 1.125f;
   float polygon_offset_units = 2.0f;
-  FboInfo fbo_old;
-
 
   GLuint fbo;
-  GLuint shadow_tex;
   GLuint shadow_maps[NUM_CASCADES];
-  OrthoProjInfo m_shadowOrthoProjInfo[NUM_CASCADES];
-  float m_cascadeEnd[NUM_CASCADES + 1];
+  OrthoProjInfo shadow_ortho_info[NUM_CASCADES];
+  float cascadeSplits[NUM_CASCADES + 1];
 
   ShadowMap(void);
 
-  // init shadow map
+  // Init shadow map
   void init(float z_near, float z_far);
   
   bool checkFramebufferComplete() const;
 
-// bind shadow map
+  // Bind shadow map
   void bindWrite(uint cascade_index);
   void bindRead(GLuint tex0, GLuint tex1, GLuint tex2);
 
+  // Set necessary uniforms
   void setUniforms(GLuint shader_program, mat4 proj_matrix, mat4 light_view_matrix);
 
-  // calc ortho projections
-  void calcOrthoProjs(mat4 view_matrix, mat4 light_view_matrix, int width, int height, float fovy);
+  // Calculate ortho projections
+  void calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_matrix, int width, int height, float fovy);
+  mat4 getLightProjMatrix(uint cascade_index);
 
-  void gui(SDL_Window* window);
-
+  // Debug
   void debugProjs(mat4 view_matrix, mat4 proj_matrix, mat4 light_view_matrix);
-
-  void setLightWVP();
+  void gui(SDL_Window* window);
 };
