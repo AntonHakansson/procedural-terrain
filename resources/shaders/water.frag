@@ -45,6 +45,7 @@ uniform vec3 camera_position;
 
 layout(binding = 0) uniform sampler2D pixel_buffer;
 layout(binding = 1) uniform sampler2D depth_buffer;
+layout(binding = 2) uniform sampler2D dudv_map;
 
 layout(location = 0) out vec4 fragmentColor;
 
@@ -102,6 +103,7 @@ float linearizeDepth(float depth) {
 #define Vector3 vec3
 #define Point3 vec3
 #define Vector4 vec4
+
 /**
     \param csOrigin Camera-space ray origin, which must be
     within the view volume and must have z < -0.01 and project within the valid screen rectangle
@@ -139,11 +141,7 @@ float linearizeDepth(float depth) {
     \param hitPixel Pixel coordinates of the first intersection with the scene
 
     \param csHitPoint Camera space location of the ray hit
-
-    Single-layer
-
  */
-
 bool traceScreenSpaceRay1(Point3 csOrigin, Vector3 csDirection, mat4x4 projectToPixelMatrix,
                           sampler2D csZBuffer, float2 csZBufferSize, float csZThickness,
                           const in bool csZBufferIsHyperbolic, float3 clipInfo, float nearPlaneZ,
@@ -430,8 +428,6 @@ void main() {
   vec4 world = inverse(view_matrix) * vec4(view_dir * dist_to_water, 1.0);
   vec4 view_normal_offset = view_matrix * vec4(sin(world.x / 10) * 0.05, 0, 0, 0.0);
 
-  // vec3 reflection_dir = normalize(reflect(view_dir, view_water_normal + view_normal_offset.xyz));
-  vec3 reflection_dir = normalize(reflect(view_dir, view_water_normal));
 
   float foam_mask;
   vec3 out_color = color;
@@ -444,8 +440,6 @@ void main() {
       foam_mask *= max(sin(f / 1.5 + sin(current_time * 1.0) * 4), 0);
 
       foam_mask += max(1.0 - f / (water.foam_distance / 2.0), 0);
-
-      out_color = normalize((inverse(view_matrix) * vec4(reflection_dir, 0.0)).xyz);
 
       vec3 point_on_water = view_dir * abs(dist_to_water);
 
@@ -464,6 +458,9 @@ void main() {
         pixel_projection = warp_to_screen_space * projection_matrix;
       }
 
+      vec3 reflection_dir = normalize(reflect(view_dir, view_water_normal));
+      vec3 refraction_dir = normalize(reflection_dir - 2 * normalize(view_water_normal));
+
 // reflection based on paper
 // -----------
 #if 0
@@ -478,6 +475,7 @@ void main() {
 // reflection with paper impl
 // -----------
 #if 1
+      vec3 reflection_color = vec3(0);
       {
         vec2 hit_pixel;
         int which;
@@ -488,15 +486,47 @@ void main() {
             ssr.jitter, ssr.max_steps, ssr.max_distance, hit_pixel, which, view_hit_point);
 
         if (reflection_hit) {
-          out_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0).rgb;
-        } else {
-          out_color = vec3(0);
+          reflection_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0).rgb;
+        }
+        else {
+            // TODO: sample environment map?
         }
 
-        out_color = mix(out_color, vec3(0, 0.6, 0.8), 0.6);
-        fragmentColor = vec4(out_color + vec3(foam_mask * 0.5), 1.0);
       }
-      return;
+
+      // vec3 reflection_dir = normalize(reflect(view_dir, view_water_normal));
+      vec3 refraction_color = vec3(0);
+      {
+        vec2 hit_pixel;
+        int which;
+        vec3 view_hit_point;
+        bool reflection_hit = traceScreenSpaceRay1(
+            point_on_water, refraction_dir, pixel_projection, depth_buffer,
+            vec2(ssr.depth_buffer_size), ssr.z_thickness * 100, true, vec3(0), -ssr.z_near, ssr.stride,
+            ssr.jitter, ssr.max_steps, ssr.max_distance, hit_pixel, which, view_hit_point);
+
+        if (reflection_hit) {
+          refraction_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0).rgb;
+        }
+        else {
+            // REVIEW: is there some hack here?
+
+          vec4 pixel_coord_h = pixel_projection * vec4(view_pos, 1.0);
+          vec2 pixel_coord = pixel_coord_h.xy / pixel_coord_h.w;
+          refraction_color = texelFetch(pixel_buffer, ivec2(pixel_coord), 0).rgb;
+        }
+      }
+
+      vec3 fresnel_color = mix(reflection_color, refraction_color, max(-dot(view_dir, view_water_normal), 0.0));
+      out_color = fresnel_color;
+      fragmentColor = vec4(out_color + (foam_mask * 0.4), 1.0);
+#endif
+
+#if 0
+      {
+          fragmentColor = vec4(texture(dudv_map, point_on_water.xy).rgb, 1.0);
+          return;
+      }
 #endif
 
 // debug pixel_projection

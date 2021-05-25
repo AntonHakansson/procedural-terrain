@@ -5,6 +5,7 @@
 
 #include "fbo.h"
 #include "gpu.h"
+#include "model.h"
 #include "shader.h"
 
 struct Water {
@@ -12,9 +13,12 @@ struct Water {
     indices_count = gpu::createSubdividedPlane(this->water_size, 0, &this->vao, &this->positions_bo,
                                                &this->indices_bo);
     loadShader(false);
+    dudv_map.load("resources/textures/", "water_dudv.jpg", 3);
   }
 
   void deinit() {
+    glDeleteTextures(1, &dudv_map.gl_id);
+
     glDeleteBuffers(1, &this->positions_bo);
     glDeleteBuffers(1, &this->indices_bo);
     glDeleteVertexArrays(1, &this->vao);
@@ -63,6 +67,9 @@ struct Water {
     glBindTexture(GL_TEXTURE_2D, screen_fbo.colorTextureTargets[0]);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, screen_fbo.depthBuffer);
+
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, dudv_map.gl_id);
 
     glUseProgram(this->shader_program);
     gpu::setUniformSlow(this->shader_program, "current_time", current_time);
@@ -135,6 +142,7 @@ struct Water {
 
   // Height of the water level
   float height = -100;
+  gpu::Texture dudv_map;
 
   GLuint shader_program;
 
