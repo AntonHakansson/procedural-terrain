@@ -50,7 +50,7 @@ struct Sun {
 };
 
 struct Terrain {
-  float terrain_size = 4096.0;
+  float terrain_size = 4096.0 * 2.0;
   int terrain_subdivision = 24;
   int indices_count;
 

@@ -19,6 +19,7 @@ using namespace glm;
 #include "terrain.h"
 #include "shadowmap.h"
 #include "debug.h"
+#include "water.h"
 
 constexpr vec3 worldUp(0.0f, 1.0f, 0.0f);
 
@@ -35,7 +36,7 @@ struct App {
   } input;
 
   struct Projection {
-    float far = 2000.0f;
+    float far = 5000.0f;
     float near = 5.0f;
   } projection;
 
@@ -55,6 +56,7 @@ struct App {
 
   Terrain terrain;
   ShadowMap shadow_map;
+  Water water;
 
   float current_time = 0.0f;
   float previous_time = 0.0f;
@@ -97,6 +99,9 @@ struct App {
     this->terrain.loadShader(is_reload);
 
     DebugDrawer::instance()->loadShaders(is_reload);
+    
+    this->terrain.loadShader(true);
+    this->water.loadShader(true);
   }
 
   void init() {
@@ -130,9 +135,12 @@ struct App {
 
     shadow_map.init(projection.near, projection.far);
     terrain.init();
+    water.init();
   }
 
   void deinit() {
+    terrain.deinit();
+    water.deinit();
     gpu::freeModel(models.fighter);
     gpu::freeModel(models.landingpad);
     gpu::freeModel(models.sphere);
@@ -246,7 +254,7 @@ struct App {
     SDL_GetWindowSize(window.handle, &window.width, &window.height);
 
     // setup matrices
-    mat4 projMatrix = perspective(radians(45.0f), float(window.width) / float(window.height),
+    mat4 projMatrix = perspective(radians(70.0f), float(window.width) / float(window.height),
                                   projection.near, projection.far);
 
     mat4 viewMatrix = camera.getViewMatrix();
@@ -278,8 +286,9 @@ struct App {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     drawBackground(viewMatrix, projMatrix);
-
     renderPass(shader_program, viewMatrix, projMatrix, lightViewMatrix);
+    
+    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position, projection.near, projection.far);
   }
 
   bool handleEvents(void) {
@@ -368,8 +377,8 @@ struct App {
       // }
 
       terrain.gui(window.handle);
-
       shadow_map.gui(window.handle);
+      water.gui();
     }
     // Render the GUI.
     ImGui::Render();
