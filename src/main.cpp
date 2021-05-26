@@ -205,9 +205,10 @@ struct App {
     glActiveTexture(GL_TEXTURE0);
 
     // Draw from camera
-    water.begin(window.width, window.height);
+    // water.begin(window.width, window.height);
     {
-#if 0
+
+#if 1
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, window.width, window.height);
     glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
@@ -218,8 +219,8 @@ struct App {
       drawScene(shader_program, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
       debugDrawLight(viewMatrix, projMatrix, vec3(light.position));
     }
-    water.end();
-    water.render(current_time, projMatrix, viewMatrix, camera.position, projection.near, projection.far);
+
+    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position, projection.near, projection.far);
   }
 
   bool handleEvents(void) {

@@ -38,24 +38,11 @@ struct Water {
     }
   }
 
-  void begin(int width, int height) {
+  void render(int width, int height, float current_time, glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position, float z_near, float z_far) {
     screen_fbo.resize(width, height);
-    glBindFramebuffer(GL_FRAMEBUFFER, screen_fbo.framebufferId);
-    glViewport(0, 0, width, height);
-    glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  }
 
-  void end() {
-    {
-      GLint current_fbo = 0;
-      glGetIntegerv(GL_FRAMEBUFFER_BINDING, &current_fbo);
-      assert(screen_fbo.framebufferId == current_fbo
-             && "Framebuffer target was modified during water pass");
-    }
-
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, screen_fbo.framebufferId);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, screen_fbo.framebufferId);
 
     glBlitFramebuffer(0, 0, screen_fbo.width, screen_fbo.height,
                       0, 0, screen_fbo.width, screen_fbo.height,
@@ -69,13 +56,13 @@ struct Water {
     CHECK_GL_ERROR();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  }
 
-  void render(float current_time, glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position, float z_near, float z_far) {
+
+
     GLint prev_program = 0;
     glGetIntegerv(GL_CURRENT_PROGRAM, &prev_program);
 
-    auto model_matrix = glm::translate(glm::vec3(camera_position.x - (size / 2.0), height, camera_position.z - (size / 2.0))) * glm::scale(vec3(size, 0, size));
+    auto model_matrix = glm::translate(glm::vec3(camera_position.x - (size / 2.0), this->height, camera_position.z - (size / 2.0))) * glm::scale(vec3(size, 0, size));
     glm::mat4 pixel_projection;
     {
       float sx = float(screen_fbo.width) / 2.0;
@@ -106,7 +93,7 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "inv_projection_matrix", glm::inverse(projection_matrix));
     gpu::setUniformSlow(this->shader_program, "pixel_projection", pixel_projection);
 
-    gpu::setUniformSlow(this->shader_program, "water.height", height);
+    gpu::setUniformSlow(this->shader_program, "water.height", this->height);
     gpu::setUniformSlow(this->shader_program, "water.foam_distance", foam_distance);
     gpu::setUniformSlow(this->shader_program, "water.wave_speed", wave_speed);
     gpu::setUniformSlow(this->shader_program, "water.wave_strength", wave_strength);
