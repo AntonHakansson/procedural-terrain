@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 #include <imgui.h>
+#include <ImGuizmo.h>
 
 #include <algorithm>
 #include <chrono>
@@ -70,6 +71,7 @@ struct App {
   GLuint background_program;
   GLuint debug_program;
 
+  bool fighter_draggable = false;
   mat4 fighter_model_matrix = scale(vec3(10));
 
   mat4 static_camera_proj;
@@ -236,28 +238,25 @@ struct App {
     gpu::render(models.fighter);
   }
 
-  bool rayPlaneIntersection(vec3 ray_origin, vec3 ray_dir, vec3 point_on_plane, vec3 plane_normal, float &hit_depth) {
-      float denom = dot(plane_normal, ray_dir);
-
-      if (denom < -1e-6) {
-          float t = dot(point_on_plane - ray_origin, plane_normal) / denom;
-
-          hit_depth = t;
-
-          return true;
-      }
-
-      return false;
-  } 
-
   void display(void) {
     SDL_GetWindowSize(window.handle, &window.width, &window.height);
+
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame(window.handle);
+    ImGui::NewFrame();
+
+    ImGuizmo::BeginFrame();
+    ImGuizmo::SetRect(0, 0, window.width, window.height);
 
     // setup matrices
     mat4 projMatrix = perspective(radians(projection.fovy), float(window.width) / float(window.height),
                                   projection.near, projection.far);
 
     mat4 viewMatrix = camera.getViewMatrix();
+
+    if (fighter_draggable) {
+      ImGuizmo::Manipulate(&viewMatrix[0][0], &projMatrix[0][0], ImGuizmo::TRANSLATE, ImGuizmo::LOCAL, &fighter_model_matrix[0][0], nullptr, nullptr);
+    }
 
     if (!static_set) {
       static_camera_proj = projMatrix;
@@ -348,10 +347,6 @@ struct App {
   }
 
   void gui() {
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplSDL2_NewFrame(window.handle);
-    ImGui::NewFrame();
-
     if (show_ui) {
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                   1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -359,6 +354,8 @@ struct App {
       if (ImGui::Button("Reload Shaders")) {
         loadShaders(true);
       }
+
+      ImGui::Checkbox("Fighter Draggable", &fighter_draggable);
 
       if (ImGui::CollapsingHeader("Camera")) {
         camera.gui();

@@ -82,6 +82,22 @@ if(imgui_ADDED)
   target_include_directories(imgui PUBLIC ${IMGUI_INCLUDE_DIR})
 endif()
 
+# ImGuizmo: https://github.com/ocornut/imgui
+CPMAddPackage(
+  NAME imguizmo
+  GIT_REPOSITORY https://github.com/CedricGuillemet/ImGuizmo
+  GIT_TAG f7bbbe39971d9d45816417a70e9b53a0f698c56e
+)
+
+if(imguizmo_ADDED)
+  file(GLOB IMGUIZMO_SOURCES ${imguizmo_SOURCE_DIR}/*.cpp)
+  file(GLOB IMGUIZMO_HEADERS ${imguizmo_SOURCE_DIR}/*.h)
+  add_library(imguizmo STATIC ${IMGUIZMO_SOURCES})
+  target_link_libraries(imguizmo PUBLIC imgui)
+  target_include_directories(imguizmo PUBLIC ${imguizmo_SOURCE_DIR})
+endif()
+
+
 # Tiny Obj Loader
 CPMAddPackage(
   NAME tinyobjloader
@@ -123,6 +139,7 @@ target_link_libraries(
          stb
          SDL2-static
          imgui
+         imguizmo
          tinyobjloader
 )
 
