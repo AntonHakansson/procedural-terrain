@@ -38,16 +38,15 @@ struct Water {
     }
   }
 
-  void render(int width, int height, float current_time, glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position, float z_near, float z_far) {
+  void render(int width, int height, float current_time, glm::mat4 projection_matrix,
+              glm::mat4 view_matrix, glm::vec3 camera_position, float z_near, float z_far) {
     screen_fbo.resize(width, height);
 
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, screen_fbo.framebufferId);
 
-    glBlitFramebuffer(0, 0, screen_fbo.width, screen_fbo.height,
-                      0, 0, screen_fbo.width, screen_fbo.height,
-                      GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
-                      GL_NEAREST);
+    glBlitFramebuffer(0, 0, screen_fbo.width, screen_fbo.height, 0, 0, screen_fbo.width,
+                      screen_fbo.height, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
     // REVIEW: What are the default READ/DRAW framebuffer values?
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -56,11 +55,12 @@ struct Water {
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-
     GLint prev_program = 0;
     glGetIntegerv(GL_CURRENT_PROGRAM, &prev_program);
 
-    auto model_matrix = glm::translate(glm::vec3(camera_position.x - (size / 2.0), this->height, camera_position.z - (size / 2.0))) * glm::scale(vec3(size, 0, size));
+    auto model_matrix = glm::translate(glm::vec3(camera_position.x - (size / 2.0), this->height,
+                                                 camera_position.z - (size / 2.0)))
+                        * glm::scale(vec3(size, 0, size));
     glm::mat4 pixel_projection;
     {
       float sx = float(screen_fbo.width) / 2.0;
@@ -88,7 +88,8 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "view_matrix", view_matrix);
     gpu::setUniformSlow(this->shader_program, "inv_view_matrix", glm::inverse(view_matrix));
     gpu::setUniformSlow(this->shader_program, "projection_matrix", projection_matrix);
-    gpu::setUniformSlow(this->shader_program, "inv_projection_matrix", glm::inverse(projection_matrix));
+    gpu::setUniformSlow(this->shader_program, "inv_projection_matrix",
+                        glm::inverse(projection_matrix));
     gpu::setUniformSlow(this->shader_program, "pixel_projection", pixel_projection);
 
     gpu::setUniformSlow(this->shader_program, "water.height", this->height);
@@ -118,12 +119,13 @@ struct Water {
 
       ssr.gui();
       ImGui::Text("Color Attachment");
-      ImGui::Image((void*)(intptr_t)screen_fbo.colorTextureTargets[0], ImVec2(252, 252), ImVec2(0, 1), ImVec2(1, 0));
+      ImGui::Image((void*)(intptr_t)screen_fbo.colorTextureTargets[0], ImVec2(252, 252),
+                   ImVec2(0, 1), ImVec2(1, 0));
       ImGui::Text("Depth Attachment");
-      ImGui::Image((void*)(intptr_t)screen_fbo.depthBuffer, ImVec2(252, 252), ImVec2(0, 1), ImVec2(1, 0));
+      ImGui::Image((void*)(intptr_t)screen_fbo.depthBuffer, ImVec2(252, 252), ImVec2(0, 1),
+                   ImVec2(1, 0));
     }
   }
-
 
   struct ScreenSpaceReflection {
     // REVIEW: maybe remove these
