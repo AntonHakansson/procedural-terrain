@@ -43,23 +43,29 @@ void Terrain::buildMesh(bool is_reload) {
                                    &this->positions_bo, &this->indices_bo);
 }
 
+void Terrain::setPolyOffset(float factor, float units) {
+  gpu::setUniformSlow(this->shader_program, "polygon_offset_factor", factor);
+  gpu::setUniformSlow(this->shader_program, "polygon_offset_units", units);
+}
+
+void Terrain::begin(bool simple) {
+  glUseProgram(this->shader_program);
+  gpu::setUniformSlow(this->shader_program, "simple", simple);
+}
+
 void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
                      glm::vec3 camera_position, glm::mat4 light_matrix) {
-  GLint prev_program = 0;
-  glGetIntegerv(GL_CURRENT_PROGRAM, &prev_program);
-
-  GLint prev_polygon_mode = 0;
-  glGetIntegerv(GL_POLYGON_MODE, &prev_polygon_mode);
+  GLint prev_polygon_mode;
 
   {
-    glUseProgram(this->shader_program);
-
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, this->grass_texture.gl_id);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, this->rock_texture.gl_id);
 
     if (this->wireframe) {
+      glGetIntegerv(GL_POLYGON_MODE, &prev_polygon_mode);
+
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     }
 
@@ -112,9 +118,9 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
     glBindVertexArray(0);
   }
 
-  glPolygonMode(GL_FRONT_AND_BACK, prev_polygon_mode);
-
-  glUseProgram(prev_program);
+  if (this->wireframe) {
+    glPolygonMode(GL_FRONT_AND_BACK, prev_polygon_mode);
+  }
 }
 
 void Terrain::gui(SDL_Window* window) {

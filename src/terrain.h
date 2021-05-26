@@ -82,6 +82,9 @@ struct Terrain {
   void loadShader(bool is_reload);
   void buildMesh(bool is_reload);
 
+  void setPolyOffset(float factor, float units);
+
+  void begin(bool simple);
   void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position, glm::mat4 light_matrix);
   void gui(SDL_Window* window);
 };

@@ -56,15 +56,6 @@ uniform vec3 viewSpaceLightPosition;
 ///////////////////////////////////////////////////////////////////////////////
 layout(location = 0) out vec4 fragmentColor;
 
-
-
-
-const int NUM_CASCADES = 3;
-in float ClipSpacePosZ;
-uniform float gCascadeEndClipSpace[NUM_CASCADES];
-
-
-
 vec3 calculateDirectIllumiunation(vec3 wo, vec3 n)
 {
 	vec3 direct_illum = material_color;
@@ -218,28 +209,4 @@ void main()
 
 	// float slope = dot(vec3(0, 1, 0), n);
 	// fragmentColor = vec4(vec3(slope), 1.0);
-
-
-
-
-	float ShadowFactor = 0.0;
-	vec4 CascadeIndicator = vec4(0.0, 0.0, 0.0, 0.0);
-
-	for (int i = 0 ; i < NUM_CASCADES ; i++) {
-		if (ClipSpacePosZ <= gCascadeEndClipSpace[i]) {
-			// ShadowFactor = CalcShadowFactor(i, LightSpacePos[i]);
-
-			if (i == 0) 
-					CascadeIndicator = vec4(1, 0.0, 0.0, 0.0);
-			else if (i == 1)
-					CascadeIndicator = vec4(0.0, 1, 0.0, 0.0);
-			else if (i == 2)
-					CascadeIndicator = vec4(0.0, 0.0, 1, 0.0);
-
-			break;
-		}
-	}
-
-	fragmentColor = vec4(vec3(ClipSpacePosZ), 1.0);
-	fragmentColor = CascadeIndicator;
 }

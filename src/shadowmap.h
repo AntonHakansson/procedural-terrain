@@ -44,11 +44,12 @@ public:
   bool use_polygon_offset = true;
   float polygon_offset_factor = 1.125f;
   float polygon_offset_units = 2.0f;
+  float bias = 1000;
 
   GLuint fbo;
-  GLuint shadow_maps[NUM_CASCADES];
+  GLuint shadow_tex;
   OrthoProjInfo shadow_ortho_info[NUM_CASCADES];
-  float cascadeSplits[NUM_CASCADES + 1];
+  float cascade_splits[NUM_CASCADES + 1];
 
   ShadowMap(void);
 
@@ -59,10 +60,9 @@ public:
 
   // Bind shadow map
   void bindWrite(uint cascade_index);
-  void bindRead(GLuint tex0, GLuint tex1, GLuint tex2);
 
   // Set necessary uniforms
-  void setUniforms(GLuint shader_program, mat4 proj_matrix, mat4 light_view_matrix);
+  void begin(GLuint tex, mat4 proj_matrix, mat4 light_view_matrix);
 
   // Calculate ortho projections
   void calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_matrix, int width, int height, float fovy);

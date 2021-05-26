@@ -67,7 +67,7 @@ struct App {
   GLuint background_program;
   GLuint debug_program;
 
-  mat4 fighter_model_matrix = mat4(1.0f);
+  mat4 fighter_model_matrix = scale(vec3(10));
 
   mat4 static_camera_proj;
   mat4 static_camera_view;
@@ -158,12 +158,12 @@ struct App {
     gpu::drawFullScreenQuad();
   }
 
-  void shadowPass(GLuint currentShaderProgram, const mat4& view_matrix, const mat4& proj_matrix,
+  void shadowPass(GLuint current_program, const mat4& view_matrix, const mat4& proj_matrix,
                   const mat4& light_view_matrix) {
     shadow_map.calculateLightProjMatrices(view_matrix, light_view_matrix, window.width, window.height,
                               45.0f);
 
-    glUseProgram(currentShaderProgram);
+    glUseProgram(current_program);
 
     for (uint i = 0 ; i < NUM_CASCADES ; i++) {
       // Bind and clear the current cascade
@@ -174,42 +174,55 @@ struct App {
       mat4 light_proj_matrix = shadow_map.getLightProjMatrix(i);
 
       // Terrain
+      terrain.begin(false);
+      terrain.setPolyOffset(shadow_map.polygon_offset_factor, shadow_map.polygon_offset_units);
+
+      glDisable(GL_CULL_FACE);
       terrain.render(light_proj_matrix, light_view_matrix, vec3(0), mat4());
+      glEnable(GL_CULL_FACE);  
+
+      terrain.setPolyOffset(0, 0);
+
+      glUseProgram(current_program);
 
       // Fighter
-      gpu::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix",
+      gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
                           light_proj_matrix * light_view_matrix * fighter_model_matrix);
-      gpu::setUniformSlow(currentShaderProgram, "modelViewMatrix", light_view_matrix * fighter_model_matrix);
-      gpu::setUniformSlow(currentShaderProgram, "normalMatrix",
+      gpu::setUniformSlow(current_program, "modelViewMatrix", light_view_matrix * fighter_model_matrix);
+      gpu::setUniformSlow(current_program, "normalMatrix",
                           inverse(transpose(light_view_matrix * fighter_model_matrix)));
 
       gpu::render(models.fighter);
     }
   }
 
-  void renderPass(GLuint currentShaderProgram, const mat4& viewMatrix, const mat4& projectionMatrix,
+  void renderPass(GLuint current_program, const mat4& viewMatrix, const mat4& projectionMatrix,
                  const mat4& lightViewMatrix) {
-    glUseProgram(currentShaderProgram);
+    glUseProgram(current_program);
 
     // Environment
-    gpu::setUniformSlow(currentShaderProgram, "environment_multiplier", environment_map.multiplier);
+    gpu::setUniformSlow(current_program, "environment_multiplier", environment_map.multiplier);
 
     // camera
-    gpu::setUniformSlow(currentShaderProgram, "viewInverse", inverse(viewMatrix));
-
-    // Bind shadow map textures
-    shadow_map.bindRead(GL_TEXTURE10, GL_TEXTURE11, GL_TEXTURE12);
-    shadow_map.setUniforms(terrain.shader_program, projectionMatrix, lightViewMatrix);
+    gpu::setUniformSlow(current_program, "viewInverse", inverse(viewMatrix));
 
     // Terrain
     mat4 lightMatrix = mat4(1);
+
+    terrain.begin(true);
+
+    // Bind shadow map textures
+    shadow_map.begin(GL_TEXTURE10, projectionMatrix, lightViewMatrix);
+
     terrain.render(projectionMatrix, viewMatrix, camera.position, lightMatrix);
 
+    glUseProgram(current_program);
+
     // Fighter
-    gpu::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix",
+    gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
                         projectionMatrix * viewMatrix * fighter_model_matrix);
-    gpu::setUniformSlow(currentShaderProgram, "modelViewMatrix", viewMatrix * fighter_model_matrix);
-    gpu::setUniformSlow(currentShaderProgram, "normalMatrix",
+    gpu::setUniformSlow(current_program, "modelViewMatrix", viewMatrix * fighter_model_matrix);
+    gpu::setUniformSlow(current_program, "normalMatrix",
                         inverse(transpose(viewMatrix * fighter_model_matrix)));
 
     gpu::render(models.fighter);

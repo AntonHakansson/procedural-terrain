@@ -3,38 +3,29 @@
 ShadowMap::ShadowMap(void) {}
 
 void ShadowMap::init(float z_near, float z_far) {
-  cascadeSplits[0] = z_near;
-  cascadeSplits[1] = 400.0f,
-  cascadeSplits[2] = 1000.0f;
-  cascadeSplits[3] = z_far;
-
-  // Create the depth buffer
-  glGenTextures(NUM_CASCADES, shadow_maps);
-
-  for (uint i = 0 ; i < NUM_CASCADES; i++) {
-      glBindTexture(GL_TEXTURE_2D, shadow_maps[i]);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, resolution, resolution, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-  }
+  cascade_splits[0] = z_near;
+  cascade_splits[1] = 400.0f,
+  cascade_splits[2] = 1000.0f;
+  cascade_splits[3] = z_far;
 
   // Layered texture
-  /*
-  glGenTextures(1, &shadow_tex);
+  glGenTextures(NUM_CASCADES, &shadow_tex);
   glBindTexture(GL_TEXTURE_2D_ARRAY, shadow_tex);
   glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_DEPTH_COMPONENT32F, resolution, resolution, NUM_CASCADES);
-  */
+
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
 
   // Create the FBO
   glGenFramebuffers(1, &fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
   for (uint i = 0 ; i < NUM_CASCADES; i++) {
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadow_maps[i], 0);
+    glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_tex, 0, i);
   }
 
   glDrawBuffer(GL_NONE);
@@ -61,53 +52,26 @@ bool ShadowMap::checkFramebufferComplete() const {
 void ShadowMap::bindWrite(uint cascade_index) {
   assert(cascade_index < NUM_CASCADES);
   glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadow_maps[cascade_index], 0);
+
+  glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_tex, 0, cascade_index);
 }
 
-void ShadowMap::bindRead(GLuint tex0, GLuint tex1, GLuint tex2) {
-  glActiveTexture(tex0);
-  glBindTexture(GL_TEXTURE_2D, shadow_maps[0]);
+void ShadowMap::begin(GLuint tex, mat4 proj_matrix, mat4 light_view_matrix) {
+  GLint shader_program = 0;
+  glGetIntegerv(GL_CURRENT_PROGRAM, &shader_program);
 
-  glActiveTexture(tex1);
-  glBindTexture(GL_TEXTURE_2D, shadow_maps[1]);
-
-  glActiveTexture(tex2);
-  glBindTexture(GL_TEXTURE_2D, shadow_maps[2]);
-}
-
-void ShadowMap::setUniforms(GLuint shader_program, mat4 proj_matrix, mat4 light_view_matrix) {
-  GLint prev_program = 0;
-  glGetIntegerv(GL_CURRENT_PROGRAM, &prev_program);
-
-  glUseProgram(shader_program);
   for (uint i = 0 ; i < NUM_CASCADES ; i++) {
-    vec4 vView(0.0f, 0.0f, cascadeSplits[i + 1], 1.0f);
+    vec4 vView(0.0f, 0.0f, cascade_splits[i + 1], 1.0f);
     vec4 vClip = proj_matrix * vView;
 
+    mat4 light_proj_matrix = getLightProjMatrix(i);
+
     gpu::setUniformSlow(shader_program, ("gCascadeEndClipSpace[" + std::to_string(i) + "]").c_str(), vClip.z);
-
-    OrthoProjInfo info = shadow_ortho_info[i];
-    mat4 light_proj_matrix = ortho(info.l, info.r, info.b, info.t, info.n, info.f);
-
     gpu::setUniformSlow(shader_program, ("gLightWVP[" + std::to_string(i) + "]").c_str(), light_proj_matrix * light_view_matrix);
   }
 
-  GLuint uUniform = glGetUniformLocation(shader_program, "gShadowMap[0]");
-  glActiveTexture(GL_TEXTURE10);
-  glBindTexture(GL_TEXTURE_2D, shadow_maps[0]);
-  glUniform1i(uUniform, 10);
-
-  uUniform = glGetUniformLocation(shader_program, "gShadowMap[1]");
-  glActiveTexture(GL_TEXTURE11);
-  glBindTexture(GL_TEXTURE_2D, shadow_maps[1]);
-  glUniform1i(uUniform, 11);
-
-  uUniform = glGetUniformLocation(shader_program, "gShadowMap[2]");
-  glActiveTexture(GL_TEXTURE12);
-  glBindTexture(GL_TEXTURE_2D, shadow_maps[2]);
-  glUniform1i(uUniform, 12);
-
-  glUseProgram(prev_program);
+  glActiveTexture(tex);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, shadow_tex);
 }
 
 void ShadowMap::debugProjs(mat4 view_matrix, mat4 proj_matrix, mat4 light_view_matrix) {
@@ -115,7 +79,7 @@ void ShadowMap::debugProjs(mat4 view_matrix, mat4 proj_matrix, mat4 light_view_m
   float ar = proj_matrix[1][1] / proj_matrix[0][0];
 
   for (uint i = 0; i < NUM_CASCADES; i++) {
-    mat4 proj = perspective(fovy, ar, cascadeSplits[i], cascadeSplits[i + 1]);
+    mat4 proj = perspective(fovy, ar, cascade_splits[i], cascade_splits[i + 1]);
 
     OrthoProjInfo info = shadow_ortho_info[i];
 
@@ -135,23 +99,23 @@ void ShadowMap::calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_mat
   float tanHalfVFov = glm::tan(glm::radians(fovy / 2.0));
 
   for (uint i = 0; i < NUM_CASCADES; i++) {
-    float xn = cascadeSplits[i] * tanHalfHFov;
-    float xf = cascadeSplits[i + 1] * tanHalfHFov;
-    float yn = cascadeSplits[i] * tanHalfVFov;
-    float yf = cascadeSplits[i + 1] * tanHalfVFov;
+    float xn = cascade_splits[i] * tanHalfHFov;
+    float xf = cascade_splits[i + 1] * tanHalfHFov;
+    float yn = cascade_splits[i] * tanHalfVFov;
+    float yf = cascade_splits[i + 1] * tanHalfVFov;
 
     vec4 frustum_corners[NUM_FRUSTUM_CORNERS] = {
         // near face
-        view_inverse * vec4(xn, yn, -cascadeSplits[i], 1.0), 
-        view_inverse * vec4(-xn, yn, -cascadeSplits[i], 1.0),
-        view_inverse * vec4(xn, -yn, -cascadeSplits[i], 1.0), 
-        view_inverse * vec4(-xn, -yn, -cascadeSplits[i], 1.0),
+        view_inverse * vec4(xn, yn, -cascade_splits[i], 1.0), 
+        view_inverse * vec4(-xn, yn, -cascade_splits[i], 1.0),
+        view_inverse * vec4(xn, -yn, -cascade_splits[i], 1.0), 
+        view_inverse * vec4(-xn, -yn, -cascade_splits[i], 1.0),
 
         // far face
-        view_inverse * vec4(xf, yf, -cascadeSplits[i + 1], 1.0), 
-        view_inverse * vec4(-xf, yf, -cascadeSplits[i + 1], 1.0),
-        view_inverse * vec4(xf, -yf, -cascadeSplits[i + 1], 1.0), 
-        view_inverse * vec4(-xf, -yf, -cascadeSplits[i + 1], 1.0)};
+        view_inverse * vec4(xf, yf, -cascade_splits[i + 1], 1.0), 
+        view_inverse * vec4(-xf, yf, -cascade_splits[i + 1], 1.0),
+        view_inverse * vec4(xf, -yf, -cascade_splits[i + 1], 1.0), 
+        view_inverse * vec4(-xf, -yf, -cascade_splits[i + 1], 1.0)};
 
     vec4 frustum_corners_l[NUM_FRUSTUM_CORNERS];
 
@@ -178,8 +142,8 @@ void ShadowMap::calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_mat
     shadow_ortho_info[i].l = minX;
     shadow_ortho_info[i].b = minY;
     shadow_ortho_info[i].t = maxY;
-    shadow_ortho_info[i].f = -maxZ;
-    shadow_ortho_info[i].n = -minZ;
+    shadow_ortho_info[i].f = -(maxZ + this->bias);
+    shadow_ortho_info[i].n = -(minZ - this->bias);
   }
 }
 
@@ -188,15 +152,16 @@ void ShadowMap::gui(SDL_Window* window) {
     ImGui::Checkbox("Use polygon offset", &this->use_polygon_offset);
     ImGui::DragFloat("Polygon offset factor", &this->polygon_offset_factor);
     ImGui::DragFloat("Polygon offset units", &this->polygon_offset_units);
+    ImGui::DragFloat("Bias", &this->bias);
 
     ImGui::Text("Debug");
 
-    for (uint i = 0 ; i < NUM_CASCADES; i++) {
-      ImGui::Image((void*)(intptr_t) shadow_maps[i], ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
+    // for (uint i = 0 ; i < NUM_CASCADES; i++) {
+    //   ImGui::Image((void*)(intptr_t) shadow_maps[i], ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
 
-      float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
-      ImGui::SameLine(0.0f, spacing);
-    }
+    //   float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+    //   ImGui::SameLine(0.0f, spacing);
+    // }
 
     ImGui::NewLine();
   }
@@ -205,5 +170,6 @@ void ShadowMap::gui(SDL_Window* window) {
 
 mat4 ShadowMap::getLightProjMatrix(uint cascade_index) {
   OrthoProjInfo info = shadow_ortho_info[cascade_index];
+
   return ortho(info.l, info.r, info.b, info.t, info.n, info.f);
 }

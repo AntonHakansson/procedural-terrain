@@ -19,6 +19,8 @@ uniform vec3 eyeWorldPos;
 const int NUM_CASCADES = 3;
 
 uniform mat4 gLightWVP[NUM_CASCADES];
+uniform float polygon_offset_factor;
+uniform float polygon_offset_units;
 
 out vec4 LightSpacePos[NUM_CASCADES];
 out float ClipSpacePosZ;
@@ -194,7 +196,7 @@ void main() {
 
     Out.normal = computeNormals(Out.world_pos);
 
-    Out.world_pos += Out.normal * 0.01;
+    // Out.world_pos -= Out.normal * polygon_offset_factor;
 
     Out.shadow_coord = lightMatrix * vec4(Out.view_pos, 1.f);
 

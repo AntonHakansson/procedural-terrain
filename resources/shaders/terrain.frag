@@ -23,6 +23,7 @@ uniform mat4 modelViewProjectionMatrix;
 uniform mat4 viewProjectionMatrix;
 uniform vec3 eyeWorldPos;
 uniform vec3 viewSpaceLightPosition;
+uniform bool simple;
 
 
 // Cascading shadow map
@@ -38,7 +39,7 @@ const int NUM_CASCADES = 3;
 in vec4 LightSpacePos[NUM_CASCADES];
 in float ClipSpacePosZ;
 
-uniform sampler2D gShadowMap[NUM_CASCADES];
+layout(binding = 10) uniform sampler2DArrayShadow gShadowMap;
 uniform float gCascadeEndClipSpace[NUM_CASCADES];
 
 
@@ -94,7 +95,7 @@ vec3 diffuse(vec3 world_pos, vec3 normal) {
 }
 
 
-float CalcShadowFactor(int CascadeIndex, vec4 LightSpacePos)
+float calcShadowFactor(int index, vec4 LightSpacePos)
 {
     vec3 ProjCoords = LightSpacePos.xyz / LightSpacePos.w;
 
@@ -103,29 +104,76 @@ float CalcShadowFactor(int CascadeIndex, vec4 LightSpacePos)
     UVCoords.y = 0.5 * ProjCoords.y + 0.5;
 
     float z = 0.5 * ProjCoords.z + 0.5;
-    float Depth = texture(gShadowMap[CascadeIndex], UVCoords).x;
 
-    if (Depth < z - 0.000001)
-        return 0.5;
-    else
-        return 1.0;
+
+
+		// Nu
+		// LightSpacePos[i] = gLightWVP[i] * vec4(Out.world_pos, 1.0);
+    // float depth = texture(gShadowMap[index], UVCoords).x;
+
+		// // Tutorial 
+		// vec4 shadowMapCoord = lightMatrix * vec4(viewSpacePosition, 1.f);
+		// float depth = texture(shadowMapTex, shadowMapCoord.xy / shadowMapCoord.w).x;
+		// float visibility = (depth >= (shadowMapCoord.z / shadowMapCoord.w)) ? 1.0 : 0.0;
+
+
+		// // Hardware
+		// float visibility = textureProj( shadowMapTex, shadowMapCoord);
+
+    // Nu
+    // float visibility = textureProj(gShadowMap[index], LightSpacePos);
+
+
+		float bias = 0.01;
+
+    // x, y, level
+		// float depth = texture(gShadowMap, vec3(UVCoords, index)).x;
+
+    // x, y, level, depth
+		float depth = texture(gShadowMap, vec4(UVCoords, index, (z - bias)));
+
+// float computeOcclusion(vec4 shadowCoords)
+// {
+//     vec3 coord = vec3(shadowCoords.xyz/shadowCoords.w);
+//     float depth = texture( shadowMap, vec3(coord.xy,coord.z+0.001));
+//     return depth;
+// }
+
+		// return visibility;
+		return (depth + bias) < z ? 0.5 : 1.0;
+
+		// return depth;
+
+
+		// float dot_light_normal = dot(sun.direction, In.normal);
+
+		// float bias = 0.0001; //max(0.05 * (1.0 - dot_light_normal), 0.005);
+
+		// return (depth + bias) < z ? 0 : 1.0;
+
+    // if (Depth < z - 0.001)
+    //     return 0.5;
+    // else
+    //     return 1.0;
 }
 
 
 void main() {
+	// if (simple) return;
+
 	float shadow_factor = 0.0;
-	vec4 CascadeIndicator = vec4(0.0, 0.0, 1, 0.0);
+	vec4 cascade_indicator = vec4(0.0, 0.0, 1, 0.0);
 
 	for (int i = 0; i < NUM_CASCADES; i++) {
 		if (-ClipSpacePosZ >= gCascadeEndClipSpace[i]) {
-			shadow_factor = CalcShadowFactor(i, LightSpacePos[i]);
+			shadow_factor = calcShadowFactor(i, LightSpacePos[i]);
 
 			if (i == 0) 
-					CascadeIndicator = vec4(1, 0.0, 0.0, 0.0);
+					cascade_indicator = vec4(1, 0.0, 0.0, 0.0);
 			else if (i == 1)
-					CascadeIndicator = vec4(0.0, 1, 0.0, 0.0);
+					cascade_indicator = vec4(0.0, 1, 0.0, 0.0);
 			else if (i == 2)
-					CascadeIndicator = vec4(0.0, 0.0, 1, 0.0);
+					cascade_indicator = vec4(0.0, 0.0, 1, 0.0);
 
 			break;
 		}
