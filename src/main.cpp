@@ -17,6 +17,7 @@ using namespace glm;
 #include "hdr.h"
 #include "model.h"
 #include "terrain.h"
+#include "water.h"
 
 constexpr vec3 worldUp(0.0f, 1.0f, 0.0f);
 
@@ -39,7 +40,7 @@ struct App {
   } light;
 
   struct Projection {
-    float far = 2000.0f;
+    float far = 5000.0f;
     float near = 5.0f;
   } projection;
 
@@ -58,6 +59,7 @@ struct App {
   } models;
 
   Terrain terrain;
+  Water water;
 
   float current_time = 0.0f;
   float previous_time = 0.0f;
@@ -85,6 +87,7 @@ struct App {
     if (shader != 0) shader_program = shader;
 
     this->terrain.loadShader(true);
+    this->water.loadShader(true);
   }
 
   void init() {
@@ -117,9 +120,12 @@ struct App {
     }
 
     terrain.init();
+    water.init();
   }
 
   void deinit() {
+    terrain.deinit();
+    water.deinit();
     gpu::freeModel(models.fighter);
     gpu::freeModel(models.landingpad);
     gpu::freeModel(models.sphere);
@@ -180,14 +186,14 @@ struct App {
     SDL_GetWindowSize(window.handle, &window.width, &window.height);
 
     // setup matrices
-    mat4 projMatrix = perspective(radians(45.0f), float(window.width) / float(window.height),
+    mat4 projMatrix = perspective(radians(70.0f), float(window.width) / float(window.height),
                                   projection.near, projection.far);
     mat4 viewMatrix = camera.getViewMatrix();
 
     vec4 lightStartPosition = vec4(40.0f, 40.0f, 0.0f, 1.0f);
     light.position = vec3(rotate(current_time, worldUp) * lightStartPosition);
     mat4 lightViewMatrix = lookAt(light.position, vec3(0.0f), worldUp);
-    mat4 lightProjMatrix = perspective(radians(45.0f), 1.0f, 25.0f, 100.0f);
+    mat4 lightProjMatrix = perspective(radians(70.0f), 1.0f, 25.0f, 100.0f);
 
     // Bind the environment map(s) to unused texture units
     glActiveTexture(GL_TEXTURE6);
@@ -199,14 +205,22 @@ struct App {
     glActiveTexture(GL_TEXTURE0);
 
     // Draw from camera
+    // water.begin(window.width, window.height);
+    {
+
+#if 1
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, window.width, window.height);
     glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#endif
 
-    drawBackground(viewMatrix, projMatrix);
-    drawScene(shader_program, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
-    debugDrawLight(viewMatrix, projMatrix, vec3(light.position));
+      drawBackground(viewMatrix, projMatrix);
+      drawScene(shader_program, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
+      debugDrawLight(viewMatrix, projMatrix, vec3(light.position));
+    }
+
+    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position, projection.near, projection.far);
   }
 
   bool handleEvents(void) {
@@ -286,6 +300,7 @@ struct App {
       }
 
       terrain.gui(window.handle);
+      water.gui();
     }
     // Render the GUI.
     ImGui::Render();

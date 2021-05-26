@@ -124,6 +124,7 @@ namespace gpu {
   void setUniformSlow(GLuint shaderProgram, const char* name, const glm::vec3& value);
   void setUniformSlow(GLuint shaderProgram, const char* name, const uint32_t nof_values,
                       const glm::vec3* values);
+  void setUniformSlow(GLuint shaderProgram, const char* name, const glm::ivec2& value);
 
   size_t createSubdividedPlane(float size, unsigned int subdivisions, GLuint* out_vao,
                                GLuint* out_vbo, GLuint* out_ebo);

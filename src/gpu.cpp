@@ -566,6 +566,9 @@ namespace gpu {
                       const glm::vec3* values) {
     glUniform3fv(glGetUniformLocation(shaderProgram, name), nof_values, (float*)values);
   }
+  void setUniformSlow(GLuint shaderProgram, const char* name, const glm::ivec2& value) {
+    glUniform2i(glGetUniformLocation(shaderProgram, name), value.x, value.y);
+  }
 
   size_t createSubdividedPlane(float _size, unsigned int subdivisions, GLuint* out_vao,
                                GLuint* out_vbo, GLuint* out_ebo) {
