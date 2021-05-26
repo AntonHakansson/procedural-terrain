@@ -12,6 +12,7 @@ in DATA {
   vec2 tex_coord;
   vec3 view_space_normal;
   vec3 view_space_position;
+  vec3 world_pos;
 }
 In;
 
@@ -421,12 +422,17 @@ vec3 getDuDv(vec2 tex_coord) {
 void main() {
   // REVIEW: Does `texture` filter the result? maybe opt for `texelFetch` to get unfiltered value
   vec3 color = texelFetch(pixel_buffer, ivec2(gl_FragCoord.xy), 0).xyz;
+
+  vec3 point_on_water = In.view_space_position;
+
   // NOTE: The depth buffer is hyperbolic i.e. not linear
   float depth = texelFetch(depth_buffer, ivec2(gl_FragCoord.xy), 0).x;
-  float linear_depth = linearizeDepth(depth);
+  float terrain_depth = linearizeDepth(depth);
+  float plane_depth = -point_on_water.z;
+
+  float diff_depth = abs(terrain_depth - plane_depth);
 
   vec3 view_dir = normalize(In.view_space_position);
-  vec4 world = inv_view_matrix * vec4(In.view_space_position, 1.0);
 
   float foam_mask;
   float ocean_mask;
@@ -435,22 +441,15 @@ void main() {
   vec3 ocean_blue_deep = vec3(0, 0.2, 0.6);
 
   // foam
-  // FIXME: not correct
-  float f = abs(linear_depth - length(In.view_space_position));
 
-  foam_mask += max(1.0 - f / water.foam_distance, 0);
-  foam_mask *= max(sin(f / 1.5 + sin(current_time * 1.0) * 4), 0);
+  foam_mask += max(1.0 - diff_depth / water.foam_distance, 0);
+  foam_mask *= max(sin(diff_depth / 1.5 + sin(current_time * 1.0) * 4), 0);
 
-  foam_mask += max(1.0 - f / (water.foam_distance / 2.0), 0);
+  foam_mask += max(1.0 - diff_depth / (water.foam_distance / 2.0), 0);
 
-  ocean_mask = min(max((f - 100) / 1200.0, 0), 0.18) / 0.18;
+  ocean_mask = min(max((diff_depth - 100) / 1200.0, 0), 0.18) / 0.18;
 
-  vec3 point_on_water = In.view_space_position;
-
-  vec4 world_pos_h = inv_view_matrix * vec4(point_on_water, 1.0);
-  vec3 world_pos = world_pos_h.xyz / world_pos_h.w;
-
-  vec3 dudv = getDuDv(world_pos.xz);
+  vec3 dudv = getDuDv(In.world_pos.xz);
   vec3 reflection_dir = normalize(reflect(view_dir, In.view_space_normal));
   vec3 refraction_dir = normalize(reflection_dir - 2 * normalize(In.view_space_normal));
 
@@ -541,4 +540,6 @@ void main() {
   // }
 
   fragmentColor = vec4(out_color, 1.0);
+  // fragmentColor = vec4(vec3(terrain_depth / 2000), 1.0);
+  // fragmentColor = vec4(vec3(f), 1.0);
 }

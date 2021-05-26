@@ -50,13 +50,11 @@ struct Water {
                       GL_NEAREST);
 
     // REVIEW: What are the default READ/DRAW framebuffer values?
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
     CHECK_GL_ERROR();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
 
 
     GLint prev_program = 0;
@@ -134,10 +132,10 @@ struct Water {
     float z_far;
 
     float z_thickness = 0.01;
-    float stride = 1.00;
-    float jitter = 0.0;
-    float max_steps = 500.0;
-    float max_distance = 1000.0;
+    float stride = 15.00;
+    float jitter = 1;
+    float max_steps = 50.0;
+    float max_distance = 500.0;
 
     void upload(GLuint program, int width, int height, float z_near, float z_far) {
       this->depth_buffer_size = glm::ivec2(width, height);

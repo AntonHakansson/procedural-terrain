@@ -15,16 +15,18 @@ out DATA {
     vec2 tex_coord;
     vec3 view_space_normal;
     vec3 view_space_position;
+    vec3 world_pos;
 } Out;
 
 void main() {
-    vec4 world_space = model_matrix * vec4(position, 1.0);
+    vec4 world_pos_h = model_matrix * vec4(position, 1.0);
+    Out.world_pos = world_pos_h.xyz / world_pos_h.w;
 
-    gl_Position = projection_matrix * view_matrix * world_space;
+    gl_Position = projection_matrix * view_matrix * world_pos_h;
     // NOTE: 1024 is the size of the water plane
-    Out.tex_coord = world_space.xz / 4096.0;
+    Out.tex_coord = world_pos_h.xz / 4096.0;
     Out.view_space_normal = (view_matrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz;
 
-    vec4 view_space_position_h = view_matrix * world_space;
+    vec4 view_space_position_h = view_matrix * world_pos_h;
     Out.view_space_position = view_space_position_h.xyz;
 }
