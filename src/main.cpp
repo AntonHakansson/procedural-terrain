@@ -36,6 +36,7 @@ struct App {
   } input;
 
   struct Projection {
+    float fovy = 70.0f;
     float far = 5000.0f;
     float near = 5.0f;
   } projection;
@@ -168,8 +169,7 @@ struct App {
 
   void shadowPass(GLuint current_program, const mat4& view_matrix, const mat4& proj_matrix,
                   const mat4& light_view_matrix) {
-    shadow_map.calculateLightProjMatrices(view_matrix, light_view_matrix, window.width, window.height,
-                              45.0f);
+    shadow_map.calculateLightProjMatrices(view_matrix, light_view_matrix, window.width, window.height, projection.fovy);
 
     glUseProgram(current_program);
 
@@ -182,7 +182,7 @@ struct App {
       mat4 light_proj_matrix = shadow_map.getLightProjMatrix(i);
 
       // Terrain
-      terrain.begin(false);
+      terrain.begin(true);
       terrain.setPolyOffset(shadow_map.polygon_offset_factor, shadow_map.polygon_offset_units);
 
       glDisable(GL_CULL_FACE);
@@ -204,7 +204,7 @@ struct App {
     }
   }
 
-  void renderPass(GLuint current_program, const mat4& viewMatrix, const mat4& projectionMatrix,
+  void renderPass(GLuint current_program, const mat4& viewMatrix, const mat4& projMatrix,
                  const mat4& lightViewMatrix) {
     glUseProgram(current_program);
 
@@ -217,18 +217,20 @@ struct App {
     // Terrain
     mat4 lightMatrix = mat4(1);
 
-    terrain.begin(true);
+    terrain.begin(false);
 
     // Bind shadow map textures
-    shadow_map.begin(GL_TEXTURE10, projectionMatrix, lightViewMatrix);
+    shadow_map.begin(GL_TEXTURE10, projMatrix, lightViewMatrix);
 
-    terrain.render(projectionMatrix, viewMatrix, camera.position, lightMatrix);
+    terrain.render(projMatrix, viewMatrix, camera.position, lightMatrix);
+    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position, projection.near, projection.far);
+
 
     glUseProgram(current_program);
 
     // Fighter
     gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
-                        projectionMatrix * viewMatrix * fighter_model_matrix);
+                        projMatrix * viewMatrix * fighter_model_matrix);
     gpu::setUniformSlow(current_program, "modelViewMatrix", viewMatrix * fighter_model_matrix);
     gpu::setUniformSlow(current_program, "normalMatrix",
                         inverse(transpose(viewMatrix * fighter_model_matrix)));
@@ -254,7 +256,7 @@ struct App {
     SDL_GetWindowSize(window.handle, &window.width, &window.height);
 
     // setup matrices
-    mat4 projMatrix = perspective(radians(70.0f), float(window.width) / float(window.height),
+    mat4 projMatrix = perspective(radians(projection.fovy), float(window.width) / float(window.height),
                                   projection.near, projection.far);
 
     mat4 viewMatrix = camera.getViewMatrix();
@@ -287,8 +289,6 @@ struct App {
 
     drawBackground(viewMatrix, projMatrix);
     renderPass(shader_program, viewMatrix, projMatrix, lightViewMatrix);
-    
-    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position, projection.near, projection.far);
   }
 
   bool handleEvents(void) {
@@ -339,7 +339,7 @@ struct App {
 
 
     if (state[SDL_SCANCODE_C]) {
-      static_camera_proj = perspective(radians(45.0f), float(window.width) / float(window.height),
+      static_camera_proj = perspective(radians(projection.fovy), float(window.width) / float(window.height),
                                     projection.near, projection.far);
 
       static_camera_view = camera.getViewMatrix();

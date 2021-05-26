@@ -4,8 +4,8 @@ ShadowMap::ShadowMap(void) {}
 
 void ShadowMap::init(float z_near, float z_far) {
   cascade_splits[0] = z_near;
-  cascade_splits[1] = 400.0f,
-  cascade_splits[2] = 1000.0f;
+  cascade_splits[1] = 1500.0f,
+  cascade_splits[2] = 3000.0f;
   cascade_splits[3] = z_far;
 
   // Layered texture

@@ -159,7 +159,7 @@ float calcShadowFactor(int index, vec4 LightSpacePos)
 
 
 void main() {
-	// if (simple) return;
+	if (simple) return;
 
 	float shadow_factor = 0.0;
 	vec4 cascade_indicator = vec4(0.0, 0.0, 1, 0.0);

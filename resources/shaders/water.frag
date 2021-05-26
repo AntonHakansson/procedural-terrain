@@ -24,6 +24,7 @@ struct Water {
   float wave_speed;
   float wave_strength;
   float wave_scale;
+  float size;
 };
 uniform Water water;
 
