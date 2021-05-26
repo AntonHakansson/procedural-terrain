@@ -40,11 +40,11 @@ struct ScreenSpaceReflection {
 };
 uniform ScreenSpaceReflection ssr;
 
-// TODO: pass inverse for performance
 uniform mat4 view_matrix;
+uniform mat4 inv_view_matrix;
 uniform mat4 projection_matrix;
-
-uniform vec3 camera_position;
+uniform mat4 inv_projection_matrix;
+uniform mat4 pixel_projection; // `pixel_projection` projects from view space to pixel coordinate
 
 layout(binding = 0) uniform sampler2D pixel_buffer;
 layout(binding = 1) uniform sampler2D depth_buffer;
@@ -420,7 +420,7 @@ void main() {
   vec3 screen_space_position = vec3(In.tex_coord, depth) * 2.0 - vec3(1);
 
   // View Space
-  vec4 view_pos_h = inverse(projection_matrix) * vec4(screen_space_position, 1.0);
+  vec4 view_pos_h = inv_projection_matrix * vec4(screen_space_position, 1.0);
   vec3 view_pos = view_pos_h.xyz / view_pos_h.w;
 
   // Since `view_pos` is reconstructed from screen space, it gives the position relative to the
@@ -438,7 +438,7 @@ void main() {
       = rayPlaneIntersection(vec3(0), view_dir, view_water_point, view_water_normal, dist_to_water);
 
   // Calculate the reflected ray direction on the water surface
-  vec4 world = inverse(view_matrix) * vec4(view_dir * dist_to_water, 1.0);
+  vec4 world = inv_view_matrix * vec4(view_dir * dist_to_water, 1.0);
   vec4 view_normal_offset = view_matrix * vec4(sin(world.x / 10) * 0.05, 0, 0, 0.0);
 
 
@@ -461,23 +461,7 @@ void main() {
 
       vec3 point_on_water = view_dir * abs(dist_to_water);
 
-      // `pixel_projection` projects from view space to pixel coordinate
-      mat4 pixel_projection;
-      {
-        float sx = float(ssr.depth_buffer_size.x) / 2.0;
-        float sy = float(ssr.depth_buffer_size.y) / 2.0;
-
-        mat4 warp_to_screen_space;
-        warp_to_screen_space[0] = vec4(sx, 0, 0, sx);
-        warp_to_screen_space[1] = vec4(0, sy, 0, sy);
-        warp_to_screen_space[2] = vec4(0, 0, 1, 0);
-        warp_to_screen_space[3] = vec4(0, 0, 0, 1);
-        warp_to_screen_space = transpose(warp_to_screen_space);
-
-        pixel_projection = warp_to_screen_space * projection_matrix;
-      }
-
-      vec4 world_pos_h = inverse(view_matrix) * vec4(point_on_water, 1.0);
+      vec4 world_pos_h = inv_view_matrix * vec4(point_on_water, 1.0);
       vec3 world_pos = world_pos_h.xyz / world_pos_h.w;
 
       vec3 dudv = getDuDv(world_pos.xz);
@@ -570,7 +554,7 @@ void main() {
     float f = clamp((length(view_pos) - 3000) / 1000, 0, 1);
     float f2 = clamp((dist_to_water - 8000) / 20000, 0, 1);
 
-    vec4 world_dir = inverse(view_matrix) * vec4(view_dir, 0);
+    vec4 world_dir = inv_view_matrix * vec4(view_dir, 0);
     float horizon_dot = dot(world_dir.xyz / world_dir.w, vec3(0, 1, 0));
 
     out_color = mix(out_color, mix(ocean_blue_deep, out_color, f2), f);

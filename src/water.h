@@ -59,6 +59,19 @@ struct Water {
     GLint prev_program = 0;
     glGetIntegerv(GL_CURRENT_PROGRAM, &prev_program);
 
+    glm::mat4 pixel_projection;
+    {
+      float sx = float(screen_fbo.width) / 2.0;
+      float sy = float(screen_fbo.height) / 2.0;
+
+      auto warp_to_screen_space = glm::mat4(1.0);
+      warp_to_screen_space[0] = glm::vec4(sx, 0, 0, sx);
+      warp_to_screen_space[1] = glm::vec4(0, sy, 0, sy);
+      warp_to_screen_space = transpose(warp_to_screen_space);
+
+      pixel_projection = warp_to_screen_space * projection_matrix;
+    }
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glActiveTexture(GL_TEXTURE0);
@@ -72,8 +85,10 @@ struct Water {
     glUseProgram(this->shader_program);
     gpu::setUniformSlow(this->shader_program, "current_time", current_time);
     gpu::setUniformSlow(this->shader_program, "view_matrix", view_matrix);
+    gpu::setUniformSlow(this->shader_program, "inv_view_matrix", glm::inverse(view_matrix));
     gpu::setUniformSlow(this->shader_program, "projection_matrix", projection_matrix);
-    gpu::setUniformSlow(this->shader_program, "camera_position", camera_position);
+    gpu::setUniformSlow(this->shader_program, "inv_projection_matrix", glm::inverse(projection_matrix));
+    gpu::setUniformSlow(this->shader_program, "pixel_projection", pixel_projection);
 
     gpu::setUniformSlow(this->shader_program, "water.height", height);
     gpu::setUniformSlow(this->shader_program, "water.foam_distance", foam_distance);
