@@ -7,8 +7,8 @@ void Terrain::init() {
   glPatchParameteri(GL_PATCH_VERTICES, 3);
   loadShader(false);
 
-  this->rock_texture.load("resources/textures/", "rock.jpg", 3);
-  this->grass_texture.load("resources/textures/", "grass.jpg", 3);
+  this->rock_texture.load("resources/textures/", "toon_stone.png", 3);
+  this->grass_texture.load("resources/textures/", "toon_grass.png", 3);
 }
 
 void Terrain::deinit() {
@@ -19,17 +19,36 @@ void Terrain::deinit() {
 }
 
 void Terrain::loadShader(bool is_reload) {
-  if (is_reload) {
-    glDeleteProgram(this->shader_program);
-  }
   std::array<ShaderInput, 4> program_shaders({
       ShaderInput{"resources/shaders/terrain.vert", GL_VERTEX_SHADER},
       ShaderInput{"resources/shaders/terrain.frag", GL_FRAGMENT_SHADER},
       ShaderInput{"resources/shaders/terrain.tcs", GL_TESS_CONTROL_SHADER},
       ShaderInput{"resources/shaders/terrain.tes", GL_TESS_EVALUATION_SHADER},
-      // ShaderInput{"resources/shaders/terrain.geo", GL_GEOMETRY_SHADER},
   });
-  this->shader_program = loadShaderProgram(program_shaders, is_reload);
+
+  auto program = loadShaderProgram(program_shaders, is_reload);
+  if (program != 0) {
+    if (is_reload) {
+      glDeleteProgram(this->shader_program);
+    }
+    this->shader_program = program;
+  }
+
+
+  std::array<ShaderInput, 4> program_shaders_simple({
+      ShaderInput{"resources/shaders/terrain.vert", GL_VERTEX_SHADER},
+      ShaderInput{"resources/shaders/simple.frag", GL_FRAGMENT_SHADER},
+      ShaderInput{"resources/shaders/terrain.tcs", GL_TESS_CONTROL_SHADER},
+      ShaderInput{"resources/shaders/terrain.tes", GL_TESS_EVALUATION_SHADER},
+  });
+
+  auto program_simple = loadShaderProgram(program_shaders_simple, is_reload);
+  if (program_simple != 0) {
+    if (is_reload) {
+      glDeleteProgram(this->shader_program_simple);
+    }
+    this->shader_program_simple = program_simple;
+  }
 }
 
 void Terrain::buildMesh(bool is_reload) {
@@ -49,13 +68,15 @@ void Terrain::setPolyOffset(float factor, float units) {
 }
 
 void Terrain::begin(bool simple) {
-  glUseProgram(this->shader_program);
-  gpu::setUniformSlow(this->shader_program, "simple", simple);
+  glUseProgram(simple ? this->shader_program_simple : this->shader_program);
+  this->simple = simple;
 }
 
 void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
                      glm::vec3 camera_position, glm::mat4 light_matrix) {
   GLint prev_polygon_mode;
+
+  GLuint shader_program = this->simple ? this->shader_program_simple : this->shader_program;
 
   {
     glActiveTexture(GL_TEXTURE0);
@@ -76,41 +97,30 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
         - glm::vec3(1, 0, 1) * this->terrain_size / 2.0f);
 
     // this->model_matrix = glm::mat4(1.0f);
-    gpu::setUniformSlow(this->shader_program, "lightMatrix", light_matrix);
-    gpu::setUniformSlow(this->shader_program, "viewMatrix", view_matrix);
-    gpu::setUniformSlow(this->shader_program, "viewProjectionMatrix",
+    gpu::setUniformSlow(shader_program, "lightMatrix", light_matrix);
+    gpu::setUniformSlow(shader_program, "viewMatrix", view_matrix);
+    gpu::setUniformSlow(shader_program, "viewProjectionMatrix",
                         projection_matrix * view_matrix);
-    gpu::setUniformSlow(this->shader_program, "modelMatrix", this->model_matrix);
-    gpu::setUniformSlow(this->shader_program, "modelViewProjectionMatrix",
+    gpu::setUniformSlow(shader_program, "modelMatrix", this->model_matrix);
+    gpu::setUniformSlow(shader_program, "modelViewProjectionMatrix",
                         projection_matrix * view_matrix * this->model_matrix);
-    gpu::setUniformSlow(this->shader_program, "modelViewMatrix", view_matrix * this->model_matrix);
-    gpu::setUniformSlow(this->shader_program, "normalMatrix",
+    gpu::setUniformSlow(shader_program, "modelViewMatrix", view_matrix * this->model_matrix);
+    gpu::setUniformSlow(shader_program, "normalMatrix",
                         inverse(transpose(view_matrix * this->model_matrix)));
-    gpu::setUniformSlow(this->shader_program, "eyeWorldPos", camera_position);
+    gpu::setUniformSlow(shader_program, "eyeWorldPos", camera_position);
 
-    gpu::setUniformSlow(this->shader_program, "noise.num_octaves", (GLint)noise.num_octaves);
-    gpu::setUniformSlow(this->shader_program, "noise.amplitude", noise.amplitude);
-    gpu::setUniformSlow(this->shader_program, "noise.frequency", noise.frequency);
-    gpu::setUniformSlow(this->shader_program, "noise.persistence", noise.persistence);
-    gpu::setUniformSlow(this->shader_program, "noise.lacunarity", noise.lacunarity);
+    gpu::setUniformSlow(shader_program, "noise.num_octaves", (GLint)noise.num_octaves);
+    gpu::setUniformSlow(shader_program, "noise.amplitude", noise.amplitude);
+    gpu::setUniformSlow(shader_program, "noise.frequency", noise.frequency);
+    gpu::setUniformSlow(shader_program, "noise.persistence", noise.persistence);
+    gpu::setUniformSlow(shader_program, "noise.lacunarity", noise.lacunarity);
 
-    gpu::setUniformSlow(this->shader_program, "sun.direction", sun.direction);
-    gpu::setUniformSlow(this->shader_program, "sun.color", sun.color);
-    gpu::setUniformSlow(this->shader_program, "sun.intensity", sun.intensity);
+    gpu::setUniformSlow(shader_program, "sun.direction", sun.direction);
+    gpu::setUniformSlow(shader_program, "sun.color", sun.color);
+    gpu::setUniformSlow(shader_program, "sun.intensity", sun.intensity);
 
-    glUniform1fv(glGetUniformLocation(this->shader_program, "tessMultiplier"), 1,
+    glUniform1fv(glGetUniformLocation(shader_program, "tessMultiplier"), 1,
                  &this->tess_multiplier);
-
-    // Light
-    // gpu::setUniformSlow(this->shader_program, "point_light_color", light.color);
-    // gpu::setUniformSlow(this->shader_program, "point_light_intensity_multiplier", light.intensity);
-    // gpu::setUniformSlow(this->shader_program, "viewSpaceLightPosition", view_matrix * glm::vec4(light.position, 1.0f));
-    // gpu::setUniformSlow(this->shader_program, "viewSpaceLightDir", glm::normalize(glm::vec3(viewMatrix * vec4(-light.position, 0.0f))));
-    // gpu::setUniformSlow(this->shader_program, "spotOuterAngle", std::cos(glm::radians(22.5f)));
-    // gpu::setUniformSlow(this->shader_program, "spotInnerAngle", std::cos(glm::radians(17.5f)));
-
-    // glm::mat4 lightMatrix = glm::translate(vec3(0.5f)) * glm::scale(vec3(0.5f)) * lightProjectionMatrix * lightViewMatrix * inverse(viewMatrix);
-    // gpu::setUniformSlow(this->shader_program, "lightMatrix", lightMatrix);
 
     // Draw the terrain
     glBindVertexArray(this->vao);

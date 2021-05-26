@@ -40,11 +40,11 @@ struct OrthoProjInfo
 
 class ShadowMap {
 public:
-  int resolution = 2024;
+  int resolution = 1024 * 4;
   bool use_polygon_offset = true;
   float polygon_offset_factor = 1.125f;
   float polygon_offset_units = 2.0f;
-  float bias = 1000;
+  float bias = 2000;
 
   GLuint fbo;
   GLuint shadow_tex;

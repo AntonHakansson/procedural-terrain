@@ -55,6 +55,7 @@ struct Terrain {
   int indices_count;
 
   bool wireframe = false;
+  bool simple = false;
 
   TerrainNoise noise;
   Sun sun;
@@ -62,6 +63,7 @@ struct Terrain {
   float tess_multiplier = 16.0;
 
   GLuint shader_program;
+  GLuint shader_program_simple;
 
   glm::mat4 model_matrix = glm::mat4(1.0);
 

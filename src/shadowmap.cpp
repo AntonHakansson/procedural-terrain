@@ -17,8 +17,8 @@ void ShadowMap::init(float z_near, float z_far) {
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 
   // Create the FBO
   glGenFramebuffers(1, &fbo);
@@ -66,7 +66,7 @@ void ShadowMap::begin(GLuint tex, mat4 proj_matrix, mat4 light_view_matrix) {
 
     mat4 light_proj_matrix = getLightProjMatrix(i);
 
-    gpu::setUniformSlow(shader_program, ("gCascadeEndClipSpace[" + std::to_string(i) + "]").c_str(), vClip.z);
+    gpu::setUniformSlow(shader_program, ("gCascadeEndClipSpace[" + std::to_string(i) + "]").c_str(), -vClip.z);
     gpu::setUniformSlow(shader_program, ("gLightWVP[" + std::to_string(i) + "]").c_str(), light_proj_matrix * light_view_matrix);
   }
 
@@ -138,10 +138,16 @@ void ShadowMap::calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_mat
       maxZ = max(maxZ, frustum_corners_l[j].z);
     }
 
-    shadow_ortho_info[i].r = maxX;
-    shadow_ortho_info[i].l = minX;
-    shadow_ortho_info[i].b = minY;
-    shadow_ortho_info[i].t = maxY;
+    float sizeX = maxX - minX;
+    float sizeY = maxY - minY;
+
+    float stepX = sizeX / resolution;
+    float stepY = sizeY / resolution;
+
+    shadow_ortho_info[i].r = floor(maxX / stepX) * stepX;
+    shadow_ortho_info[i].l = floor(minX / stepX) * stepX;
+    shadow_ortho_info[i].b = floor(minY / stepY) * stepY;
+    shadow_ortho_info[i].t = floor(maxY / stepY) * stepY;
     shadow_ortho_info[i].f = -(maxZ + this->bias);
     shadow_ortho_info[i].n = -(minZ - this->bias);
   }

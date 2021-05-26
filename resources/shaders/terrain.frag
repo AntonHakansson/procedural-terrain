@@ -23,7 +23,6 @@ uniform mat4 modelViewProjectionMatrix;
 uniform mat4 viewProjectionMatrix;
 uniform vec3 eyeWorldPos;
 uniform vec3 viewSpaceLightPosition;
-uniform bool simple;
 
 
 // Cascading shadow map
@@ -36,8 +35,8 @@ uniform Sun sun;
 
 const int NUM_CASCADES = 3;
 
-in vec4 LightSpacePos[NUM_CASCADES];
-in float ClipSpacePosZ;
+in vec4 light_space_pos[NUM_CASCADES];
+in float clip_space_depth;
 
 layout(binding = 10) uniform sampler2DArrayShadow gShadowMap;
 uniform float gCascadeEndClipSpace[NUM_CASCADES];
@@ -71,10 +70,8 @@ vec3 terrainColor(vec3 world_pos, vec3 normal) {
 	vec3 grass_color = triplanarSampling(grass, world_pos, normal);
 	vec3 rock_color = triplanarSampling(rock, world_pos, normal);
 
-	float transition = 0.2;
-
 	float slope = dot(normal, vec3(0, 1, 0));
-	float blending = smoothstep(0.7, 0.9, slope);
+	float blending = smoothstep(0.8, 0.9, slope);
 
 	return mix(rock_color, grass_color, blending);
 }
@@ -95,9 +92,9 @@ vec3 diffuse(vec3 world_pos, vec3 normal) {
 }
 
 
-float calcShadowFactor(int index, vec4 LightSpacePos)
+float calcShadowFactor(int index, vec4 light_space_pos)
 {
-    vec3 ProjCoords = LightSpacePos.xyz / LightSpacePos.w;
+    vec3 ProjCoords = light_space_pos.xyz / light_space_pos.w;
 
     vec2 UVCoords;
     UVCoords.x = 0.5 * ProjCoords.x + 0.5;
@@ -105,79 +102,87 @@ float calcShadowFactor(int index, vec4 LightSpacePos)
 
     float z = 0.5 * ProjCoords.z + 0.5;
 
+		float bias = 0.001;
 
 
-		// Nu
-		// LightSpacePos[i] = gLightWVP[i] * vec4(Out.world_pos, 1.0);
-    // float depth = texture(gShadowMap[index], UVCoords).x;
+		float percentLit = 0;
+		float size = 5;
+		int maxBound = int(floor(size / 2));
+		int minBound = -int(floor((size - 0.01) / 2));
 
-		// // Tutorial 
-		// vec4 shadowMapCoord = lightMatrix * vec4(viewSpacePosition, 1.f);
-		// float depth = texture(shadowMapTex, shadowMapCoord.xy / shadowMapCoord.w).x;
-		// float visibility = (depth >= (shadowMapCoord.z / shadowMapCoord.w)) ? 1.0 : 0.0;
+		for (int k = minBound; k <= maxBound; k++)
+		{
+				for (int l = minBound; l <= maxBound; l++)
+				{
+						vec2 texel = vec2(1 / 4096.0, 1 / 4096.0);
+						vec2 offset = vec2(texel * vec2(l, k));
 
+						// x, y, level, depth
+						float depth = texture(gShadowMap, vec4(UVCoords + offset, index, (z - bias)));
 
-		// // Hardware
-		// float visibility = textureProj( shadowMapTex, shadowMapCoord);
+						percentLit += (depth + bias) < z ? 0.5 : 1.0;
 
-    // Nu
-    // float visibility = textureProj(gShadowMap[index], LightSpacePos);
+						// CascadeShadowMapTexture.SampleCmpLevelZero(PCFSampler,
+						// 							float3(shadowPosUV.xy + offset, bestCascade),
+						// 							shadowPosUV.z).r;
+				}
+		}
 
-
-		float bias = 0.01;
-
-    // x, y, level
-		// float depth = texture(gShadowMap, vec3(UVCoords, index)).x;
-
-    // x, y, level, depth
-		float depth = texture(gShadowMap, vec4(UVCoords, index, (z - bias)));
-
-// float computeOcclusion(vec4 shadowCoords)
-// {
-//     vec3 coord = vec3(shadowCoords.xyz/shadowCoords.w);
-//     float depth = texture( shadowMap, vec3(coord.xy,coord.z+0.001));
-//     return depth;
-// }
+		return percentLit / (size * size);
+ 
+// // Finish the average of all samples, and gamma correct the shadow factor.
+// return pow(percentLit /= 25.0f, 2.2);
 
 		// return visibility;
-		return (depth + bias) < z ? 0.5 : 1.0;
+}
 
-		// return depth;
-
-
-		// float dot_light_normal = dot(sun.direction, In.normal);
-
-		// float bias = 0.0001; //max(0.05 * (1.0 - dot_light_normal), 0.005);
-
-		// return (depth + bias) < z ? 0 : 1.0;
-
-    // if (Depth < z - 0.001)
-    //     return 0.5;
-    // else
-    //     return 1.0;
+float invLerp(float x, float a, float b) {
+	return (x - a) / (b - a);
 }
 
 
 void main() {
-	if (simple) return;
-
 	float shadow_factor = 0.0;
-	vec4 cascade_indicator = vec4(0.0, 0.0, 1, 0.0);
+	vec3 cascade_indicator = vec3(0.0, 0.0, 0);
+	vec3 prev_color = cascade_indicator;
+
+	float blend_distance = 50;
+	float prev_shadow_factor = 0;
 
 	for (int i = 0; i < NUM_CASCADES; i++) {
-		if (-ClipSpacePosZ >= gCascadeEndClipSpace[i]) {
-			shadow_factor = calcShadowFactor(i, LightSpacePos[i]);
+		float end = gCascadeEndClipSpace[i];
+		float prev_end = i == 0 ? 0 : gCascadeEndClipSpace[i - 1];
 
-			if (i == 0) 
-					cascade_indicator = vec4(1, 0.0, 0.0, 0.0);
-			else if (i == 1)
-					cascade_indicator = vec4(0.0, 1, 0.0, 0.0);
-			else if (i == 2)
-					cascade_indicator = vec4(0.0, 0.0, 1, 0.0);
+		vec3 indicator_color = vec3(1, 0, 0);
+		if (i == 1) indicator_color = vec3(0, 1, 0);
+		else if (i == 2) indicator_color = vec3(0, 0, 1);
 
-			break;
+		if (i > 0 && clip_space_depth > prev_end && clip_space_depth < prev_end + blend_distance) {
+			prev_shadow_factor = calcShadowFactor(i - 1, light_space_pos[i - 1]);
+
+			prev_color = vec3(0, 0, 0);
+			if (i == 1) prev_color = vec3(1, 0, 0);
+			else if (i == 2) prev_color = vec3(0, 1, 0);
 		}
+
+		if (clip_space_depth <= end) {
+			float sf = calcShadowFactor(i, light_space_pos[i]);
+
+			float f0 = i == 0 ? 0 : 1 - clamp(invLerp(clip_space_depth, prev_end, prev_end + blend_distance), 0, 1);
+      float f1 = clamp(invLerp(clip_space_depth, end - blend_distance, end), 0, 1);
+			float f = max(f0, f1);
+
+			shadow_factor = mix(sf, prev_shadow_factor, f0);
+
+			// prev_shadow_factor = sf;
+
+			cascade_indicator = mix(indicator_color, prev_color, f0);
+		}
+
+		if (clip_space_depth <= end) break;
 	}
+
+	// shadow_factor = clip_space_depth > 1000 ? 1 : 0;
 
 
 
@@ -186,12 +191,11 @@ void main() {
 	vec3 diffuse = diffuse(In.world_pos, In.normal);
 
 	fragmentColor = vec4(terrain_color * shadow_factor * (ambient + diffuse), 1.0);
-
-	// float visibility = textureProj(shadowMapTex, In.shadow_coord);
-	// fragmentColor = vec4(normalize(vec3(visibility)), 1);
+	// fragmentColor = vec4(cascade_indicator, 1.0);
+	// fragmentColor = vec4(vec3(shadow_factor), 1.0);
 
 	// fog
-	if (false) {
+	#if 0
 		float dist = distance(In.world_pos, eyeWorldPos);
 
 		float density = 0.0005;
@@ -200,5 +204,5 @@ void main() {
 
 		vec3 fog_color = vec3(109.0 / 255.0, 116.0 / 255.0, 109.0 / 255.0);
 		fragmentColor = vec4(mix(fragmentColor.xyz, fog_color, fog_factor), 1.0f);
-	}
+	#endif
 }

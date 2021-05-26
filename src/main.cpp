@@ -98,11 +98,9 @@ struct App {
     if (shader != 0) debug_program = shader;
 
     this->terrain.loadShader(is_reload);
+    this->water.loadShader(is_reload);
 
     DebugDrawer::instance()->loadShaders(is_reload);
-    
-    this->terrain.loadShader(true);
-    this->water.loadShader(true);
   }
 
   void init() {
