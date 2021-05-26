@@ -97,6 +97,7 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "water.wave_speed", wave_speed);
     gpu::setUniformSlow(this->shader_program, "water.wave_strength", wave_strength);
     gpu::setUniformSlow(this->shader_program, "water.wave_scale", wave_scale);
+    gpu::setUniformSlow(this->shader_program, "water.size", this->size);
     ssr.upload(this->shader_program, screen_fbo.width, screen_fbo.height, z_near, z_far);
 
     /* gpu::drawFullScreenQuad(); */
@@ -169,7 +170,7 @@ struct Water {
 
   // Height of the water level
   float height = -100;
-  float size = 4096;
+  float size = 4096 * 2.0;
   float foam_distance = 30.f;
   float wave_speed = 0.07;
   float wave_strength = 0.2;

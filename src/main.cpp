@@ -17,6 +17,8 @@ using namespace glm;
 #include "hdr.h"
 #include "model.h"
 #include "terrain.h"
+#include "shadowmap.h"
+#include "debug.h"
 #include "water.h"
 
 constexpr vec3 worldUp(0.0f, 1.0f, 0.0f);
@@ -33,13 +35,8 @@ struct App {
     bool is_mouse_dragging = false;
   } input;
 
-  struct Light {
-    vec3 position = {0, 0, 0};
-    vec3 color = vec3(1.f, 1.f, 1.f);
-    float intensity = 10000.0f;
-  } light;
-
   struct Projection {
+    float fovy = 70.0f;
     float far = 5000.0f;
     float near = 5.0f;
   } projection;
@@ -59,6 +56,7 @@ struct App {
   } models;
 
   Terrain terrain;
+  ShadowMap shadow_map;
   Water water;
 
   float current_time = 0.0f;
@@ -70,22 +68,39 @@ struct App {
   GLuint shader_program;         // Shader for rendering the final image
   GLuint simple_shader_program;  // Shader used to draw the shadow map
   GLuint background_program;
+  GLuint debug_program;
 
-  mat4 fighter_model_matrix = mat4(1.0f);
+  mat4 fighter_model_matrix = scale(vec3(10));
+
+  mat4 static_camera_proj;
+  mat4 static_camera_view;
+  vec3 static_camera_pos;
+  bool static_set = false;
 
   struct DrawScene {};
+
 
   void loadShaders(bool is_reload) {
     GLuint shader = gpu::loadShaderProgram("resources/shaders/simple.vert",
                                            "resources/shaders/simple.frag", is_reload);
     if (shader != 0) simple_shader_program = shader;
+
     shader = gpu::loadShaderProgram("resources/shaders/background.vert",
                                     "resources/shaders/background.frag", is_reload);
     if (shader != 0) background_program = shader;
+
     shader = gpu::loadShaderProgram("resources/shaders/shading.vert",
                                     "resources/shaders/shading.frag", is_reload);
     if (shader != 0) shader_program = shader;
 
+    shader = gpu::loadShaderProgram("resources/shaders/debug.vert",
+                                    "resources/shaders/debug.frag", is_reload);
+    if (shader != 0) debug_program = shader;
+
+    this->terrain.loadShader(is_reload);
+
+    DebugDrawer::instance()->loadShaders(is_reload);
+    
     this->terrain.loadShader(true);
     this->water.loadShader(true);
   }
@@ -119,6 +134,7 @@ struct App {
           "resources/envmaps/" + environment_map.base_name + "_irradiance.hdr");
     }
 
+    shadow_map.init(projection.near, projection.far);
     terrain.init();
     water.init();
   }
@@ -151,49 +167,110 @@ struct App {
     gpu::drawFullScreenQuad();
   }
 
-  void drawScene(GLuint currentShaderProgram, const mat4& viewMatrix, const mat4& projectionMatrix,
-                 const mat4& lightViewMatrix, const mat4& lightProjectionMatrix) {
-    glUseProgram(currentShaderProgram);
-    // Light source
-    vec4 viewSpaceLightPosition = viewMatrix * vec4(light.position, 1.0f);
-    gpu::setUniformSlow(currentShaderProgram, "point_light_color", light.color);
-    gpu::setUniformSlow(currentShaderProgram, "point_light_intensity_multiplier", light.intensity);
-    gpu::setUniformSlow(currentShaderProgram, "viewSpaceLightPosition",
-                        vec3(viewSpaceLightPosition));
-    gpu::setUniformSlow(currentShaderProgram, "viewSpaceLightDir",
-                        normalize(vec3(viewMatrix * vec4(-light.position, 0.0f))));
+  void shadowPass(GLuint current_program, const mat4& view_matrix, const mat4& proj_matrix,
+                  const mat4& light_view_matrix) {
+    shadow_map.calculateLightProjMatrices(view_matrix, light_view_matrix, window.width, window.height, projection.fovy);
+
+    glUseProgram(current_program);
+
+    for (uint i = 0 ; i < NUM_CASCADES ; i++) {
+      // Bind and clear the current cascade
+      shadow_map.bindWrite(i);
+      glClear(GL_DEPTH_BUFFER_BIT);
+      glViewport(0, 0, shadow_map.resolution, shadow_map.resolution);
+
+      mat4 light_proj_matrix = shadow_map.getLightProjMatrix(i);
+
+      // Terrain
+      terrain.begin(true);
+      terrain.setPolyOffset(shadow_map.polygon_offset_factor, shadow_map.polygon_offset_units);
+
+      glDisable(GL_CULL_FACE);
+      terrain.render(light_proj_matrix, light_view_matrix, vec3(0), mat4());
+      glEnable(GL_CULL_FACE);  
+
+      terrain.setPolyOffset(0, 0);
+
+      glUseProgram(current_program);
+
+      // Fighter
+      gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
+                          light_proj_matrix * light_view_matrix * fighter_model_matrix);
+      gpu::setUniformSlow(current_program, "modelViewMatrix", light_view_matrix * fighter_model_matrix);
+      gpu::setUniformSlow(current_program, "normalMatrix",
+                          inverse(transpose(light_view_matrix * fighter_model_matrix)));
+
+      gpu::render(models.fighter);
+    }
+  }
+
+  void renderPass(GLuint current_program, const mat4& viewMatrix, const mat4& projMatrix,
+                 const mat4& lightViewMatrix) {
+    glUseProgram(current_program);
 
     // Environment
-    gpu::setUniformSlow(currentShaderProgram, "environment_multiplier", environment_map.multiplier);
+    gpu::setUniformSlow(current_program, "environment_multiplier", environment_map.multiplier);
 
     // camera
-    gpu::setUniformSlow(currentShaderProgram, "viewInverse", inverse(viewMatrix));
+    gpu::setUniformSlow(current_program, "viewInverse", inverse(viewMatrix));
 
     // Terrain
-    terrain.render(projectionMatrix, viewMatrix, camera.position);
+    mat4 lightMatrix = mat4(1);
+
+    terrain.begin(false);
+
+    // Bind shadow map textures
+    shadow_map.begin(GL_TEXTURE10, projMatrix, lightViewMatrix);
+
+    terrain.render(projMatrix, viewMatrix, camera.position, lightMatrix);
+    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position, projection.near, projection.far);
+
+
+    glUseProgram(current_program);
 
     // Fighter
-    gpu::setUniformSlow(currentShaderProgram, "modelViewProjectionMatrix",
-                        projectionMatrix * viewMatrix * fighter_model_matrix);
-    gpu::setUniformSlow(currentShaderProgram, "modelViewMatrix", viewMatrix * fighter_model_matrix);
-    gpu::setUniformSlow(currentShaderProgram, "normalMatrix",
+    gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
+                        projMatrix * viewMatrix * fighter_model_matrix);
+    gpu::setUniformSlow(current_program, "modelViewMatrix", viewMatrix * fighter_model_matrix);
+    gpu::setUniformSlow(current_program, "normalMatrix",
                         inverse(transpose(viewMatrix * fighter_model_matrix)));
 
     gpu::render(models.fighter);
   }
 
+  bool rayPlaneIntersection(vec3 ray_origin, vec3 ray_dir, vec3 point_on_plane, vec3 plane_normal, float &hit_depth) {
+      float denom = dot(plane_normal, ray_dir);
+
+      if (denom < -1e-6) {
+          float t = dot(point_on_plane - ray_origin, plane_normal) / denom;
+
+          hit_depth = t;
+
+          return true;
+      }
+
+      return false;
+  } 
+
   void display(void) {
     SDL_GetWindowSize(window.handle, &window.width, &window.height);
 
     // setup matrices
-    mat4 projMatrix = perspective(radians(70.0f), float(window.width) / float(window.height),
+    mat4 projMatrix = perspective(radians(projection.fovy), float(window.width) / float(window.height),
                                   projection.near, projection.far);
+
     mat4 viewMatrix = camera.getViewMatrix();
 
-    vec4 lightStartPosition = vec4(40.0f, 40.0f, 0.0f, 1.0f);
-    light.position = vec3(rotate(current_time, worldUp) * lightStartPosition);
-    mat4 lightViewMatrix = lookAt(light.position, vec3(0.0f), worldUp);
-    mat4 lightProjMatrix = perspective(radians(70.0f), 1.0f, 25.0f, 100.0f);
+    if (!static_set) {
+      static_camera_proj = projMatrix;
+      static_camera_view = viewMatrix;
+      static_camera_pos = camera.position;
+      static_set = true;
+    }
+
+    // Draw from cascaded light sources
+    mat4 lightViewMatrix = lookAt(vec3(0), -terrain.sun.direction, worldUp);
+    shadowPass(shader_program, viewMatrix, projMatrix, lightViewMatrix);
 
     // Bind the environment map(s) to unused texture units
     glActiveTexture(GL_TEXTURE6);
@@ -205,22 +282,13 @@ struct App {
     glActiveTexture(GL_TEXTURE0);
 
     // Draw from camera
-    // water.begin(window.width, window.height);
-    {
-
-#if 1
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, window.width, window.height);
     glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-#endif
 
-      drawBackground(viewMatrix, projMatrix);
-      drawScene(shader_program, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
-      debugDrawLight(viewMatrix, projMatrix, vec3(light.position));
-    }
-
-    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position, projection.near, projection.far);
+    drawBackground(viewMatrix, projMatrix);
+    renderPass(shader_program, viewMatrix, projMatrix, lightViewMatrix);
   }
 
   bool handleEvents(void) {
@@ -269,6 +337,15 @@ struct App {
     const uint8_t* state = SDL_GetKeyboardState(nullptr);
     camera.key_event(state, delta_time);
 
+
+    if (state[SDL_SCANCODE_C]) {
+      static_camera_proj = perspective(radians(projection.fovy), float(window.width) / float(window.height),
+                                    projection.near, projection.far);
+
+      static_camera_view = camera.getViewMatrix();
+      static_camera_pos = camera.position;
+    }
+
     return quitEvent;
   }
 
@@ -292,14 +369,15 @@ struct App {
       }
 
       // Light and environment map
-      if (ImGui::CollapsingHeader("Light sources")) {
-        ImGui::SliderFloat("Environment multiplier", &environment_map.multiplier, 0.0f, 10.0f);
-        ImGui::ColorEdit3("Point light color", &light.color.x);
-        ImGui::SliderFloat("Point light intensity multiplier", &light.intensity, 0.0f, 10000.0f,
-                           "%.3f", ImGuiSliderFlags_Logarithmic);
-      }
+      // if (ImGui::CollapsingHeader("Light sources")) {
+      //   ImGui::SliderFloat("Environment multiplier", &environment_map.multiplier, 0.0f, 10.0f);
+      //   ImGui::ColorEdit3("Point light color", &light.color.x);
+      //   ImGui::SliderFloat("Point light intensity multiplier", &light.intensity, 0.0f, 10000.0f,
+      //                      "%.3f", ImGuiSliderFlags_Logarithmic);
+      // }
 
       terrain.gui(window.handle);
+      shadow_map.gui(window.handle);
       water.gui();
     }
     // Render the GUI.

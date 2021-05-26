@@ -27,6 +27,7 @@ void Terrain::loadShader(bool is_reload) {
       ShaderInput{"resources/shaders/terrain.frag", GL_FRAGMENT_SHADER},
       ShaderInput{"resources/shaders/terrain.tcs", GL_TESS_CONTROL_SHADER},
       ShaderInput{"resources/shaders/terrain.tes", GL_TESS_EVALUATION_SHADER},
+      // ShaderInput{"resources/shaders/terrain.geo", GL_GEOMETRY_SHADER},
   });
   this->shader_program = loadShaderProgram(program_shaders, is_reload);
 }
@@ -42,23 +43,29 @@ void Terrain::buildMesh(bool is_reload) {
                                    &this->positions_bo, &this->indices_bo);
 }
 
-void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
-                     glm::vec3 camera_position) {
-  GLint prev_program = 0;
-  glGetIntegerv(GL_CURRENT_PROGRAM, &prev_program);
+void Terrain::setPolyOffset(float factor, float units) {
+  gpu::setUniformSlow(this->shader_program, "polygon_offset_factor", factor);
+  gpu::setUniformSlow(this->shader_program, "polygon_offset_units", units);
+}
 
-  GLint prev_polygon_mode = 0;
-  glGetIntegerv(GL_POLYGON_MODE, &prev_polygon_mode);
+void Terrain::begin(bool simple) {
+  glUseProgram(this->shader_program);
+  gpu::setUniformSlow(this->shader_program, "simple", simple);
+}
+
+void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
+                     glm::vec3 camera_position, glm::mat4 light_matrix) {
+  GLint prev_polygon_mode;
 
   {
-    glUseProgram(this->shader_program);
-
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, this->grass_texture.gl_id);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, this->rock_texture.gl_id);
 
     if (this->wireframe) {
+      glGetIntegerv(GL_POLYGON_MODE, &prev_polygon_mode);
+
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     }
 
@@ -69,6 +76,8 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
         - glm::vec3(1, 0, 1) * this->terrain_size / 2.0f);
 
     // this->model_matrix = glm::mat4(1.0f);
+    gpu::setUniformSlow(this->shader_program, "lightMatrix", light_matrix);
+    gpu::setUniformSlow(this->shader_program, "viewMatrix", view_matrix);
     gpu::setUniformSlow(this->shader_program, "viewProjectionMatrix",
                         projection_matrix * view_matrix);
     gpu::setUniformSlow(this->shader_program, "modelMatrix", this->model_matrix);
@@ -92,15 +101,26 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
     glUniform1fv(glGetUniformLocation(this->shader_program, "tessMultiplier"), 1,
                  &this->tess_multiplier);
 
+    // Light
+    // gpu::setUniformSlow(this->shader_program, "point_light_color", light.color);
+    // gpu::setUniformSlow(this->shader_program, "point_light_intensity_multiplier", light.intensity);
+    // gpu::setUniformSlow(this->shader_program, "viewSpaceLightPosition", view_matrix * glm::vec4(light.position, 1.0f));
+    // gpu::setUniformSlow(this->shader_program, "viewSpaceLightDir", glm::normalize(glm::vec3(viewMatrix * vec4(-light.position, 0.0f))));
+    // gpu::setUniformSlow(this->shader_program, "spotOuterAngle", std::cos(glm::radians(22.5f)));
+    // gpu::setUniformSlow(this->shader_program, "spotInnerAngle", std::cos(glm::radians(17.5f)));
+
+    // glm::mat4 lightMatrix = glm::translate(vec3(0.5f)) * glm::scale(vec3(0.5f)) * lightProjectionMatrix * lightViewMatrix * inverse(viewMatrix);
+    // gpu::setUniformSlow(this->shader_program, "lightMatrix", lightMatrix);
+
     // Draw the terrain
     glBindVertexArray(this->vao);
     glDrawElements(GL_PATCHES, this->indices_count, GL_UNSIGNED_SHORT, 0);
     glBindVertexArray(0);
   }
 
-  glPolygonMode(GL_FRONT_AND_BACK, prev_polygon_mode);
-
-  glUseProgram(prev_program);
+  if (this->wireframe) {
+    glPolygonMode(GL_FRONT_AND_BACK, prev_polygon_mode);
+  }
 }
 
 void Terrain::gui(SDL_Window* window) {
@@ -116,6 +136,7 @@ void Terrain::gui(SDL_Window* window) {
       mesh_changed |= ImGui::SliderFloat("Size", &this->terrain_size, 512, 8192);
       mesh_changed |= ImGui::SliderInt("Subdivisions", &this->terrain_subdivision, 0, 256);
       ImGui::DragFloat("Tesselation Multiplier", &this->tess_multiplier, 1.0, 0.0);
+      this->tess_multiplier = glm::max(this->tess_multiplier, 0.f);
 
       if (mesh_changed) {
         this->buildMesh(true);
