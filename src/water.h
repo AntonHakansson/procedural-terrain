@@ -4,12 +4,14 @@
 #include <imgui.h>
 
 #include "fbo.h"
+#include "glm/ext/matrix_transform.hpp"
 #include "gpu.h"
 #include "model.h"
 #include "shader.h"
 
 struct Water {
   void init() {
+    indices_count = gpu::createSubdividedPlane(1, 0, &vao, &positions_bo, &indices_bo);
     loadShader(false);
     dudv_map.load("resources/textures/", "water_dudv.png", 3);
   }
@@ -52,6 +54,20 @@ struct Water {
              && "Framebuffer target was modified during water pass");
     }
 
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, screen_fbo.framebufferId);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+    glBlitFramebuffer(0, 0, screen_fbo.width, screen_fbo.height,
+                      0, 0, screen_fbo.width, screen_fbo.height,
+                      GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
+                      GL_NEAREST);
+
+    // REVIEW: What are the default READ/DRAW framebuffer values?
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+    CHECK_GL_ERROR();
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
@@ -59,6 +75,7 @@ struct Water {
     GLint prev_program = 0;
     glGetIntegerv(GL_CURRENT_PROGRAM, &prev_program);
 
+    auto model_matrix = glm::translate(glm::vec3(camera_position.x - (size / 2.0), height, camera_position.z - (size / 2.0))) * glm::scale(vec3(size, 0, size));
     glm::mat4 pixel_projection;
     {
       float sx = float(screen_fbo.width) / 2.0;
@@ -72,8 +89,6 @@ struct Water {
       pixel_projection = warp_to_screen_space * projection_matrix;
     }
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, screen_fbo.colorTextureTargets[0]);
     glActiveTexture(GL_TEXTURE1);
@@ -84,6 +99,7 @@ struct Water {
 
     glUseProgram(this->shader_program);
     gpu::setUniformSlow(this->shader_program, "current_time", current_time);
+    gpu::setUniformSlow(this->shader_program, "model_matrix", model_matrix);
     gpu::setUniformSlow(this->shader_program, "view_matrix", view_matrix);
     gpu::setUniformSlow(this->shader_program, "inv_view_matrix", glm::inverse(view_matrix));
     gpu::setUniformSlow(this->shader_program, "projection_matrix", projection_matrix);
@@ -97,13 +113,18 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "water.wave_scale", wave_scale);
     ssr.upload(this->shader_program, screen_fbo.width, screen_fbo.height, z_near, z_far);
 
-    gpu::drawFullScreenQuad();
+    /* gpu::drawFullScreenQuad(); */
+
+    glBindVertexArray(vao);
+    glDrawElements(GL_TRIANGLES, indices_count, GL_UNSIGNED_SHORT, 0);
+    glBindVertexArray(0);
 
     glUseProgram(prev_program);
   }
 
   void gui() {
     if (ImGui::CollapsingHeader("Water")) {
+      ImGui::DragFloat("Water size", &size, 4);
       ImGui::DragFloat("Water Level Height", &height, 0.1);
       ImGui::DragFloat("Water Foam Distance", &foam_distance, 0.1);
       ImGui::DragFloat("Wave speed", &wave_speed, 0.003);
@@ -161,6 +182,7 @@ struct Water {
 
   // Height of the water level
   float height = -100;
+  float size = 4096;
   float foam_distance = 30.f;
   float wave_speed = 0.07;
   float wave_strength = 0.2;
