@@ -7,11 +7,18 @@ void Terrain::init() {
   glPatchParameteri(GL_PATCH_VERTICES, 3);
   loadShader(false);
 
-  this->rock_texture.load("resources/textures/", "toon_stone.png", 3);
-  this->grass_texture.load("resources/textures/", "toon_grass.png", 3);
+  this->rock_texture.load("resources/textures/", "rock.jpg", 3);
+  this->grass_texture.load("resources/textures/", "grass.jpg", 3);
+  this->sand_texture.load("resources/textures/", "sand.jpg", 3);
+  this->snow_texture.load("resources/textures/", "snow.jpg", 3);
 }
 
 void Terrain::deinit() {
+  glDeleteTextures(1, &rock_texture.gl_id);
+  glDeleteTextures(1, &grass_texture.gl_id);
+  glDeleteTextures(1, &sand_texture.gl_id);
+  glDeleteTextures(1, &snow_texture.gl_id);
+
   glDeleteBuffers(1, &this->positions_bo);
   // glDeleteBuffers(1, &this->normals_bo);
   glDeleteBuffers(1, &this->indices_bo);
@@ -73,7 +80,7 @@ void Terrain::begin(bool simple) {
 }
 
 void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
-                     glm::vec3 camera_position, glm::mat4 light_matrix) {
+                     glm::vec3 camera_position, glm::mat4 light_matrix, float water_height) {
   GLint prev_polygon_mode;
 
   GLuint shader_program = this->simple ? this->shader_program_simple : this->shader_program;
@@ -83,6 +90,10 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
     glBindTexture(GL_TEXTURE_2D, this->grass_texture.gl_id);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, this->rock_texture.gl_id);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, this->sand_texture.gl_id);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, this->snow_texture.gl_id);
 
     if (this->wireframe) {
       glGetIntegerv(GL_POLYGON_MODE, &prev_polygon_mode);
@@ -119,7 +130,11 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
     gpu::setUniformSlow(shader_program, "sun.color", sun.color);
     gpu::setUniformSlow(shader_program, "sun.intensity", sun.intensity);
 
-    glUniform1fv(glGetUniformLocation(shader_program, "tessMultiplier"), 1,
+    gpu::setUniformSlow(this->shader_program, "noise.num_octaves", (GLint)noise.num_octaves);
+
+    gpu::setUniformSlow(this->shader_program, "waterHeight", water_height);
+
+    glUniform1fv(glGetUniformLocation(this->shader_program, "tessMultiplier"), 1,
                  &this->tess_multiplier);
 
     // Draw the terrain

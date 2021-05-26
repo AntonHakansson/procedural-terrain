@@ -69,6 +69,8 @@ struct Terrain {
 
   gpu::Texture grass_texture;
   gpu::Texture rock_texture;
+  gpu::Texture sand_texture;
+  gpu::Texture snow_texture;
 
   // Buffers on GPU
   uint32_t positions_bo;
@@ -87,6 +89,6 @@ struct Terrain {
   void setPolyOffset(float factor, float units);
 
   void begin(bool simple);
-  void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position, glm::mat4 light_matrix);
+  void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position, glm::mat4 light_matrix, float water_height);
   void gui(SDL_Window* window);
 };

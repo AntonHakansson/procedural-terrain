@@ -186,7 +186,7 @@ struct App {
       terrain.setPolyOffset(shadow_map.polygon_offset_factor, shadow_map.polygon_offset_units);
 
       glDisable(GL_CULL_FACE);
-      terrain.render(light_proj_matrix, light_view_matrix, vec3(0), mat4());
+      terrain.render(light_proj_matrix, light_view_matrix, vec3(0), mat4(), water.height);
       glEnable(GL_CULL_FACE);  
 
       terrain.setPolyOffset(0, 0);
@@ -222,7 +222,7 @@ struct App {
     // Bind shadow map textures
     shadow_map.begin(GL_TEXTURE10, projMatrix, lightViewMatrix);
 
-    terrain.render(projMatrix, viewMatrix, camera.position, lightMatrix);
+    terrain.render(projMatrix, viewMatrix, camera.position, lightMatrix, water.height);
     water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position, projection.near, projection.far);
 
 

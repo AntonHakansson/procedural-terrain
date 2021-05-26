@@ -13,6 +13,8 @@ in DATA {
 
 layout(binding = 0) uniform sampler2D grass;
 layout(binding = 1) uniform sampler2D rock;
+layout(binding = 2) uniform sampler2D sand;
+layout(binding = 3) uniform sampler2D snow;
 // layout(binding = 10) uniform sampler2DShadow shadowMapTex;
 
 uniform mat4 normalMatrix;
@@ -23,6 +25,10 @@ uniform mat4 modelViewProjectionMatrix;
 uniform mat4 viewProjectionMatrix;
 uniform vec3 eyeWorldPos;
 uniform vec3 viewSpaceLightPosition;
+
+
+uniform float waterHeight;
+uniform bool simple;
 
 
 // Cascading shadow map
@@ -69,11 +75,23 @@ vec3 triplanarSampling(sampler2D tex, vec3 worldpos, vec3 normal) {
 vec3 terrainColor(vec3 world_pos, vec3 normal) {
 	vec3 grass_color = triplanarSampling(grass, world_pos, normal);
 	vec3 rock_color = triplanarSampling(rock, world_pos, normal);
+	vec3 sand_color = triplanarSampling(sand, world_pos, normal);
+	vec3 snow_color = triplanarSampling(snow, world_pos, normal);
+
+	float transition = 4.0;
 
 	float slope = dot(normal, vec3(0, 1, 0));
 	float blending = smoothstep(0.8, 0.9, slope);
 
-	return mix(rock_color, grass_color, blending);
+    if (world_pos.y < waterHeight + transition) {
+        return sand_color;
+    }
+    else if (world_pos.y < waterHeight + transition * 2) {
+        return mix(sand_color, grass_color, (world_pos.y - waterHeight - transition) / transition);
+    }
+    else {
+        return mix(rock_color, grass_color, blending);
+    }
 }
 
 vec3 ambient() {
