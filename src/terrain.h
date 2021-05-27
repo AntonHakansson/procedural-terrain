@@ -7,6 +7,8 @@
 #include <ImGuizmo.h>
 #include <glad/glad.h>
 
+#include <stb_image.h>
+
 #include <array>
 #include <fstream>
 #include <glm/detail/type_vec3.hpp>
@@ -105,23 +107,23 @@ struct Terrain {
 
   glm::mat4 model_matrix = glm::mat4(1.0);
 
-  gpu::Texture grass_texture;
-  gpu::Texture rock_texture;
-  gpu::Texture sand_texture;
-  gpu::Texture snow_texture;
+  gpu::Texture albedos;
+  gpu::Texture normals;
+  gpu::Texture displacements;
+  gpu::Texture roughness;
 
-  gpu::Texture grass_normal;
-  gpu::Texture rock_normal;
-  gpu::Texture sand_normal;
-  gpu::Texture snow_normal;
-
+<<<<<<< HEAD
   std::array<float, 4> texture_start_heights{0, 0.760, 0.797, 0.840};
   std::array<float, 4> texture_blends{0.0, 0.021, 0.030, 0.011};
   std::array<float, 4> texture_sizes{32, 32, 32, 32};
+=======
+  std::array<float, 4> texture_start_heights{0, 0.25, 0.65, 0.86};
+  std::array<float, 4> texture_blends{0.04, 0.08, 0.08, 0.02};
+  std::array<float, 4> texture_sizes{4, 4, 4, 4};
+>>>>>>> 63316a9c40f13aaaa336b53492cf4c38a156eda8
 
   // Buffers on GPU
   uint32_t positions_bo;
-  // uint32_t normals_bo;
   uint32_t indices_bo;
 
   // Vertex Array Object
