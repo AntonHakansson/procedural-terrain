@@ -7,8 +7,6 @@ void Terrain::init() {
   glPatchParameteri(GL_PATCH_VERTICES, 3);
   loadShader(false);
 
-  GLsizei mipLevelCount = 1;
-
   glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &albedo);
   glTextureParameteri(albedo, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTextureParameteri(albedo, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -31,10 +29,10 @@ void Terrain::init() {
     int width;
     int height;
     int components;
-    uint8_t *data = stbi_load(filepath.c_str(), &width, &height, &components, 3);
+    uint8_t* data = stbi_load(filepath.c_str(), &width, &height, &components, 3);
 
     if (data == nullptr) {
-      printf("ERROR: Failed to load texture: %s\n",  filepath.c_str());
+      printf("ERROR: Failed to load texture: %s\n", filepath.c_str());
       exit(1);
     }
 
@@ -52,11 +50,6 @@ void Terrain::init() {
     free(albedo_data[i]);
   }
 
-  // this->rock_texture.load("resources/textures/terrain/rock/", "rock.jpg", 3);
-  // this->grass_texture.load("resources/textures/terrain/grass/", "grass.jpg", 3);
-  // this->sand_texture.load("resources/textures/terrain/sand/", "sand.jpg", 3);
-  // this->snow_texture.load("resources/textures/terrain/snow/", "snow.jpg", 3);
-
   this->rock_normal.load("resources/textures/terrain/rock/", "rock_normal.jpg", 3);
   this->grass_normal.load("resources/textures/terrain/grass/", "grass_normal.jpg", 3);
   this->sand_normal.load("resources/textures/terrain/sand/", "sand_normal.jpg", 3);
@@ -70,7 +63,6 @@ void Terrain::deinit() {
   glDeleteTextures(1, &snow_texture.gl_id);
 
   glDeleteBuffers(1, &this->positions_bo);
-  // glDeleteBuffers(1, &this->normals_bo);
   glDeleteBuffers(1, &this->indices_bo);
   glDeleteVertexArrays(1, &this->vao);
 }
@@ -136,15 +128,6 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
 
   {
     glBindTextureUnit(0, albedo);
-
-    // glActiveTexture(GL_TEXTURE0);
-    // glBindTexture(GL_TEXTURE_2D, this->grass_texture.gl_id);
-    // glActiveTexture(GL_TEXTURE1);
-    // glBindTexture(GL_TEXTURE_2D, this->rock_texture.gl_id);
-    // glActiveTexture(GL_TEXTURE2);
-    // glBindTexture(GL_TEXTURE_2D, this->sand_texture.gl_id);
-    // glActiveTexture(GL_TEXTURE3);
-    // glBindTexture(GL_TEXTURE_2D, this->snow_texture.gl_id);
 
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, this->grass_normal.gl_id);

@@ -118,7 +118,6 @@ struct Terrain {
 
   // Buffers on GPU
   uint32_t positions_bo;
-  // uint32_t normals_bo;
   uint32_t indices_bo;
 
   // Vertex Array Object
