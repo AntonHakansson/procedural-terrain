@@ -7,47 +7,52 @@ void Terrain::init() {
   glPatchParameteri(GL_PATCH_VERTICES, 3);
   loadShader(false);
 
-  glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &albedo);
-  glTextureParameteri(albedo, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTextureParameteri(albedo, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTextureParameteri(albedo, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTextureParameteri(albedo, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
   std::array<std::string, 4> albedo_paths = {
       "resources/textures/terrain/sand/sand.jpg",
-      "resources/textures/terrain/rock/rock.jpg",
       "resources/textures/terrain/grass/grass.jpg",
+      "resources/textures/terrain/rock/rock.jpg",
       "resources/textures/terrain/snow/snow.jpg",
   };
 
-  std::array<int, 4> widths;
-  std::array<int, 4> heights;
-  std::array<uint8_t*, 4> albedo_data;
+  // Load albedos
+  auto miplevels = 3;
+  {
+    glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &albedo);
+    glTextureParameteri(albedo, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTextureParameteri(albedo, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTextureParameteri(albedo, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTextureParameteri(albedo, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTextureParameteri(albedo, GL_TEXTURE_MAX_ANISOTROPY, 16);
 
-  for (int i = 0; i < albedo_paths.size(); i++) {
-    auto filepath = albedo_paths[i];
-    int width;
-    int height;
-    int components;
-    uint8_t* data = stbi_load(filepath.c_str(), &width, &height, &components, 3);
+    std::array<int, 4> widths;
+    std::array<int, 4> heights;
+    std::array<uint8_t*, 4> albedo_data;
 
-    if (data == nullptr) {
-      printf("ERROR: Failed to load texture: %s\n", filepath.c_str());
-      exit(1);
+    for (int i = 0; i < albedo_paths.size(); i++) {
+      auto filepath = albedo_paths[i];
+      int width;
+      int height;
+      int components;
+      uint8_t* data = stbi_load(filepath.c_str(), &width, &height, &components, 3);
+
+      if (data == nullptr) {
+        printf("ERROR: Failed to load texture: %s\n", filepath.c_str());
+        exit(1);
+      }
+
+      widths[i] = width;
+      heights[i] = height;
+      albedo_data[i] = data;
     }
 
-    widths[i] = width;
-    heights[i] = height;
-    albedo_data[i] = data;
-  }
-
-  glTextureStorage3D(albedo, 1, GL_RGB8, widths[0], heights[0], albedo_paths.size());
-  for (int i = 0; i < albedo_paths.size(); i++) {
-    auto w = widths[i];
-    auto h = heights[i];
-    glTextureSubImage3D(albedo, 0, 0, 0, i, w, h, 1, GL_RGB, GL_UNSIGNED_BYTE, albedo_data[i]);
-    CHECK_GL_ERROR();
-    free(albedo_data[i]);
+    glTextureStorage3D(albedo, miplevels, GL_RGB8, widths[0], heights[0], albedo_paths.size());
+    for (int i = 0; i < albedo_paths.size(); i++) {
+      auto w = widths[i];
+      auto h = heights[i];
+      glTextureSubImage3D(albedo, 0, 0, 0, i, w, h, 1, GL_RGB, GL_UNSIGNED_BYTE, albedo_data[i]);
+      free(albedo_data[i]);
+    }
+    glGenerateTextureMipmap(albedo);
   }
 
   this->rock_normal.load("resources/textures/terrain/rock/", "rock_normal.jpg", 3);
