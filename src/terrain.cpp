@@ -149,6 +149,8 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
                  texture_start_heights.size(), texture_start_heights.data());
     glUniform1fv(glGetUniformLocation(shader_program, "texture_blends"), texture_blends.size(),
                  texture_blends.data());
+    glUniform1fv(glGetUniformLocation(shader_program, "texture_sizes"), texture_sizes.size(),
+                 texture_sizes.data());
 
     glUniform1fv(glGetUniformLocation(shader_program, "tessMultiplier"), 1, &this->tess_multiplier);
 
@@ -198,10 +200,17 @@ void Terrain::gui(Camera* camera) {
       ImGui::SliderFloat(("h" + std::to_string(i)).c_str(), &h, 0.0, 1.0);
     }
 
-    ImGui::Text("Texture blends");
+    ImGui::Text("Texture Blends");
     for (int i = 0; i < texture_start_heights.size(); i++) {
       auto& b = texture_blends[i];
       ImGui::SliderFloat(("b" + std::to_string(i)).c_str(), &b, 0.0, 0.5);
     }
+
+    ImGui::Text("Texture Scaling");
+    for (int i = 0; i < texture_sizes.size(); i++) {
+      auto& b = texture_sizes[i];
+      ImGui::SliderFloat(("b" + std::to_string(i)).c_str(), &b, 0.0, 0.5);
+    }
+
   }
 }

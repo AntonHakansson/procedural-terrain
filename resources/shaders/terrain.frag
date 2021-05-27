@@ -48,6 +48,7 @@ uniform Noise noise;
 
 uniform float texture_start_heights[4];
 uniform float texture_blends[4];
+uniform float texture_sizes[4];
 
 // Cascading shadow map
 struct Sun {
