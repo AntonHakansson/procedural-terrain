@@ -7,10 +7,55 @@ void Terrain::init() {
   glPatchParameteri(GL_PATCH_VERTICES, 3);
   loadShader(false);
 
-  this->rock_texture.load("resources/textures/terrain/rock/", "rock.jpg", 3);
-  this->grass_texture.load("resources/textures/terrain/grass/", "grass.jpg", 3);
-  this->sand_texture.load("resources/textures/terrain/sand/", "sand.jpg", 3);
-  this->snow_texture.load("resources/textures/terrain/snow/", "snow.jpg", 3);
+  GLsizei mipLevelCount = 1;
+
+  glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &albedo);
+  glTextureParameteri(albedo, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTextureParameteri(albedo, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTextureParameteri(albedo, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTextureParameteri(albedo, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+  std::array<std::string, 4> albedo_paths = {
+      "resources/textures/terrain/sand/sand.jpg",
+      "resources/textures/terrain/rock/rock.jpg",
+      "resources/textures/terrain/grass/grass.jpg",
+      "resources/textures/terrain/snow/snow.jpg",
+  };
+
+  std::array<int, 4> widths;
+  std::array<int, 4> heights;
+  std::array<uint8_t*, 4> albedo_data;
+
+  for (int i = 0; i < albedo_paths.size(); i++) {
+    auto filepath = albedo_paths[i];
+    int width;
+    int height;
+    int components;
+    uint8_t *data = stbi_load(filepath.c_str(), &width, &height, &components, 3);
+
+    if (data == nullptr) {
+      printf("ERROR: Failed to load texture: %s\n",  filepath.c_str());
+      exit(1);
+    }
+
+    widths[i] = width;
+    heights[i] = height;
+    albedo_data[i] = data;
+  }
+
+  glTextureStorage3D(albedo, 1, GL_RGB8, widths[0], heights[0], albedo_paths.size());
+  for (int i = 0; i < albedo_paths.size(); i++) {
+    auto w = widths[i];
+    auto h = heights[i];
+    glTextureSubImage3D(albedo, 0, 0, 0, i, w, h, 1, GL_RGB, GL_UNSIGNED_BYTE, albedo_data[i]);
+    CHECK_GL_ERROR();
+    free(albedo_data[i]);
+  }
+
+  // this->rock_texture.load("resources/textures/terrain/rock/", "rock.jpg", 3);
+  // this->grass_texture.load("resources/textures/terrain/grass/", "grass.jpg", 3);
+  // this->sand_texture.load("resources/textures/terrain/sand/", "sand.jpg", 3);
+  // this->snow_texture.load("resources/textures/terrain/snow/", "snow.jpg", 3);
 
   this->rock_normal.load("resources/textures/terrain/rock/", "rock_normal.jpg", 3);
   this->grass_normal.load("resources/textures/terrain/grass/", "grass_normal.jpg", 3);
@@ -90,14 +135,16 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
   GLuint shader_program = this->simple ? this->shader_program_simple : this->shader_program;
 
   {
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, this->grass_texture.gl_id);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, this->rock_texture.gl_id);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, this->sand_texture.gl_id);
-    glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_2D, this->snow_texture.gl_id);
+    glBindTextureUnit(0, albedo);
+
+    // glActiveTexture(GL_TEXTURE0);
+    // glBindTexture(GL_TEXTURE_2D, this->grass_texture.gl_id);
+    // glActiveTexture(GL_TEXTURE1);
+    // glBindTexture(GL_TEXTURE_2D, this->rock_texture.gl_id);
+    // glActiveTexture(GL_TEXTURE2);
+    // glBindTexture(GL_TEXTURE_2D, this->sand_texture.gl_id);
+    // glActiveTexture(GL_TEXTURE3);
+    // glBindTexture(GL_TEXTURE_2D, this->snow_texture.gl_id);
 
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, this->grass_normal.gl_id);
@@ -211,6 +258,5 @@ void Terrain::gui(Camera* camera) {
       auto& b = texture_sizes[i];
       ImGui::SliderFloat(("b" + std::to_string(i)).c_str(), &b, 0.0, 0.5);
     }
-
   }
 }
