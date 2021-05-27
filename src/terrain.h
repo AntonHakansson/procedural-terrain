@@ -105,6 +105,8 @@ struct Terrain {
 
   gpu::Texture grass_normal;
   gpu::Texture rock_normal;
+  gpu::Texture sand_normal;
+  gpu::Texture snow_normal;
 
   std::array<float, 4> texture_start_heights{0, 0.25, 0.65, 0.86};
   std::array<float, 4> texture_blends{0.04, 0.08, 0.08, 0.02};
