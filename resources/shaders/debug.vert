@@ -8,9 +8,8 @@ out vec3 fColor;
 uniform mat4 projection;
 uniform mat4 view;
 
-void main()
-{
-	gl_Position = projection * view * vec4(position, 1.0f);
+void main() {
+  gl_Position = projection * view * vec4(position, 1.0f);
 
-	fColor = color;
+  fColor = color;
 }

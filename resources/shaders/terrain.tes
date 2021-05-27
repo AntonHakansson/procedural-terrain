@@ -2,10 +2,11 @@
 
 layout(triangles, equal_spacing, ccw) in;
 in DATA {
-    vec3 world_pos;
-    vec2 tex_coord;
-    vec3 normal;
-} In[];
+  vec3 world_pos;
+  vec2 tex_coord;
+  vec3 normal;
+}
+In[];
 
 uniform mat4 viewProjectionMatrix;
 uniform mat4 lightMatrix;
@@ -13,7 +14,6 @@ uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 modelViewMatrix;
 uniform vec3 eyeWorldPos;
-
 
 // Cascading shadow maps
 const int NUM_CASCADES = 3;
@@ -25,76 +25,61 @@ uniform float polygon_offset_units;
 out vec4 light_space_pos[NUM_CASCADES];
 out float clip_space_depth;
 
-
-
 // Noise
 struct Noise {
-    int num_octaves;
-    float amplitude;
-    float frequency;
-    float persistence;
-    float lacunarity;
+  int num_octaves;
+  float amplitude;
+  float frequency;
+  float persistence;
+  float lacunarity;
 };
 uniform Noise noise;
 
-
 // Out data
 out DATA {
-    vec3 world_pos;
-    vec3 view_pos;
-    vec4 shadow_coord;
-    vec2 tex_coord;
-    vec3 normal;
-    vec3 tangent;
-    vec3 bitangent;
-    mat3 tangent_matrix;
-} Out;
-
-
-
-
+  vec3 world_pos;
+  vec3 view_pos;
+  vec4 shadow_coord;
+  vec2 tex_coord;
+  vec3 normal;
+  vec3 tangent;
+  vec3 bitangent;
+  mat3 tangent_matrix;
+}
+Out;
 
 float random2D(in vec2 st) {
-    vec3 seed = vec3(12312412, 123123, 124123);
-    return fract(sin(dot(st.xy, vec2(12.9898, 78.233) + seed.xy)) * 43758.5453123);
+  vec3 seed = vec3(12312412, 123123, 124123);
+  return fract(sin(dot(st.xy, vec2(12.9898, 78.233) + seed.xy)) * 43758.5453123);
 }
 
-vec2 interpolate2D(vec2 v0, vec2 v1, vec2 v2)
-{
-    return vec2(gl_TessCoord.x) * v0 + vec2(gl_TessCoord.y) * v1 + vec2(gl_TessCoord.z) * v2;
+vec2 interpolate2D(vec2 v0, vec2 v1, vec2 v2) {
+  return vec2(gl_TessCoord.x) * v0 + vec2(gl_TessCoord.y) * v1 + vec2(gl_TessCoord.z) * v2;
 }
 
-vec3 interpolate3D(vec3 v0, vec3 v1, vec3 v2)
-{
-    return vec3(gl_TessCoord.x) * v0 + vec3(gl_TessCoord.y) * v1 + vec3(gl_TessCoord.z) * v2;
+vec3 interpolate3D(vec3 v0, vec3 v1, vec3 v2) {
+  return vec3(gl_TessCoord.x) * v0 + vec3(gl_TessCoord.y) * v1 + vec3(gl_TessCoord.z) * v2;
 }
 
-vec3 mod289(vec3 x) {
-  return x - floor(x * (1.0 / 289.0)) * 289.0;
-}
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 
-vec2 mod289(vec2 x) {
-  return x - floor(x * (1.0 / 289.0)) * 289.0;
-}
+vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 
-vec3 permute(vec3 x) {
-  return mod289(((x*34.0)+1.0)*x);
-}
+vec3 permute(vec3 x) { return mod289(((x * 34.0) + 1.0) * x); }
 
-float snoise(vec2 v)
-{
-  vec4 C = vec4(0.211324865405187,  // (3.0-sqrt(3.0))/6.0
-                0.366025403784439,  // 0.5*(sqrt(3.0)-1.0)
+float snoise(vec2 v) {
+  vec4 C = vec4(0.211324865405187,   // (3.0-sqrt(3.0))/6.0
+                0.366025403784439,   // 0.5*(sqrt(3.0)-1.0)
                 -0.577350269189626,  // -1.0 + 2.0 * C.x
-                0.024390243902439); // 1.0 / 41.0
+                0.024390243902439);  // 1.0 / 41.0
   // First corner
-  vec2 i  = floor(v + dot(v, C.yy) );
-  vec2 x0 = v -   i + dot(i, C.xx);
+  vec2 i = floor(v + dot(v, C.yy));
+  vec2 x0 = v - i + dot(i, C.xx);
 
   // Other corners
   vec2 i1;
-  //i1.x = step( x0.y, x0.x ); // x0.x > x0.y ? 1.0 : 0.0
-  //i1.y = 1.0 - i1.x;
+  // i1.x = step( x0.y, x0.x ); // x0.x > x0.y ? 1.0 : 0.0
+  // i1.y = 1.0 - i1.x;
   i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
   // x0 = x0 - 0.0 + 0.0 * C.xx ;
   // x1 = x0 - i1 + 1.0 * C.xx ;
@@ -102,14 +87,13 @@ float snoise(vec2 v)
   vec4 x12 = x0.xyxy + C.xxzz;
   x12.xy -= i1;
 
-// Permutations
-  i = mod289(i); // Avoid truncation effects in permutation
-  vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
-    + i.x + vec3(0.0, i1.x, 1.0 ));
+  // Permutations
+  i = mod289(i);  // Avoid truncation effects in permutation
+  vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
 
-  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-  m = m*m ;
-  m = m*m ;
+  vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
+  m = m * m;
+  m = m * m;
 
   // Gradients: 41 points uniformly over a line, mapped onto a diamond.
   // The ring size 17*17 = 289 is close to a multiple of 41 (41*7 = 287)
@@ -121,11 +105,11 @@ float snoise(vec2 v)
 
   // Normalise gradients implicitly by scaling m
   // Approximation of: m *= inversesqrt( a0*a0 + h*h );
-  m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+  m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
 
   // Compute final noise value at P
   vec3 g;
-  g.x  = a0.x  * x0.x  + h.x  * x0.y;
+  g.x = a0.x * x0.x + h.x * x0.y;
   g.yz = a0.yz * x12.xz + h.yz * x12.yw;
   return 130.0 * dot(m, g);
 }
@@ -140,10 +124,9 @@ vec2 rhash(vec2 uv) {
 }
 
 vec3 hash(vec3 p) {
-  return fract(sin(vec3(dot(p, vec3(1.0, 57.0, 113.0)),
-                        dot(p, vec3(57.0, 113.0, 1.0)),
-                        dot(p, vec3(113.0, 1.0, 57.0)))) *
-               43758.5453);
+  return fract(sin(vec3(dot(p, vec3(1.0, 57.0, 113.0)), dot(p, vec3(57.0, 113.0, 1.0)),
+                        dot(p, vec3(113.0, 1.0, 57.0))))
+               * 43758.5453);
 }
 
 float voronoi2d(const in vec2 point) {
@@ -160,16 +143,15 @@ float voronoi2d(const in vec2 point) {
   return pow(1. / res, 0.0625);
 }
 
-
 float terrain_height(vec2 pos) {
   float noise_value = 0;
   float frequency = noise.frequency;
   float amplitude = noise.amplitude;
 
   for (int i = 0; i < noise.num_octaves; i++) {
-      noise_value += (snoise(pos * frequency * 0.01) * 2.0 - 1.0) * amplitude;
-      amplitude *= noise.persistence;
-      frequency *= noise.lacunarity;
+    noise_value += (snoise(pos * frequency * 0.01) * 2.0 - 1.0) * amplitude;
+    amplitude *= noise.persistence;
+    frequency *= noise.lacunarity;
   }
 
   return noise_value;
@@ -178,49 +160,42 @@ float terrain_height(vec2 pos) {
 vec3 computeNormals(vec3 WorldPos) {
   vec2 eps = vec2(0.1, 0.0);
   return normalize(
-    vec3(
-      terrain_height(WorldPos.xz - eps.xy) - terrain_height(WorldPos.xz + eps.xy),
-      2 * eps.x,
-      terrain_height(WorldPos.xz - eps.yx) - terrain_height(WorldPos.xz + eps.yx)
-    )
-  );
+      vec3(terrain_height(WorldPos.xz - eps.xy) - terrain_height(WorldPos.xz + eps.xy), 2 * eps.x,
+           terrain_height(WorldPos.xz - eps.yx) - terrain_height(WorldPos.xz + eps.yx)));
 }
 
-vec3 computeTangent(vec3 WorldPos, vec3 normal) {
-  return normalize(cross(normal, vec3(0, 1, 0)));
-}
+vec3 computeTangent(vec3 WorldPos, vec3 normal) { return normalize(cross(normal, vec3(0, 1, 0))); }
 
 void main() {
-    // Interpolate the attributes of the output vertex using the barycentric coordinates
-    Out.world_pos = interpolate3D(In[0].world_pos, In[1].world_pos, In[2].world_pos);
-    Out.tex_coord = interpolate2D(In[0].tex_coord, In[1].tex_coord, In[2].tex_coord);
-    // Out.normal = interpolate3D(Normal_ES_in[0], Normal_ES_in[1], Normal_ES_in[2]);
+  // Interpolate the attributes of the output vertex using the barycentric coordinates
+  Out.world_pos = interpolate3D(In[0].world_pos, In[1].world_pos, In[2].world_pos);
+  Out.tex_coord = interpolate2D(In[0].tex_coord, In[1].tex_coord, In[2].tex_coord);
+  // Out.normal = interpolate3D(Normal_ES_in[0], Normal_ES_in[1], Normal_ES_in[2]);
 
-    // Displace the vertex along the normal
-    float displacement = terrain_height(Out.world_pos.xz);
-    Out.world_pos += vec3(0.0, 1.0, 0.0) * displacement;
-    Out.view_pos = (viewMatrix * vec4(Out.world_pos, 1.0)).xyz;
+  // Displace the vertex along the normal
+  float displacement = terrain_height(Out.world_pos.xz);
+  Out.world_pos += vec3(0.0, 1.0, 0.0) * displacement;
+  Out.view_pos = (viewMatrix * vec4(Out.world_pos, 1.0)).xyz;
 
-    Out.normal = computeNormals(Out.world_pos);
-    Out.tangent = computeTangent(Out.world_pos, Out.normal);
-    Out.bitangent = normalize(cross(Out.tangent, Out.normal));
+  Out.normal = computeNormals(Out.world_pos);
+  Out.tangent = computeTangent(Out.world_pos, Out.normal);
+  Out.bitangent = normalize(cross(Out.tangent, Out.normal));
 
-    // vec3 T = normalize(vec3(model * vec4(aTangent,   0.0)));
-    // vec3 B = normalize(vec3(model * vec4(aBitangent, 0.0)));
-    // vec3 N = normalize(vec3(model * vec4(aNormal,    0.0)));
-    Out.tangent_matrix = mat3(Out.tangent, Out.bitangent, Out.normal);
+  // vec3 T = normalize(vec3(model * vec4(aTangent,   0.0)));
+  // vec3 B = normalize(vec3(model * vec4(aBitangent, 0.0)));
+  // vec3 N = normalize(vec3(model * vec4(aNormal,    0.0)));
+  Out.tangent_matrix = mat3(Out.tangent, Out.bitangent, Out.normal);
 
-    // Out.world_pos -= Out.tangent * polygon_offset_factor;
+  // Out.world_pos -= Out.tangent * polygon_offset_factor;
 
-    Out.shadow_coord = lightMatrix * vec4(Out.view_pos, 1.f);
+  Out.shadow_coord = lightMatrix * vec4(Out.view_pos, 1.f);
 
-    gl_Position = viewProjectionMatrix * vec4(Out.world_pos, 1.0);
+  gl_Position = viewProjectionMatrix * vec4(Out.world_pos, 1.0);
 
+  // Cascading shadow map
+  for (int i = 0; i < NUM_CASCADES; i++) {
+    light_space_pos[i] = gLightWVP[i] * vec4(Out.world_pos, 1.0);
+  }
 
-    // Cascading shadow map
-    for (int i = 0 ; i < NUM_CASCADES ; i++) {
-        light_space_pos[i] = gLightWVP[i] * vec4(Out.world_pos, 1.0);
-    }
-
-    clip_space_depth = gl_Position.z;
+  clip_space_depth = gl_Position.z;
 }

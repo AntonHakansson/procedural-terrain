@@ -26,7 +26,8 @@ out DATA {
   vec3 view_space_normal;
   vec3 view_space_position;
   vec3 world_pos;
-} Out;
+}
+Out;
 
 void main() {
   vec4 world_pos_h = model_matrix * vec4(position, 1.0);

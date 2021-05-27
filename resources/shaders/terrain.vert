@@ -12,14 +12,16 @@ uniform vec3 eyeWorldPos;
 
 // Out data
 out DATA {
-	vec3 world_pos;
-	vec2 tex_coord;
-	vec3 normal;
-} Out;
+  vec3 world_pos;
+  vec2 tex_coord;
+  vec3 normal;
+}
+Out;
 
 void main() {
-	// NOTE: We transform the point into local space and _not_ clip space for the Tesselation Control Shader
-	Out.world_pos = (modelMatrix * vec4(Position_VS_in, 1.0)).xyz;
-	Out.tex_coord = TexCoord_VS_in;
-	// Out.normal = (modelMatrix * vec4(Normal_VS_in, 0.0)).xyz;
+  // NOTE: We transform the point into local space and _not_ clip space for the Tesselation Control
+  // Shader
+  Out.world_pos = (modelMatrix * vec4(Position_VS_in, 1.0)).xyz;
+  Out.tex_coord = TexCoord_VS_in;
+  // Out.normal = (modelMatrix * vec4(Normal_VS_in, 0.0)).xyz;
 }

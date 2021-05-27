@@ -1,8 +1,11 @@
 #pragma once
 
+#include <SDL.h>
+
+#include <imgui.h>
+
 #include <ImGuizmo.h>
 #include <glad/glad.h>
-#include <imgui.h>
 
 #include <array>
 #include <fstream>

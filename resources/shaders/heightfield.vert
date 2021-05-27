@@ -20,8 +20,7 @@ out vec2 texCoord;
 out vec3 viewSpacePosition;
 out vec3 viewSpaceNormal;
 
-void main()
-{
-	gl_Position = modelViewProjectionMatrix * vec4(position, 1.0);
-	texCoord = texCoordIn;
+void main() {
+  gl_Position = modelViewProjectionMatrix * vec4(position, 1.0);
+  texCoord = texCoordIn;
 }
