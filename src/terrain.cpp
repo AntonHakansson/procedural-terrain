@@ -9,6 +9,9 @@ void Terrain::init() {
 
   this->rock_texture.load("resources/textures/", "toon_stone.png", 3);
   this->grass_texture.load("resources/textures/", "toon_grass.png", 3);
+
+  this->rock_normal.load("resources/textures/", "toon_stone_normal.png", 3);
+  this->grass_normal.load("resources/textures/", "toon_grass_normal.png", 3);
 }
 
 void Terrain::deinit() {
@@ -84,6 +87,11 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, this->rock_texture.gl_id);
 
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, this->grass_normal.gl_id);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, this->rock_normal.gl_id);
+
     if (this->wireframe) {
       glGetIntegerv(GL_POLYGON_MODE, &prev_polygon_mode);
 
@@ -133,7 +141,7 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
   }
 }
 
-void Terrain::gui(SDL_Window* window) {
+void Terrain::gui(Camera* camera) {
   if (ImGui::CollapsingHeader("Terrain")) {
     ImGui::Text("Debug");
     { ImGui::Checkbox("Wireframe", &this->wireframe); }
@@ -159,7 +167,7 @@ void Terrain::gui(SDL_Window* window) {
       this->noise.gui();
 
       ImGui::Text("Sun");
-      this->sun.gui();
+      this->sun.gui(camera);
     }
   }
 }

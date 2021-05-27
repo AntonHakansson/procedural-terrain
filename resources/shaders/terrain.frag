@@ -9,10 +9,15 @@ in DATA {
     vec4 shadow_coord;
     vec2 tex_coord;
     vec3 normal;
+    vec3 tangent;
+    vec3 bitangent;
+		mat3 tangent_matrix;
 } In;
 
 layout(binding = 0) uniform sampler2D grass;
 layout(binding = 1) uniform sampler2D rock;
+layout(binding = 2) uniform sampler2D grass_normal;
+layout(binding = 3) uniform sampler2D rock_normal;
 // layout(binding = 10) uniform sampler2DShadow shadowMapTex;
 
 uniform mat4 normalMatrix;
@@ -63,17 +68,36 @@ vec3 triplanarSampling(sampler2D tex, vec3 worldpos, vec3 normal) {
 	vec3 y_projection = texture(tex, scaled_worldpos.xz).xyz * blend_axis.y;
 	vec3 z_projection = texture(tex, scaled_worldpos.xy).xyz * blend_axis.z;
 
-	return x_projection + y_projection + z_projection;
+	// return x_projection + y_projection + z_projection;
+	return texture(tex, scaled_worldpos.xz).xyz;
+}
+
+float terrainBlending(vec3 world_pos, vec3 normal) {
+	float slope = dot(normal, vec3(0, 1, 0));
+	return smoothstep(0.8, 0.9, slope);
 }
 
 vec3 terrainColor(vec3 world_pos, vec3 normal) {
 	vec3 grass_color = triplanarSampling(grass, world_pos, normal);
 	vec3 rock_color = triplanarSampling(rock, world_pos, normal);
+	float blending = terrainBlending(world_pos, normal);
 
-	float slope = dot(normal, vec3(0, 1, 0));
-	float blending = smoothstep(0.8, 0.9, slope);
-
+	// return grass_color;
+	// return vec3(1, 1, 1);
 	return mix(rock_color, grass_color, blending);
+}
+
+vec3 terrainNormal(vec3 world_pos, vec3 normal) {
+	vec3 grass_normal = 2 * triplanarSampling(grass_normal, world_pos, normal) - vec3(1);
+	vec3 rock_normal = 2 * triplanarSampling(rock_normal, world_pos, normal) - vec3(1);
+
+	// rock_normal.y *= -1;
+	// grass_normal.y *= -1;
+
+	float blending = terrainBlending(world_pos, normal);
+
+	// return In.tangent_matrix * rock_normal;
+	return normalize(mix(In.tangent_matrix * rock_normal, In.tangent_matrix * grass_normal, blending));
 }
 
 vec3 ambient() {
@@ -82,14 +106,23 @@ vec3 ambient() {
 }
 
 vec3 diffuse(vec3 world_pos, vec3 normal) {
-	// Shadow map
-	float visibility = 1; //textureProj(shadowMapTex, In.shadow_coord);
+	vec3 norm = terrainNormal(world_pos, normal);
 
-	float diffuse_factor = max(0.0, dot(-sun.direction, normal));
-	vec3 diffuse = visibility * diffuse_factor * sun.color * sun.intensity;
+	float diffuse_factor = max(0.0, dot(-sun.direction, norm));
+	vec3 diffuse = diffuse_factor * sun.color * sun.intensity;
 
 	return diffuse;
 }
+
+
+// float lerp(float a, float b, float x) {
+// 	return a + (b - a) * x;
+// }
+
+float invLerp(float x, float a, float b) {
+	return (x - a) / (b - a);
+}
+
 
 
 float calcShadowFactor(int index, vec4 light_space_pos)
@@ -102,7 +135,7 @@ float calcShadowFactor(int index, vec4 light_space_pos)
 
     float z = 0.5 * ProjCoords.z + 0.5;
 
-		float bias = 0.001;
+		float bias = 0.0005;
 
 
 		float percentLit = 0;
@@ -118,28 +151,19 @@ float calcShadowFactor(int index, vec4 light_space_pos)
 						vec2 offset = vec2(texel * vec2(l, k));
 
 						// x, y, level, depth
-						float depth = texture(gShadowMap, vec4(UVCoords + offset, index, (z - bias)));
+						float visibility = texture(gShadowMap, vec4(UVCoords + offset, index, (z - bias)));
 
-						percentLit += (depth + bias) < z ? 0.5 : 1.0;
-
-						// CascadeShadowMapTexture.SampleCmpLevelZero(PCFSampler,
-						// 							float3(shadowPosUV.xy + offset, bestCascade),
-						// 							shadowPosUV.z).r;
+						percentLit += visibility;
 				}
 		}
 
-		return percentLit / (size * size);
+		return mix(0.5, 1.0, percentLit / (size * size));
  
 // // Finish the average of all samples, and gamma correct the shadow factor.
 // return pow(percentLit /= 25.0f, 2.2);
 
 		// return visibility;
 }
-
-float invLerp(float x, float a, float b) {
-	return (x - a) / (b - a);
-}
-
 
 void main() {
 	float shadow_factor = 0.0;
@@ -205,4 +229,6 @@ void main() {
 		vec3 fog_color = vec3(109.0 / 255.0, 116.0 / 255.0, 109.0 / 255.0);
 		fragmentColor = vec4(mix(fragmentColor.xyz, fog_color, fog_factor), 1.0f);
 	#endif
+
+	// fragmentColor = vec4(terrain_color, 1.0);
 }

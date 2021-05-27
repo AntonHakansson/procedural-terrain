@@ -42,18 +42,17 @@ struct Water {
               glm::mat4 view_matrix, glm::vec3 camera_position, float z_near, float z_far) {
     screen_fbo.resize(width, height);
 
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    GLint prev_fbo = 0;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_fbo);
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, prev_fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, screen_fbo.framebufferId);
 
     glBlitFramebuffer(0, 0, screen_fbo.width, screen_fbo.height, 0, 0, screen_fbo.width,
                       screen_fbo.height, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
     // REVIEW: What are the default READ/DRAW framebuffer values?
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-
-    CHECK_GL_ERROR();
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prev_fbo);
 
     GLint prev_program = 0;
     glGetIntegerv(GL_CURRENT_PROGRAM, &prev_program);

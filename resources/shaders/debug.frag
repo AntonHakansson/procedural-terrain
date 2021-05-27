@@ -6,5 +6,5 @@ in vec3 fColor;
 
 void main()
 {
-	fragmentColor = vec4(fColor, 1.0);   
+	fragmentColor = vec4(vec3(1, 0, 0), 1.0);   
 }

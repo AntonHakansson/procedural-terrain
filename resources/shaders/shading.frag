@@ -81,7 +81,7 @@ vec3 calculateDirectIllumiunation(vec3 wo, vec3 n)
 		float R0 = material_fresnel;
 		float cos_theta_h = max(dot(wh, wi), 0.0);
 
-		fresnel_factor = R0 + ((1.0 - R0) * pow(1.0 - cos_theta_h, 5));
+		fresnel_factor = R0 + ((1.0 - R0) * max(pow(1.0 - cos_theta_h, 5), 0));
 	}
 
 	// Calculate normal distribution for specular BRDF.

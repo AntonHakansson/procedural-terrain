@@ -444,9 +444,8 @@ void main() {
   // foam
 
   foam_mask += max(1.0 - diff_depth / water.foam_distance, 0);
-  foam_mask *= max(sin(diff_depth / 1.5 + sin(current_time * 1.0) * 4), 0);
-
-  foam_mask += max(1.0 - diff_depth / (water.foam_distance / 2.0), 0);
+  foam_mask *= max(sin((diff_depth / 1.5 + current_time * 4) / 2), 0);
+  foam_mask += max(1.0 - diff_depth / (water.foam_distance / 3.0), 0);
 
   ocean_mask = min(max((diff_depth - 100) / 1200.0, 0), 0.18) / 0.18;
 

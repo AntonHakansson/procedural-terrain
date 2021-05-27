@@ -4,6 +4,7 @@
 
 #include <glm/detail/type_vec3.hpp>
 #include <glm/gtx/transform.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 
 using namespace glm;
@@ -14,6 +15,12 @@ enum CameraMode {
 };
 
 struct Camera {
+  struct Projection {
+    float fovy = 70.0f;
+    float far = 5000.0f;
+    float near = 5.0f;
+  } projection;
+
   vec3 position = vec3(-70.0, 50.0, 70.0);
   vec3 direction = normalize(vec3(0.0) - position);
   vec3 world_up = vec3(0.0, 1.0, 0.0);
@@ -63,6 +70,11 @@ struct Camera {
   }
 
   mat4 getViewMatrix() { return lookAt(position, position + direction, world_up); }
+
+  mat4 getProjMatrix(int window_width, int window_height) { 
+    return perspective(radians(projection.fovy), float(window_width) / float(window_height),
+                                  projection.near, projection.far);
+  }
 
   void gui() {
     ImGui::SliderFloat("Movement Speed", &this->speed, 80.0, 350.0);

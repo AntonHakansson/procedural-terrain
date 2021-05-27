@@ -4,6 +4,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include "gpu.h"
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <ImGuizmo.h>
 
 using namespace glm;
 
@@ -165,6 +168,46 @@ public:
     DebugDrawer::instance()->drawLine(vec3(fcorners[5]), vec3(fcorners[7]), color);
     DebugDrawer::instance()->drawLine(vec3(fcorners[6]), vec3(fcorners[7]), color);
     DebugDrawer::instance()->drawLine(vec3(fcorners[6]), vec3(fcorners[4]), color);
+	}
+
+	void beginGizmo(mat4 view_matrix, vec2 size, mat4 &out_view_matrix, mat4 &out_proj_matrix) {
+		ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+
+		ImVec2 box_max = ImVec2(cursor_pos.x + size.x, cursor_pos.y + size.y);
+
+		ImDrawList* draw_list = ImGui::GetWindowDrawList(); 
+
+		ImRect bb(cursor_pos, ImVec2(cursor_pos.x + size.x, cursor_pos.y + size.y));
+		ImGui::ItemSize(bb);
+		if (!ImGui::ItemAdd(bb, 0))
+				return;
+
+		draw_list->AddRect(cursor_pos, box_max, ImColor(100, 100, 100, 255));
+
+		mat4 view_inverse = inverse(view_matrix);
+		vec3 pos = vec3(view_inverse[3][0], view_inverse[3][1], view_inverse[3][2]);
+		vec3 dir = vec3(view_inverse[2][0], view_inverse[2][1], view_inverse[2][2]);
+		vec3 up = vec3(view_inverse[1][0], view_inverse[1][1], view_inverse[1][2]);
+
+		float length = 20;
+		const vec3 cam_target = pos - dir * length;
+
+		const float distance = 3.f;
+		float fov = acosf(distance / (sqrtf(distance * distance + 3.f)));
+
+		vec3 eye = dir * distance;
+
+		out_view_matrix = lookAt(eye, vec3(0), up);
+		out_proj_matrix = perspective(fov / sqrtf(2.f), size.x / size.y, 0.1f, 10.f);
+				
+		ImGuizmo::SetRect(cursor_pos.x, cursor_pos.y, size.x, size.y);
+		ImGuizmo::SetGizmoSizeClipSpace(0.7);
+		// ImGui::PushClipRect(cursor_pos, box_max, true);
+	}
+
+	void endGizmo() {
+		// ImGui::PopClipRect();
+		ImGuizmo::SetGizmoSizeClipSpace(0.1);
 	}
 
 	GLuint VBO, VAO;

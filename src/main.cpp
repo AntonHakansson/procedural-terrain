@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <ImGuizmo.h>
 
 #include <algorithm>
@@ -36,12 +37,6 @@ struct App {
     bool is_mouse_dragging = false;
   } input;
 
-  struct Projection {
-    float fovy = 70.0f;
-    float far = 5000.0f;
-    float near = 5.0f;
-  } projection;
-
   Camera camera;
 
   struct EnvironmentMap {
@@ -70,6 +65,7 @@ struct App {
   GLuint simple_shader_program;  // Shader used to draw the shadow map
   GLuint background_program;
   GLuint debug_program;
+  GLuint postfx_program;
 
   bool fighter_draggable = false;
   mat4 fighter_model_matrix = scale(vec3(10));
@@ -78,6 +74,8 @@ struct App {
   mat4 static_camera_view;
   vec3 static_camera_pos;
   bool static_set = false;
+
+  FboInfo postfx_fbo;
 
   struct DrawScene {};
 
@@ -98,6 +96,10 @@ struct App {
     shader = gpu::loadShaderProgram("resources/shaders/debug.vert",
                                     "resources/shaders/debug.frag", is_reload);
     if (shader != 0) debug_program = shader;
+
+    shader = gpu::loadShaderProgram("resources/shaders/postfx.vert",
+                                    "resources/shaders/postfx.frag", is_reload);
+    if (shader != 0) postfx_program = shader;
 
     this->terrain.loadShader(is_reload);
     this->water.loadShader(is_reload);
@@ -134,7 +136,7 @@ struct App {
           "resources/envmaps/" + environment_map.base_name + "_irradiance.hdr");
     }
 
-    shadow_map.init(projection.near, projection.far);
+    shadow_map.init(camera.projection.near, camera.projection.far);
     terrain.init();
     water.init();
   }
@@ -169,7 +171,7 @@ struct App {
 
   void shadowPass(GLuint current_program, const mat4& view_matrix, const mat4& proj_matrix,
                   const mat4& light_view_matrix) {
-    shadow_map.calculateLightProjMatrices(view_matrix, light_view_matrix, window.width, window.height, projection.fovy);
+    shadow_map.calculateLightProjMatrices(view_matrix, light_view_matrix, window.width, window.height, camera.projection.fovy);
 
     glUseProgram(current_program);
 
@@ -223,7 +225,7 @@ struct App {
     shadow_map.begin(GL_TEXTURE10, projMatrix, lightViewMatrix);
 
     terrain.render(projMatrix, viewMatrix, camera.position, lightMatrix);
-    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position, projection.near, projection.far);
+    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position, camera.projection.near, camera.projection.far);
 
 
     glUseProgram(current_program);
@@ -241,6 +243,10 @@ struct App {
   void display(void) {
     SDL_GetWindowSize(window.handle, &window.width, &window.height);
 
+    if (postfx_fbo.width != window.width || postfx_fbo.height != window.height) {
+      postfx_fbo.resize(window.width, window.height);
+    }
+
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame(window.handle);
     ImGui::NewFrame();
@@ -249,9 +255,7 @@ struct App {
     ImGuizmo::SetRect(0, 0, window.width, window.height);
 
     // setup matrices
-    mat4 projMatrix = perspective(radians(projection.fovy), float(window.width) / float(window.height),
-                                  projection.near, projection.far);
-
+    mat4 projMatrix = camera.getProjMatrix(window.width, window.height);
     mat4 viewMatrix = camera.getViewMatrix();
 
     if (fighter_draggable) {
@@ -279,13 +283,26 @@ struct App {
     glActiveTexture(GL_TEXTURE0);
 
     // Draw from camera
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, window.width, window.height);
+    glBindFramebuffer(GL_FRAMEBUFFER, postfx_fbo.framebufferId);
+    glViewport(0, 0, postfx_fbo.width, postfx_fbo.height);
     glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     drawBackground(viewMatrix, projMatrix);
     renderPass(shader_program, viewMatrix, projMatrix, lightViewMatrix);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glUseProgram(postfx_program);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, postfx_fbo.colorTextureTargets[0]);
+
+    gpu::setUniformSlow(postfx_program, "viewMatrix", viewMatrix);
+    gpu::setUniformSlow(postfx_program, "projMatrix", projMatrix);
+    gpu::setUniformSlow(postfx_program, "currentTime", current_time);
+    gpu::setUniformSlow(postfx_program, "water.height", water.height);
+
+    gpu::drawFullScreenQuad();
   }
 
   bool handleEvents(void) {
@@ -294,6 +311,8 @@ struct App {
     bool quitEvent = false;
 
     ImGuiIO& io = ImGui::GetIO();
+
+    io.ConfigWindowsMoveFromTitleBarOnly = true;
 
     while (SDL_PollEvent(&event)) {
       ImGui_ImplSDL2_ProcessEvent(&event);
@@ -336,8 +355,8 @@ struct App {
 
 
     if (state[SDL_SCANCODE_C]) {
-      static_camera_proj = perspective(radians(projection.fovy), float(window.width) / float(window.height),
-                                    projection.near, projection.far);
+      static_camera_proj = perspective(radians(camera.projection.fovy), float(window.width) / float(window.height),
+                        camera.projection.near, camera.projection.far);
 
       static_camera_view = camera.getViewMatrix();
       static_camera_pos = camera.position;
@@ -348,6 +367,14 @@ struct App {
 
   void gui() {
     if (show_ui) {
+      ImGuizmo::SetDrawlist();
+
+      float window_width = (float)ImGui::GetWindowWidth();
+      float window_height = (float)ImGui::GetWindowHeight();
+      ImVec2 window_pos = ImGui::GetWindowPos();
+
+      ImGuizmo::SetRect(window_pos.x, window_pos.y, window_width, window_height);
+
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                   1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
@@ -359,8 +386,8 @@ struct App {
 
       if (ImGui::CollapsingHeader("Camera")) {
         camera.gui();
-        ImGui::DragFloat("Near Projection", &projection.near, 0.02, 0.2);
-        ImGui::DragFloat("Far Projection", &projection.far, 200.0, 1000.0);
+        ImGui::DragFloat("Near Projection", &camera.projection.near, 0.02, 0.2);
+        ImGui::DragFloat("Far Projection", &camera.projection.far, 200.0, 1000.0);
       }
 
       // Light and environment map
@@ -371,10 +398,16 @@ struct App {
       //                      "%.3f", ImGuiSliderFlags_Logarithmic);
       // }
 
-      terrain.gui(window.handle);
+      terrain.gui(&camera);
       shadow_map.gui(window.handle);
       water.gui();
+
+      if (ImGui::CollapsingHeader("Post FX")) {
+        ImGui::Image((void*)(intptr_t)postfx_fbo.colorTextureTargets[0], ImVec2(252, 252),
+                    ImVec2(0, 1), ImVec2(1, 0));
+      }
     }
+
     // Render the GUI.
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

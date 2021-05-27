@@ -2,11 +2,13 @@
 
 #include <glad/glad.h>
 #include <imgui.h>
+#include <ImGuizmo.h>
 
 #include <array>
 #include <fstream>
 #include <glm/detail/type_vec3.hpp>
 #include <glm/gtx/transform.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 #include <sstream>
 #include <vector>
@@ -14,6 +16,8 @@
 #include "gpu.h"
 #include "model.h"
 #include "shader.h"
+#include "camera.h"
+#include "debug.h"
 
 struct TerrainNoise {
   int num_octaves = 7;
@@ -38,11 +42,31 @@ struct Sun {
   glm::vec3 color = glm::vec3(1.0, 1.0, 1.0);
   float intensity = 0.4;
 
-  bool gui() {
+  glm::mat4 matrix = inverse(glm::lookAt(vec3(0), -direction, vec3(0, 1, 0)));
+
+  bool gui(Camera* camera) {
     auto did_change = false;
-    did_change |= ImGui::DragFloat3("Direction", &direction.x, 0.04);
+    
+    mat4 cube_view, cube_proj;
+
+    DebugDrawer::instance()->beginGizmo(camera->getViewMatrix(), vec2(256, 256), cube_view, cube_proj);
+    ImGuizmo::Manipulate(&cube_view[0][0], &cube_proj[0][0], ImGuizmo::ROTATE, ImGuizmo::LOCAL, &matrix[0][0], nullptr, nullptr);
+    DebugDrawer::instance()->endGizmo();
+
+    direction = vec3(matrix[2][0], matrix[2][1], matrix[2][2]);
+
     did_change |= ImGui::DragFloat("Intensity", &intensity, 0.05);
     did_change |= ImGui::ColorPicker3("Color", &color.x);
+
+    // glm::mat4 viewMatrix = glm::mat4(1);
+    // glm::mat4 projMatrix = glm::perspective(glm::radians(45.0f), float(1000) / float(1000), 0.0f, 100.0f);
+
+    // ImGuiIO& io = ImGui::GetIO();
+    // float viewManipulateRight = io.DisplaySize.x;
+    // float viewManipulateTop = 0;
+
+    // ImGuizmo::Manipulate(&viewMatrix[0][0], &projMatrix[0][0], ImGuizmo::ROTATE, ImGuizmo::LOCAL, &matrix[0][0], nullptr, nullptr);
+    // ImGuizmo::ViewManipulate(&viewMatrix[0][0], 10.0f, ImVec2(viewManipulateRight - 128, viewManipulateTop), ImVec2(128, 128), 0x10101010);
 
     direction = glm::normalize(direction);
     return did_change;
@@ -70,6 +94,9 @@ struct Terrain {
   gpu::Texture grass_texture;
   gpu::Texture rock_texture;
 
+  gpu::Texture grass_normal;
+  gpu::Texture rock_normal;
+
   // Buffers on GPU
   uint32_t positions_bo;
   // uint32_t normals_bo;
@@ -88,5 +115,5 @@ struct Terrain {
 
   void begin(bool simple);
   void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position, glm::mat4 light_matrix);
-  void gui(SDL_Window* window);
+  void gui(Camera* camera);
 };
