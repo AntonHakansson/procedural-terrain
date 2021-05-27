@@ -438,8 +438,8 @@ void main() {
   float foam_mask;
   float ocean_mask;
   vec3 out_color = color;
-  vec3 ocean_blue = vec3(0, 0.3, 1);
-  vec3 ocean_blue_deep = vec3(0, 0.2, 0.6);
+  vec3 ocean_blue = vec3(0.1, 0.3, 0.6);
+  vec3 ocean_blue_deep = vec3(0.05, 0.1, 0.2);
 
   // foam
 

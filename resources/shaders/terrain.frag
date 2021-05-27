@@ -268,8 +268,6 @@ void main() {
 
       shadow_factor = mix(sf, prev_shadow_factor, f0);
 
-      // prev_shadow_factor = sf;
-
       cascade_indicator = mix(indicator_color, prev_color, f0);
     }
 

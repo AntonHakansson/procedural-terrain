@@ -48,7 +48,7 @@ void main() {
 
   float height = world_pos.y;
 
-  vec3 ocean_blue_deep = vec3(0, 0.2, 0.6);
+  vec3 ocean_blue_deep = vec3(0.05, 0.1, 0.25);
 
   if (height < water.height) {
     vec3 col = texture(tex, texCoord + vec2(0, sin(currentTime) * 0.01)).xyz;
@@ -70,7 +70,7 @@ void main() {
   vec3 out_color = texture(tex, texCoord).xyz;
 
   float u_hue = 0.5;
-  float u_saturate = 0.55;
+  float u_saturate = 0.5;
   float u_value = 0.5;
 
   vec3 col_hsv = RGBtoHSV(out_color);
