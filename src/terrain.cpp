@@ -78,6 +78,12 @@ void Terrain::setPolyOffset(float factor, float units) {
   gpu::setUniformSlow(this->shader_program, "polygon_offset_units", units);
 }
 
+void Terrain::update(float delta_time, float current_time) {
+  mat4 sun_matrix = inverse(lookAt(vec3(0), -sun.direction, vec3(0, 1, 0)));
+  sun_matrix = rotate(radians(delta_time * sun.orbit_speed), sun.orbit_axis) * sun_matrix;
+  sun.direction = vec3(sun_matrix[2][0], sun_matrix[2][1], sun_matrix[2][2]);
+}
+
 void Terrain::begin(bool simple) {
   glUseProgram(simple ? this->shader_program_simple : this->shader_program);
   this->simple = simple;

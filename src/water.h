@@ -13,7 +13,7 @@ struct Water {
   void init() {
     indices_count = gpu::createSubdividedPlane(1, 0, &vao, &positions_bo, &indices_bo);
     loadShader(false);
-    dudv_map.load("resources/textures/", "water_dudv.png", 3);
+    dudv_map.load("resources/textures/", "water_dudv_tile.jpg", 3);
   }
 
   void deinit() {
@@ -160,12 +160,12 @@ struct Water {
   int indices_count;
 
   // Height of the water level
-  float height = -100;
+  float height = 145;
   float size = 4096 * 2.0;
   float foam_distance = 30.f;
-  float wave_speed = 0.07;
+  float wave_speed = 0.045;
   float wave_strength = 0.2;
-  float wave_scale = 500;
+  float wave_scale = 160;
   gpu::Texture dudv_map;
 
   GLuint shader_program;

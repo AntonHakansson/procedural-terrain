@@ -200,6 +200,8 @@ vec3 diffuse(vec3 world_pos, vec3 normal) {
 float calcShadowFactor(int index, vec4 light_space_pos) {
   vec3 ProjCoords = light_space_pos.xyz / light_space_pos.w;
 
+  if (sun.direction.y >= 0.05) return 0.5;
+
   vec2 UVCoords;
   UVCoords.x = 0.5 * ProjCoords.x + 0.5;
   UVCoords.y = 0.5 * ProjCoords.y + 0.5;

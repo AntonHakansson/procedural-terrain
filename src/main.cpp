@@ -69,7 +69,7 @@ struct App {
   GLuint postfx_program;
 
   bool fighter_draggable = false;
-  mat4 fighter_model_matrix = scale(vec3(10));
+  mat4 fighter_model_matrix = translate(vec3(0, 500, 0));
 
   mat4 static_camera_proj;
   mat4 static_camera_view;
@@ -245,6 +245,10 @@ struct App {
     gpu::render(models.fighter);
   }
 
+  void update(void) {
+    terrain.update(delta_time, current_time);
+  }
+
   void display(void) {
     SDL_GetWindowSize(window.handle, &window.width, &window.height);
 
@@ -302,11 +306,18 @@ struct App {
     glUseProgram(postfx_program);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, postfx_fbo.colorTextureTargets[0]);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, postfx_fbo.depthBuffer);
 
     gpu::setUniformSlow(postfx_program, "viewMatrix", viewMatrix);
     gpu::setUniformSlow(postfx_program, "projMatrix", projMatrix);
     gpu::setUniformSlow(postfx_program, "currentTime", current_time);
     gpu::setUniformSlow(postfx_program, "water.height", water.height);
+    gpu::setUniformSlow(postfx_program, "sun.direction", terrain.sun.direction);
+    gpu::setUniformSlow(postfx_program, "sun.color", terrain.sun.color);
+    gpu::setUniformSlow(postfx_program, "sun.intensity", terrain.sun.intensity);
+    gpu::setUniformSlow(postfx_program, "postfx.z_near", camera.projection.near);
+    gpu::setUniformSlow(postfx_program, "postfx.z_far", camera.projection.far);
 
     gpu::drawFullScreenQuad();
   }
@@ -435,6 +446,9 @@ int main(int argc, char* argv[]) {
     app->previous_time = app->current_time;
     app->current_time = timeSinceStart.count();
     app->delta_time = app->current_time - app->previous_time;
+
+    // update logic
+    app->update();
 
     // render to window
     app->display();

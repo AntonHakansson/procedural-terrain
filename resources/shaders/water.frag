@@ -435,19 +435,7 @@ void main() {
 
   vec3 view_dir = normalize(In.view_space_position);
 
-  float foam_mask;
-  float ocean_mask;
-  vec3 out_color = color;
-  vec3 ocean_blue = vec3(0.1, 0.3, 0.6);
-  vec3 ocean_blue_deep = vec3(0.05, 0.1, 0.2);
 
-  // foam
-
-  foam_mask += max(1.0 - diff_depth / water.foam_distance, 0);
-  foam_mask *= max(sin((diff_depth / 1.5 + current_time * 4) / 2), 0);
-  foam_mask += max(1.0 - diff_depth / (water.foam_distance / 3.0), 0);
-
-  ocean_mask = min(max((diff_depth - 100) / 1200.0, 0), 0.18) / 0.18;
 
   vec3 dudv = getDuDv(In.world_pos.xz);
   vec3 reflection_dir = normalize(reflect(view_dir, In.view_space_normal));
@@ -455,6 +443,19 @@ void main() {
 
   reflection_dir = normalize(reflection_dir + dudv);
   refraction_dir = normalize(refraction_dir + dudv);
+
+  // foam
+  float foam_mask;
+  float ocean_mask;
+  vec3 out_color = color;
+  vec3 ocean_blue = vec3(0.1, 0.3, 0.6);
+  vec3 ocean_blue_deep = vec3(0.05, 0.1, 0.2);
+
+  foam_mask += max(1.0 - (diff_depth) / water.foam_distance, 0);
+  foam_mask *= max(sin((diff_depth / 1.5 + current_time * 4 + dudv.y * 50) / 2), 0);
+  foam_mask += max(1.0 - diff_depth / (water.foam_distance / 3.0), 0);
+
+  ocean_mask = clamp((diff_depth - 100) / 1200.0, 0.0, 0.12) / 0.18;
 
 // reflection based on paper
 // -----------
@@ -510,7 +511,7 @@ void main() {
       = mix(reflection_color, refraction_color, max(-dot(view_dir, In.view_space_normal), 0.0));
 
   out_color = mix(fresnel_color, ocean_blue, 0.5);
-  out_color = out_color + (foam_mask * 1.4);
+  out_color = out_color + (foam_mask * 0.4);
 
   out_color = mix(out_color.xyz, ocean_blue_deep, ocean_mask);
   // fragmentColor = vec4(vec3(ocean_mask), 1.0);

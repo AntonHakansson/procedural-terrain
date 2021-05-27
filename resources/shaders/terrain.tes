@@ -149,12 +149,24 @@ float terrain_height(vec2 pos) {
   float amplitude = noise.amplitude;
 
   for (int i = 0; i < noise.num_octaves; i++) {
-    noise_value += (snoise(pos * frequency * 0.01) * 2.0 - 1.0) * amplitude;
+    float n = 0;
+
+    if (i == 0) {
+      n = pow(voronoi2d(pos * frequency / 200.0), 2);
+    }
+    else if (i == 1) {
+      n = snoise(pos * frequency / 300.0) / 1.5;
+    }
+    else {
+      n = voronoi2d(pos * frequency / 400.0 + vec2(112, 532));
+    }
+
+    noise_value += n * amplitude;
     amplitude *= noise.persistence;
     frequency *= noise.lacunarity;
   }
 
-  return noise_value;
+  return noise_value; // + snoise(pos / 10000.0) * 500.0 +  + max(0, voronoi2d(pos / 5000.0) * 1000.0);
 }
 
 vec3 computeNormals(vec3 WorldPos) {

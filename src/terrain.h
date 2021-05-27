@@ -24,8 +24,8 @@
 
 struct TerrainNoise {
   int num_octaves = 7;
-  float amplitude = 100.0;
-  float frequency = 0.1;
+  float amplitude = 900.0;
+  float frequency = 0.105;
   float persistence = .08;
   float lacunarity = 8.0;
 
@@ -45,22 +45,29 @@ struct Sun {
   glm::vec3 color = glm::vec3(1.0, 1.0, 1.0);
   float intensity = 1;
 
+  glm::vec3 orbit_axis = glm::vec3(0.702, 0, -0.713);
+  float orbit_speed = 0.f;
+
   glm::mat4 matrix = inverse(glm::lookAt(vec3(0), -direction, vec3(0, 1, 0)));
 
   bool gui(Camera* camera) {
     auto did_change = false;
 
-    mat4 cube_view, cube_proj;
 
-    DebugDrawer::instance()->beginGizmo(camera->getViewMatrix(), vec2(256, 256), cube_view,
-                                        cube_proj);
-    ImGuizmo::Manipulate(&cube_view[0][0], &cube_proj[0][0], ImGuizmo::ROTATE, ImGuizmo::LOCAL,
-                         &matrix[0][0], nullptr, nullptr);
-    DebugDrawer::instance()->endGizmo();
+    if (ImGui::CollapsingHeader("Force orbit")) {
+      mat4 cube_view, cube_proj;
 
-    direction = vec3(matrix[2][0], matrix[2][1], matrix[2][2]);
+      DebugDrawer::instance()->beginGizmo(camera->getViewMatrix(), vec2(256, 256), cube_view,
+                                          cube_proj);
+      ImGuizmo::Manipulate(&cube_view[0][0], &cube_proj[0][0], ImGuizmo::ROTATE, ImGuizmo::LOCAL,
+                          &matrix[0][0], nullptr, nullptr);
+      DebugDrawer::instance()->endGizmo();
+
+      direction = vec3(matrix[2][0], matrix[2][1], matrix[2][2]);
+    }
 
     did_change |= ImGui::DragFloat("Intensity", &intensity, 0.05);
+    did_change |= ImGui::DragFloat("Orbit speed", &orbit_speed, 10.f);
     did_change |= ImGui::ColorPicker3("Color", &color.x);
 
     // glm::mat4 viewMatrix = glm::mat4(1);
@@ -108,8 +115,8 @@ struct Terrain {
   gpu::Texture sand_normal;
   gpu::Texture snow_normal;
 
-  std::array<float, 4> texture_start_heights{0, 0.25, 0.65, 0.86};
-  std::array<float, 4> texture_blends{0.04, 0.08, 0.08, 0.02};
+  std::array<float, 4> texture_start_heights{0, 0.760, 0.797, 0.840};
+  std::array<float, 4> texture_blends{0.0, 0.021, 0.030, 0.011};
   std::array<float, 4> texture_sizes{32, 32, 32, 32};
 
   // Buffers on GPU
@@ -122,6 +129,8 @@ struct Terrain {
 
   void init();
   void deinit();
+
+  void update(float delta_time, float current_time);
 
   void loadShader(bool is_reload);
   void buildMesh(bool is_reload);

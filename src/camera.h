@@ -18,13 +18,13 @@ struct Camera {
   struct Projection {
     float fovy = 70.0f;
     float far = 5000.0f;
-    float near = 5.0f;
+    float near = 1.0f;
   } projection;
 
-  vec3 position = vec3(-70.0, 50.0, 70.0);
+  vec3 position = vec3(-70.0, 500.0, 70.0);
   vec3 direction = normalize(vec3(0.0) - position);
   vec3 world_up = vec3(0.0, 1.0, 0.0);
-  float speed = 150.0;
+  float speed = 10;
   float rotation_speed = 0.12f;
 
   CameraMode mode = CameraMode::Fly;
@@ -52,8 +52,12 @@ struct Camera {
     if (key_state[SDL_SCANCODE_E]) {
       movement_dir += world_up;
     }
-    if (key_state[SDL_SCANCODE_LSHIFT]) {
-      speed_multiplier = 3.0;
+
+    if (key_state[SDL_SCANCODE_LCTRL]) {
+      speed_multiplier = 50.0;
+    }
+    else if (key_state[SDL_SCANCODE_LSHIFT]) {
+      speed_multiplier = 15.0;
     }
 
     if (length(movement_dir) > 0.01) {
