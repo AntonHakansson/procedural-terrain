@@ -98,9 +98,9 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D, this->snow_texture.gl_id);
 
-    glActiveTexture(GL_TEXTURE2);
+    glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, this->grass_normal.gl_id);
-    glActiveTexture(GL_TEXTURE3);
+    glActiveTexture(GL_TEXTURE5);
     glBindTexture(GL_TEXTURE_2D, this->rock_normal.gl_id);
 
     if (this->wireframe) {
@@ -141,6 +141,8 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
     gpu::setUniformSlow(shader_program, "noise.num_octaves", (GLint)noise.num_octaves);
 
     gpu::setUniformSlow(shader_program, "waterHeight", water_height);
+    glUniform1fv(glGetUniformLocation(shader_program, "texture_start_heights"), texture_start_heights.size(), texture_start_heights.data());
+    glUniform1fv(glGetUniformLocation(shader_program, "texture_blends"), texture_blends.size(), texture_blends.data());
 
     glUniform1fv(glGetUniformLocation(shader_program, "tessMultiplier"), 1, &this->tess_multiplier);
 
@@ -182,6 +184,18 @@ void Terrain::gui(Camera* camera) {
 
       ImGui::Text("Sun");
       this->sun.gui(camera);
+    }
+
+    ImGui::Text("Texture Start Heights");
+    for (int i = 0; i < texture_start_heights.size(); i++) {
+      auto& h = texture_start_heights[i];
+      ImGui::SliderFloat(("h" + std::to_string(i)).c_str(), &h, 0.0, 1.0);
+    }
+
+    ImGui::Text("Texture blends");
+    for (int i = 0; i < texture_start_heights.size(); i++) {
+      auto& b = texture_blends[i];
+      ImGui::SliderFloat(("b" + std::to_string(i)).c_str(), &b, 0.0, 0.5);
     }
   }
 }

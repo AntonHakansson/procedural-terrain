@@ -18,8 +18,8 @@ layout(binding = 0) uniform sampler2D grass;
 layout(binding = 1) uniform sampler2D rock;
 layout(binding = 2) uniform sampler2D sand;
 layout(binding = 3) uniform sampler2D snow;
-layout(binding = 2) uniform sampler2D grass_normal;
-layout(binding = 3) uniform sampler2D rock_normal;
+layout(binding = 4) uniform sampler2D grass_normal;
+layout(binding = 5) uniform sampler2D rock_normal;
 // layout(binding = 10) uniform sampler2DShadow shadowMapTex;
 
 uniform mat4 normalMatrix;
@@ -35,6 +35,17 @@ uniform vec3 viewSpaceLightPosition;
 uniform float waterHeight;
 uniform bool simple;
 
+struct Noise {
+    int num_octaves;
+    float amplitude;
+    float frequency;
+    float persistence;
+    float lacunarity;
+};
+uniform Noise noise;
+
+uniform float texture_start_heights[4];
+uniform float texture_blends[4];
 
 // Cascading shadow map
 struct Sun {
@@ -78,12 +89,34 @@ vec3 triplanarSampling(sampler2D tex, vec3 worldpos, vec3 normal) {
 	return texture(tex, scaled_worldpos.xz).xyz;
 }
 
+
+float inverseLerp(float a, float b, float value) {
+    return clamp((value - a)/(b-a), 0.0, 1.0);
+}
+float inverseLerp2(float a, float b, float value) {
+    return (value - a)/(b-a);
+}
+
 float terrainBlending(vec3 world_pos, vec3 normal) {
 	float slope = dot(normal, vec3(0, 1, 0));
 	return smoothstep(0.8, 0.9, slope);
 }
 
+vec3 terrainNormal(vec3 world_pos, vec3 normal) {
+	vec3 grass_normal = 2 * triplanarSampling(grass_normal, world_pos, normal) - vec3(1);
+	vec3 rock_normal = 2 * triplanarSampling(rock_normal, world_pos, normal) - vec3(1);
+
+	// rock_normal.y *= -1;
+	// grass_normal.y *= -1;
+
+	float blending = terrainBlending(world_pos, normal);
+
+	// return In.tangent_matrix * rock_normal;
+	return normalize(mix(In.tangent_matrix * rock_normal, In.tangent_matrix * grass_normal, blending));
+}
+
 vec3 terrainColor(vec3 world_pos, vec3 normal) {
+	float height = world_pos.y;
 	vec3 grass_color = triplanarSampling(grass, world_pos, normal);
 	vec3 rock_color = triplanarSampling(rock, world_pos, normal);
 // <<<<<<< HEAD
@@ -98,31 +131,48 @@ vec3 terrainColor(vec3 world_pos, vec3 normal) {
 
 	float transition = 4.0;
 
-	float slope = dot(normal, vec3(0, 1, 0));
-	float blending = smoothstep(0.8, 0.9, slope);
+    // A completely flat terrain has slope=0
+	float slope = max(1 - dot(normal, vec3(0, 1, 0)), 0.0);
+	float blending = smoothstep(0.7, 0.9, slope);
 
-	if (world_pos.y < waterHeight + transition) {
-			return sand_color;
+	vec3 base_colors[4];
+	base_colors[0] = vec3(127.0/255.0, 94.0/255.0, 94.0/255.0);
+	base_colors[1] = vec3(0.1, 0.9, 0.1);
+	base_colors[2] = vec3(0.3, 0.3, 0.3);
+	base_colors[3] = vec3(0.9, 0.9, 0.9);
+
+	vec3 cc[4];
+	cc[0] = sand_color;
+	cc[1] = grass_color;
+	cc[2] = rock_color;
+	cc[3] = snow_color;
+
+	vec3 c = vec3(0);
+
+	// For each fragment we compute how much each texture contributes depending on height and slope
+	float draw_strengths[4];
+
+	float height_percentage = inverseLerp(-(3 * noise.amplitude), noise.amplitude, height);
+	for (int i = 0; i < 4; i++) {
+		float height_diff = height_percentage - texture_start_heights[i];
+
+		float lower_bound = -texture_blends[i]/2 - 1E-4;
+		float upper_bound = texture_blends[i]/2;
+
+		draw_strengths[i] = inverseLerp(lower_bound, upper_bound,  height_diff);
 	}
-	else if (world_pos.y < waterHeight + transition * 2) {
-			return mix(sand_color, grass_color, (world_pos.y - waterHeight - transition) / transition);
+
+	// fix slope blending stuff here
+	draw_strengths[3] *= smoothstep(0.0, 0.2, pow(1 - slope, 2));
+
+	for (int i = 0; i < 4; i++) {
+		// float d = draw_strengths[i] / tot_draw_strength;
+		float d = draw_strengths[i];
+		// c = mix(c, cc[i], draw_strengths[i]);
+		c = c * (1 - draw_strengths[i]) + cc[i] * d;
 	}
-	else {
-			return mix(rock_color, grass_color, blending);
-	}
-}
 
-vec3 terrainNormal(vec3 world_pos, vec3 normal) {
-	vec3 grass_normal = 2 * triplanarSampling(grass_normal, world_pos, normal) - vec3(1);
-	vec3 rock_normal = 2 * triplanarSampling(rock_normal, world_pos, normal) - vec3(1);
-
-	// rock_normal.y *= -1;
-	// grass_normal.y *= -1;
-
-	float blending = terrainBlending(world_pos, normal);
-
-	// return In.tangent_matrix * rock_normal;
-	return normalize(mix(In.tangent_matrix * rock_normal, In.tangent_matrix * grass_normal, blending));
+	return c;
 }
 
 vec3 ambient() {
