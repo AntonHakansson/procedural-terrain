@@ -1,23 +1,23 @@
 #pragma once
 
+#include <ImGuizmo.h>
 #include <glad/glad.h>
 #include <imgui.h>
-#include <ImGuizmo.h>
 
 #include <array>
 #include <fstream>
 #include <glm/detail/type_vec3.hpp>
-#include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform.hpp>
 #include <glm/mat4x4.hpp>
 #include <sstream>
 #include <vector>
 
+#include "camera.h"
+#include "debug.h"
 #include "gpu.h"
 #include "model.h"
 #include "shader.h"
-#include "camera.h"
-#include "debug.h"
 
 struct TerrainNoise {
   int num_octaves = 7;
@@ -46,11 +46,13 @@ struct Sun {
 
   bool gui(Camera* camera) {
     auto did_change = false;
-    
+
     mat4 cube_view, cube_proj;
 
-    DebugDrawer::instance()->beginGizmo(camera->getViewMatrix(), vec2(256, 256), cube_view, cube_proj);
-    ImGuizmo::Manipulate(&cube_view[0][0], &cube_proj[0][0], ImGuizmo::ROTATE, ImGuizmo::LOCAL, &matrix[0][0], nullptr, nullptr);
+    DebugDrawer::instance()->beginGizmo(camera->getViewMatrix(), vec2(256, 256), cube_view,
+                                        cube_proj);
+    ImGuizmo::Manipulate(&cube_view[0][0], &cube_proj[0][0], ImGuizmo::ROTATE, ImGuizmo::LOCAL,
+                         &matrix[0][0], nullptr, nullptr);
     DebugDrawer::instance()->endGizmo();
 
     direction = vec3(matrix[2][0], matrix[2][1], matrix[2][2]);
@@ -59,14 +61,16 @@ struct Sun {
     did_change |= ImGui::ColorPicker3("Color", &color.x);
 
     // glm::mat4 viewMatrix = glm::mat4(1);
-    // glm::mat4 projMatrix = glm::perspective(glm::radians(45.0f), float(1000) / float(1000), 0.0f, 100.0f);
+    // glm::mat4 projMatrix = glm::perspective(glm::radians(45.0f), float(1000) / float(1000), 0.0f,
+    // 100.0f);
 
     // ImGuiIO& io = ImGui::GetIO();
     // float viewManipulateRight = io.DisplaySize.x;
     // float viewManipulateTop = 0;
 
-    // ImGuizmo::Manipulate(&viewMatrix[0][0], &projMatrix[0][0], ImGuizmo::ROTATE, ImGuizmo::LOCAL, &matrix[0][0], nullptr, nullptr);
-    // ImGuizmo::ViewManipulate(&viewMatrix[0][0], 10.0f, ImVec2(viewManipulateRight - 128, viewManipulateTop), ImVec2(128, 128), 0x10101010);
+    // ImGuizmo::Manipulate(&viewMatrix[0][0], &projMatrix[0][0], ImGuizmo::ROTATE, ImGuizmo::LOCAL,
+    // &matrix[0][0], nullptr, nullptr); ImGuizmo::ViewManipulate(&viewMatrix[0][0], 10.0f,
+    // ImVec2(viewManipulateRight - 128, viewManipulateTop), ImVec2(128, 128), 0x10101010);
 
     direction = glm::normalize(direction);
     return did_change;
@@ -119,6 +123,7 @@ struct Terrain {
   void setPolyOffset(float factor, float units);
 
   void begin(bool simple);
-  void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position, glm::mat4 light_matrix, float water_height);
+  void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position,
+              glm::mat4 light_matrix, float water_height);
   void gui(Camera* camera);
 };

@@ -97,7 +97,6 @@ if(imguizmo_ADDED)
   target_include_directories(imguizmo PUBLIC ${imguizmo_SOURCE_DIR})
 endif()
 
-
 # Tiny Obj Loader
 CPMAddPackage(
   NAME tinyobjloader

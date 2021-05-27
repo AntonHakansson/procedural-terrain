@@ -3,8 +3,8 @@
 #include <imgui.h>
 
 #include <glm/detail/type_vec3.hpp>
-#include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform.hpp>
 #include <glm/mat4x4.hpp>
 
 using namespace glm;
@@ -71,9 +71,9 @@ struct Camera {
 
   mat4 getViewMatrix() { return lookAt(position, position + direction, world_up); }
 
-  mat4 getProjMatrix(int window_width, int window_height) { 
+  mat4 getProjMatrix(int window_width, int window_height) {
     return perspective(radians(projection.fovy), float(window_width) / float(window_height),
-                                  projection.near, projection.far);
+                       projection.near, projection.far);
   }
 
   void gui() {

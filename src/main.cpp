@@ -1,7 +1,7 @@
+#include <ImGuizmo.h>
 #include <glad/glad.h>
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <ImGuizmo.h>
 
 #include <algorithm>
 #include <chrono>
@@ -15,12 +15,12 @@ using namespace glm;
 
 #include "camera.h"
 #include "core.h"
+#include "debug.h"
 #include "fbo.h"
 #include "hdr.h"
 #include "model.h"
-#include "terrain.h"
 #include "shadowmap.h"
-#include "debug.h"
+#include "terrain.h"
 #include "water.h"
 
 constexpr vec3 worldUp(0.0f, 1.0f, 0.0f);
@@ -79,7 +79,6 @@ struct App {
 
   struct DrawScene {};
 
-
   void loadShaders(bool is_reload) {
     GLuint shader = gpu::loadShaderProgram("resources/shaders/simple.vert",
                                            "resources/shaders/simple.frag", is_reload);
@@ -93,8 +92,8 @@ struct App {
                                     "resources/shaders/shading.frag", is_reload);
     if (shader != 0) shader_program = shader;
 
-    shader = gpu::loadShaderProgram("resources/shaders/debug.vert",
-                                    "resources/shaders/debug.frag", is_reload);
+    shader = gpu::loadShaderProgram("resources/shaders/debug.vert", "resources/shaders/debug.frag",
+                                    is_reload);
     if (shader != 0) debug_program = shader;
 
     shader = gpu::loadShaderProgram("resources/shaders/postfx.vert",
@@ -171,11 +170,12 @@ struct App {
 
   void shadowPass(GLuint current_program, const mat4& view_matrix, const mat4& proj_matrix,
                   const mat4& light_view_matrix) {
-    shadow_map.calculateLightProjMatrices(view_matrix, light_view_matrix, window.width, window.height, camera.projection.fovy);
+    shadow_map.calculateLightProjMatrices(view_matrix, light_view_matrix, window.width,
+                                          window.height, camera.projection.fovy);
 
     glUseProgram(current_program);
 
-    for (uint i = 0 ; i < NUM_CASCADES ; i++) {
+    for (uint i = 0; i < NUM_CASCADES; i++) {
       // Bind and clear the current cascade
       shadow_map.bindWrite(i);
       glClear(GL_DEPTH_BUFFER_BIT);
@@ -189,7 +189,7 @@ struct App {
 
       glDisable(GL_CULL_FACE);
       terrain.render(light_proj_matrix, light_view_matrix, vec3(0), mat4(), water.height);
-      glEnable(GL_CULL_FACE);  
+      glEnable(GL_CULL_FACE);
 
       terrain.setPolyOffset(0, 0);
 
@@ -198,7 +198,8 @@ struct App {
       // Fighter
       gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
                           light_proj_matrix * light_view_matrix * fighter_model_matrix);
-      gpu::setUniformSlow(current_program, "modelViewMatrix", light_view_matrix * fighter_model_matrix);
+      gpu::setUniformSlow(current_program, "modelViewMatrix",
+                          light_view_matrix * fighter_model_matrix);
       gpu::setUniformSlow(current_program, "normalMatrix",
                           inverse(transpose(light_view_matrix * fighter_model_matrix)));
 
@@ -207,7 +208,7 @@ struct App {
   }
 
   void renderPass(GLuint current_program, const mat4& viewMatrix, const mat4& projMatrix,
-                 const mat4& lightViewMatrix) {
+                  const mat4& lightViewMatrix) {
     glUseProgram(current_program);
 
     // Environment
@@ -225,8 +226,8 @@ struct App {
     shadow_map.begin(GL_TEXTURE10, projMatrix, lightViewMatrix);
 
     terrain.render(projMatrix, viewMatrix, camera.position, lightMatrix, water.height);
-    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position, camera.projection.near, camera.projection.far);
-
+    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position,
+                 camera.projection.near, camera.projection.far);
 
     glUseProgram(current_program);
 
@@ -259,7 +260,8 @@ struct App {
     mat4 viewMatrix = camera.getViewMatrix();
 
     if (fighter_draggable) {
-      ImGuizmo::Manipulate(&viewMatrix[0][0], &projMatrix[0][0], ImGuizmo::TRANSLATE, ImGuizmo::LOCAL, &fighter_model_matrix[0][0], nullptr, nullptr);
+      ImGuizmo::Manipulate(&viewMatrix[0][0], &projMatrix[0][0], ImGuizmo::TRANSLATE,
+                           ImGuizmo::LOCAL, &fighter_model_matrix[0][0], nullptr, nullptr);
     }
 
     if (!static_set) {
@@ -353,9 +355,9 @@ struct App {
     const uint8_t* state = SDL_GetKeyboardState(nullptr);
     camera.key_event(state, delta_time);
 
-
     if (state[SDL_SCANCODE_C]) {
-      static_camera_proj = perspective(radians(camera.projection.fovy), float(window.width) / float(window.height),
+      static_camera_proj
+          = perspective(radians(camera.projection.fovy), float(window.width) / float(window.height),
                         camera.projection.near, camera.projection.far);
 
       static_camera_view = camera.getViewMatrix();
@@ -404,7 +406,7 @@ struct App {
 
       if (ImGui::CollapsingHeader("Post FX")) {
         ImGui::Image((void*)(intptr_t)postfx_fbo.colorTextureTargets[0], ImVec2(252, 252),
-                    ImVec2(0, 1), ImVec2(1, 0));
+                     ImVec2(0, 1), ImVec2(1, 0));
       }
     }
 

@@ -4,14 +4,14 @@ ShadowMap::ShadowMap(void) {}
 
 void ShadowMap::init(float z_near, float z_far) {
   cascade_splits[0] = z_near;
-  cascade_splits[1] = 1500.0f,
-  cascade_splits[2] = 3000.0f;
+  cascade_splits[1] = 1500.0f, cascade_splits[2] = 3000.0f;
   cascade_splits[3] = z_far;
 
   // Layered texture
   glGenTextures(NUM_CASCADES, &shadow_tex);
   glBindTexture(GL_TEXTURE_2D_ARRAY, shadow_tex);
-  glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_DEPTH_COMPONENT32F, resolution, resolution, NUM_CASCADES);
+  glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_DEPTH_COMPONENT32F, resolution, resolution,
+                 NUM_CASCADES);
 
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -24,7 +24,7 @@ void ShadowMap::init(float z_near, float z_far) {
   glGenFramebuffers(1, &fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-  for (uint i = 0 ; i < NUM_CASCADES; i++) {
+  for (uint i = 0; i < NUM_CASCADES; i++) {
     glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_tex, 0, i);
   }
 
@@ -60,14 +60,16 @@ void ShadowMap::begin(GLuint tex, mat4 proj_matrix, mat4 light_view_matrix) {
   GLint shader_program = 0;
   glGetIntegerv(GL_CURRENT_PROGRAM, &shader_program);
 
-  for (uint i = 0 ; i < NUM_CASCADES ; i++) {
+  for (uint i = 0; i < NUM_CASCADES; i++) {
     vec4 vView(0.0f, 0.0f, cascade_splits[i + 1], 1.0f);
     vec4 vClip = proj_matrix * vView;
 
     mat4 light_proj_matrix = getLightProjMatrix(i);
 
-    gpu::setUniformSlow(shader_program, ("gCascadeEndClipSpace[" + std::to_string(i) + "]").c_str(), -vClip.z);
-    gpu::setUniformSlow(shader_program, ("gLightWVP[" + std::to_string(i) + "]").c_str(), light_proj_matrix * light_view_matrix);
+    gpu::setUniformSlow(shader_program, ("gCascadeEndClipSpace[" + std::to_string(i) + "]").c_str(),
+                        -vClip.z);
+    gpu::setUniformSlow(shader_program, ("gLightWVP[" + std::to_string(i) + "]").c_str(),
+                        light_proj_matrix * light_view_matrix);
   }
 
   glActiveTexture(tex);
@@ -86,15 +88,17 @@ void ShadowMap::debugProjs(mat4 view_matrix, mat4 proj_matrix, mat4 light_view_m
     mat4 light_proj_matrix = ortho(info.l, info.r, info.b, info.t, info.n, info.f);
 
     DebugDrawer::instance()->drawPerspectiveFrustum(view_matrix, proj, vec3(1, 0, 0));
-    DebugDrawer::instance()->drawOrthographicFrustum(light_view_matrix, light_proj_matrix, vec3(1, 1, 0));
+    DebugDrawer::instance()->drawOrthographicFrustum(light_view_matrix, light_proj_matrix,
+                                                     vec3(1, 1, 0));
   }
 }
 
-void ShadowMap::calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_matrix, int width, int height, float fovy) {
+void ShadowMap::calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_matrix, int width,
+                                           int height, float fovy) {
   mat4 view_inverse = inverse(view_matrix);
 
   float ar = width / (float)height;
-  
+
   float tanHalfHFov = glm::tan(glm::radians(fovy / 2.0f)) * ar;
   float tanHalfVFov = glm::tan(glm::radians(fovy / 2.0));
 
@@ -104,18 +108,18 @@ void ShadowMap::calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_mat
     float yn = cascade_splits[i] * tanHalfVFov;
     float yf = cascade_splits[i + 1] * tanHalfVFov;
 
-    vec4 frustum_corners[NUM_FRUSTUM_CORNERS] = {
-        // near face
-        view_inverse * vec4(xn, yn, -cascade_splits[i], 1.0), 
-        view_inverse * vec4(-xn, yn, -cascade_splits[i], 1.0),
-        view_inverse * vec4(xn, -yn, -cascade_splits[i], 1.0), 
-        view_inverse * vec4(-xn, -yn, -cascade_splits[i], 1.0),
+    vec4 frustum_corners[NUM_FRUSTUM_CORNERS]
+        = {// near face
+           view_inverse * vec4(xn, yn, -cascade_splits[i], 1.0),
+           view_inverse * vec4(-xn, yn, -cascade_splits[i], 1.0),
+           view_inverse * vec4(xn, -yn, -cascade_splits[i], 1.0),
+           view_inverse * vec4(-xn, -yn, -cascade_splits[i], 1.0),
 
-        // far face
-        view_inverse * vec4(xf, yf, -cascade_splits[i + 1], 1.0), 
-        view_inverse * vec4(-xf, yf, -cascade_splits[i + 1], 1.0),
-        view_inverse * vec4(xf, -yf, -cascade_splits[i + 1], 1.0), 
-        view_inverse * vec4(-xf, -yf, -cascade_splits[i + 1], 1.0)};
+           // far face
+           view_inverse * vec4(xf, yf, -cascade_splits[i + 1], 1.0),
+           view_inverse * vec4(-xf, yf, -cascade_splits[i + 1], 1.0),
+           view_inverse * vec4(xf, -yf, -cascade_splits[i + 1], 1.0),
+           view_inverse * vec4(-xf, -yf, -cascade_splits[i + 1], 1.0)};
 
     vec4 frustum_corners_l[NUM_FRUSTUM_CORNERS];
 
@@ -125,7 +129,7 @@ void ShadowMap::calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_mat
 
     for (uint j = 0; j < NUM_FRUSTUM_CORNERS; j++) {
       // Get the frustum coordinate in world space
-       vec4 vW = frustum_corners[j];
+      vec4 vW = frustum_corners[j];
 
       // Transform the frustum coordinate from world to light space
       frustum_corners_l[j] = light_view_matrix * vW;
@@ -163,7 +167,8 @@ void ShadowMap::gui(SDL_Window* window) {
     ImGui::Text("Debug");
 
     // for (uint i = 0 ; i < NUM_CASCADES; i++) {
-    //   ImGui::Image((void*)(intptr_t) shadow_maps[i], ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
+    //   ImGui::Image((void*)(intptr_t) shadow_maps[i], ImVec2(128, 128), ImVec2(0, 1), ImVec2(1,
+    //   0));
 
     //   float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
     //   ImGui::SameLine(0.0f, spacing);
@@ -172,7 +177,6 @@ void ShadowMap::gui(SDL_Window* window) {
     ImGui::NewLine();
   }
 }
-
 
 mat4 ShadowMap::getLightProjMatrix(uint cascade_index) {
   OrthoProjInfo info = shadow_ortho_info[cascade_index];

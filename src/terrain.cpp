@@ -44,7 +44,6 @@ void Terrain::loadShader(bool is_reload) {
     this->shader_program = program;
   }
 
-
   std::array<ShaderInput, 4> program_shaders_simple({
       ShaderInput{"resources/shaders/terrain.vert", GL_VERTEX_SHADER},
       ShaderInput{"resources/shaders/simple.frag", GL_FRAGMENT_SHADER},
@@ -82,8 +81,8 @@ void Terrain::begin(bool simple) {
   this->simple = simple;
 }
 
-void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
-                     glm::vec3 camera_position, glm::mat4 light_matrix, float water_height) {
+void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position,
+                     glm::mat4 light_matrix, float water_height) {
   GLint prev_polygon_mode;
 
   GLuint shader_program = this->simple ? this->shader_program_simple : this->shader_program;
@@ -118,8 +117,7 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
     // this->model_matrix = glm::mat4(1.0f);
     gpu::setUniformSlow(shader_program, "lightMatrix", light_matrix);
     gpu::setUniformSlow(shader_program, "viewMatrix", view_matrix);
-    gpu::setUniformSlow(shader_program, "viewProjectionMatrix",
-                        projection_matrix * view_matrix);
+    gpu::setUniformSlow(shader_program, "viewProjectionMatrix", projection_matrix * view_matrix);
     gpu::setUniformSlow(shader_program, "modelMatrix", this->model_matrix);
     gpu::setUniformSlow(shader_program, "modelViewProjectionMatrix",
                         projection_matrix * view_matrix * this->model_matrix);
@@ -141,8 +139,10 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
     gpu::setUniformSlow(shader_program, "noise.num_octaves", (GLint)noise.num_octaves);
 
     gpu::setUniformSlow(shader_program, "waterHeight", water_height);
-    glUniform1fv(glGetUniformLocation(shader_program, "texture_start_heights"), texture_start_heights.size(), texture_start_heights.data());
-    glUniform1fv(glGetUniformLocation(shader_program, "texture_blends"), texture_blends.size(), texture_blends.data());
+    glUniform1fv(glGetUniformLocation(shader_program, "texture_start_heights"),
+                 texture_start_heights.size(), texture_start_heights.data());
+    glUniform1fv(glGetUniformLocation(shader_program, "texture_blends"), texture_blends.size(),
+                 texture_blends.data());
 
     glUniform1fv(glGetUniformLocation(shader_program, "tessMultiplier"), 1, &this->tess_multiplier);
 
