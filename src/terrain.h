@@ -72,7 +72,7 @@ struct Terrain {
   gpu::Texture sand_texture;
   gpu::Texture snow_texture;
 
-  std::array<float, 4> texture_start_heights{0, 0.5, 0.65, 0.86};
+  std::array<float, 4> texture_start_heights{0, 0.25, 0.65, 0.86};
   std::array<float, 4> texture_blends{0.04, 0.08, 0.08, 0.02};
 
   // Buffers on GPU

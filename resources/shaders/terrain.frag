@@ -101,7 +101,8 @@ vec3 terrainColor(vec3 world_pos, vec3 normal) {
 
 	float transition = 4.0;
 
-	float slope = 1 - dot(normal, vec3(0, 1, 0));
+    // A completely flat terrain has slope=0
+	float slope = max(1 - dot(normal, vec3(0, 1, 0)), 0.0);
 	float blending = smoothstep(0.7, 0.9, slope);
 
     vec3 base_colors[4];
@@ -117,37 +118,31 @@ vec3 terrainColor(vec3 world_pos, vec3 normal) {
     cc[3] = snow_color;
 
     vec3 c = vec3(0);
-    // if (height < waterHeight + transition * 10) {
-    //     float blend = inverseLerp(waterHeight, waterHeight + transition*10, height);
-    //     c = mix(sand_color, grass_color, blend);
-    // }
-    // else {
-    //     c = mix(grass_color, rock_color, slope);
-    // }
 
+    // For each fragment we compute how much each texture contributes depending on height and slope
     float draw_strengths[4];
 
     float height_percentage = inverseLerp(-(3 * noise.amplitude), noise.amplitude, height);
     for (int i = 0; i < 4; i++) {
-        draw_strengths[i] = inverseLerp(-texture_blends[i]/2 - 1E-4, texture_blends[i]/2, height_percentage - texture_start_heights[i]);
-        c = c * (1 - draw_strengths[i]) + cc[i] * draw_strengths[i];
+        float height_diff = height_percentage - texture_start_heights[i];
+
+        float lower_bound = -texture_blends[i]/2 - 1E-4;
+        float upper_bound = texture_blends[i]/2;
+
+        draw_strengths[i] = inverseLerp(lower_bound, upper_bound,  height_diff);
     }
 
-    if (draw_strengths[1] < 0.2) {
-        return mix(c, rock_color, blending);
-        // return vec3(1);
+    // fix slope blending stuff here
+    draw_strengths[3] *= smoothstep(0.0, 0.2, pow(1 - slope, 2));
+
+    for (int i = 0; i < 4; i++) {
+        // float d = draw_strengths[i] / tot_draw_strength;
+        float d = draw_strengths[i];
+        // c = mix(c, cc[i], draw_strengths[i]);
+        c = c * (1 - draw_strengths[i]) + cc[i] * d;
     }
 
     return c;
-    // if (world_pos.y < waterHeight + transition) {
-    //     return sand_color;
-    // }
-    // else if (world_pos.y < waterHeight + transition * 2) {
-    //     return mix(sand_color, grass_color, (world_pos.y - waterHeight - transition) / transition);
-    // }
-    // else {
-    //     return mix(rock_color, grass_color, blending);
-    // }
 }
 
 vec3 ambient() {
