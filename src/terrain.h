@@ -112,15 +112,9 @@ struct Terrain {
   gpu::Texture displacements;
   gpu::Texture roughness;
 
-<<<<<<< HEAD
   std::array<float, 4> texture_start_heights{0, 0.760, 0.797, 0.840};
   std::array<float, 4> texture_blends{0.0, 0.021, 0.030, 0.011};
   std::array<float, 4> texture_sizes{32, 32, 32, 32};
-=======
-  std::array<float, 4> texture_start_heights{0, 0.25, 0.65, 0.86};
-  std::array<float, 4> texture_blends{0.04, 0.08, 0.08, 0.02};
-  std::array<float, 4> texture_sizes{4, 4, 4, 4};
->>>>>>> 63316a9c40f13aaaa336b53492cf4c38a156eda8
 
   // Buffers on GPU
   uint32_t positions_bo;
