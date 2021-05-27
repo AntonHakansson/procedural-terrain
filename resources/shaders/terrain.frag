@@ -15,11 +15,10 @@ in DATA {
 }
 In;
 
-layout(binding = 0) uniform sampler2DArray albedo;
-layout(binding = 4) uniform sampler2D grass_normal;
-layout(binding = 5) uniform sampler2D rock_normal;
-layout(binding = 6) uniform sampler2D sand_normal;
-layout(binding = 7) uniform sampler2D snow_normal;
+layout(binding = 0) uniform sampler2DArray albedos;
+layout(binding = 1) uniform sampler2DArray normals;
+layout(binding = 2) uniform sampler2DArray displacement;
+layout(binding = 3) uniform sampler2DArray roughness;
 
 uniform mat4 normalMatrix;
 uniform mat4 viewMatrix;
@@ -102,16 +101,16 @@ vec3[4] getAlbedos(vec3 world_pos, vec3 normal) {
 }
 
 vec3[4] getNormals(vec3 world_pos, vec3 normal) {
-  vec3 grass_normal = 2 * triplanarSampling(grass_normal, world_pos, normal) - vec3(1);
-  vec3 rock_normal = 2 * triplanarSampling(rock_normal, world_pos, normal) - vec3(1);
-  vec3 sand_normal = 2 * triplanarSampling(sand_normal, world_pos, normal) - vec3(1);
-  vec3 snow_normal = 2 * triplanarSampling(snow_normal, world_pos, normal) - vec3(1);
+  // vec3 grass_normal = 2 * triplanarSampling(grass_normal, world_pos, normal) - vec3(1);
+  // vec3 rock_normal = 2 * triplanarSampling(rock_normal, world_pos, normal) - vec3(1);
+  // vec3 sand_normal = 2 * triplanarSampling(sand_normal, world_pos, normal) - vec3(1);
+  // vec3 snow_normal = 2 * triplanarSampling(snow_normal, world_pos, normal) - vec3(1);
 
   vec3 cc[4];
-  cc[0] = sand_normal;
-  cc[1] = grass_normal;
-  cc[2] = rock_normal;
-  cc[3] = snow_normal;
+  // cc[0] = sand_normal;
+  // cc[1] = grass_normal;
+  // cc[2] = rock_normal;
+  // cc[3] = snow_normal;
 
 	return cc;
 }
@@ -143,17 +142,25 @@ float[4] terrainBlending(vec3 world_pos, vec3 normal) {
 	return draw_strengths;
 }
 
+vec3 getTextureCoordinate(vec3 world_pos, int texture_index) {
+  vec2 scaled_worldpos = (world_pos / (2048.0)).xz;
+  vec2 tex_coord = scaled_worldpos * texture_sizes[texture_index];
+
+  mat4 inv_view_matrix = inverse(viewMatrix);
+  vec3 view_direction = normalize(-vec3(inv_view_matrix[2][0], inv_view_matrix[2][1], inv_view_matrix[2][2]));
+
+  return vec3(tex_coord, texture_index);
+}
+
 vec3 terrainNormal(vec3 world_pos, vec3 normal) {
-	vec3[] normals = getNormals(world_pos, normal);
   float[] draw_strengths = terrainBlending(world_pos, normal);
 
   vec3 norm = vec3(0);
 
   for (int i = 0; i < 4; i++) {
-    // float d = draw_strengths[i] / tot_draw_strength;
     float d = draw_strengths[i];
-    // c = mix(c, cc[i], draw_strengths[i]);
-    norm = norm * (1 - draw_strengths[i]) + (In.tangent_matrix * normals[i]) * d;
+    vec3 normal = 2.0 * texture(normals, getTextureCoordinate(world_pos, i)).xyz - 1.0;
+    norm = norm * (1 - draw_strengths[i]) + (In.tangent_matrix * normal) * d;
   }
 
   return norm;
@@ -172,8 +179,8 @@ vec3 terrainColor(vec3 world_pos, vec3 normal) {
 
   for (int i = 0; i < 4; i++) {
     float d = draw_strengths[i];
-    vec3 c_albedo = texture(albedo, vec3(scaled_worldpos.xz * texture_sizes[i] , i)).xyz;
-    c = c * (1 - draw_strengths[i]) + c_albedo * d;
+    vec3 albedo = texture(albedos, getTextureCoordinate(world_pos, i)).xyz;
+    c = c * (1 - draw_strengths[i]) + albedo * d;
   }
 
   return c;

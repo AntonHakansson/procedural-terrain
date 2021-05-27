@@ -1,7 +1,10 @@
 #pragma once
+#include <glad/glad.h>
 #include <glm/glm.hpp>
+#include <iostream>
 #include <string>
 #include <vector>
+#include <array>
 
 namespace gpu {
   struct Texture {
@@ -12,6 +15,48 @@ namespace gpu {
     int width, height;
     uint8_t* data = nullptr;
     bool load(const std::string& directory, const std::string& filename, int nof_components);
+
+    template<int N>
+    void load2DArray(const std::array<std::string, N>& filepaths, int miplevels) {
+      std::array<int, N> widths;
+      std::array<int, N> heights;
+      std::array<uint8_t*, N> tex_data;
+
+      for (int i = 0; i < filepaths.size(); i++) {
+        auto filepath = filepaths[i];
+        int width;
+        int height;
+        int components;
+        uint8_t* data = stbi_load(filepath.c_str(), &width, &height, &components, 3);
+
+        if (data == nullptr) {
+          std::cout << "ERROR: Failed to load texture:" << filepaths[i] << "\n";
+          exit(1);
+        }
+
+        widths[i] = width;
+        heights[i] = height;
+        tex_data[i] = data;
+      }
+
+      glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &gl_id);
+      glTextureParameteri(gl_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glTextureParameteri(gl_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+      glTextureParameteri(gl_id, GL_TEXTURE_WRAP_S, GL_REPEAT);
+      glTextureParameteri(gl_id, GL_TEXTURE_WRAP_T, GL_REPEAT);
+      glTextureParameteri(gl_id, GL_TEXTURE_MAX_ANISOTROPY, 16);
+
+      glTextureStorage3D(gl_id, miplevels, GL_RGB8, widths[0], heights[0], filepaths.size());
+
+      for (int i = 0; i < filepaths.size(); i++) {
+        auto w = widths[i];
+        auto h = heights[i];
+        glTextureSubImage3D(gl_id, 0, 0, 0, i, w, h, 1, GL_RGB, GL_UNSIGNED_BYTE, tex_data[i]);
+        stbi_image_free(tex_data[i]);
+      }
+
+      glGenerateTextureMipmap(gl_id);
+    }
   };
   //////////////////////////////////////////////////////////////////////////////
   // This material class implements a subset of the suggested PBR extension
