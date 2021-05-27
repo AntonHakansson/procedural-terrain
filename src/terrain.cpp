@@ -7,10 +7,10 @@ void Terrain::init() {
   glPatchParameteri(GL_PATCH_VERTICES, 3);
   loadShader(false);
 
-  this->rock_texture.load("resources/textures/", "rock.jpg", 3);
-  this->grass_texture.load("resources/textures/", "grass.jpg", 3);
-  this->sand_texture.load("resources/textures/", "sand.jpg", 3);
-  this->snow_texture.load("resources/textures/", "snow.jpg", 3);
+  this->rock_texture.load("resources/textures/terrain/rock/", "rock.jpg", 3);
+  this->grass_texture.load("resources/textures/terrain/grass/", "grass.jpg", 3);
+  this->sand_texture.load("resources/textures/terrain/sand/", "sand.jpg", 3);
+  this->snow_texture.load("resources/textures/terrain/snow/", "snow.jpg", 3);
 }
 
 void Terrain::deinit() {
