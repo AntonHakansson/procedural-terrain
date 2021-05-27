@@ -43,7 +43,7 @@ struct TerrainNoise {
 struct Sun {
   glm::vec3 direction = glm::vec3(0.702, -0.713, 0.0);
   glm::vec3 color = glm::vec3(1.0, 1.0, 1.0);
-  float intensity = 0.4;
+  float intensity = 1;
 
   glm::mat4 matrix = inverse(glm::lookAt(vec3(0), -direction, vec3(0, 1, 0)));
 
