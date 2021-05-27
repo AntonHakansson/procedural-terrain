@@ -46,6 +46,7 @@ uniform Noise noise;
 
 uniform float texture_start_heights[4];
 uniform float texture_blends[4];
+uniform float texture_sizes[4];
 
 // Cascading shadow map
 struct Sun {
@@ -124,12 +125,6 @@ vec3 terrainColor(vec3 world_pos, vec3 normal) {
   // A completely flat terrain has slope=0
   float slope = max(1 - dot(normal, vec3(0, 1, 0)), 0.0);
   float blending = smoothstep(0.7, 0.9, slope);
-
-  vec3 base_colors[4];
-  base_colors[0] = vec3(127.0 / 255.0, 94.0 / 255.0, 94.0 / 255.0);
-  base_colors[1] = vec3(0.1, 0.9, 0.1);
-  base_colors[2] = vec3(0.3, 0.3, 0.3);
-  base_colors[3] = vec3(0.9, 0.9, 0.9);
 
   vec3 cc[4];
   cc[0] = sand_color;
