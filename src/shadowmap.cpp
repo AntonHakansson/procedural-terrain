@@ -8,40 +8,33 @@ void ShadowMap::init(float z_near, float z_far) {
   cascade_splits[3] = z_far;
 
   // Layered texture
-  glGenTextures(NUM_CASCADES, &shadow_tex);
-  glBindTexture(GL_TEXTURE_2D_ARRAY, shadow_tex);
-  glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_DEPTH_COMPONENT32F, resolution, resolution,
+  glCreateTextures(GL_TEXTURE_2D_ARRAY, NUM_CASCADES, &shadow_tex);
+  glTextureStorage3D(shadow_tex, 1, GL_DEPTH_COMPONENT32F, resolution, resolution,
                  NUM_CASCADES);
 
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+  glTextureParameteri(shadow_tex, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTextureParameteri(shadow_tex, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTextureParameteri(shadow_tex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTextureParameteri(shadow_tex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTextureParameteri(shadow_tex, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+  glTextureParameteri(shadow_tex, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 
   // Create the FBO
-  glGenFramebuffers(1, &fbo);
-  glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+  glCreateFramebuffers(1, &fbo);
+  glNamedFramebufferDrawBuffer(fbo, GL_NONE);
 
   for (uint i = 0; i < NUM_CASCADES; i++) {
-    glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_tex, 0, i);
+    glNamedFramebufferTextureLayer(fbo, GL_DEPTH_ATTACHMENT, shadow_tex, 0, i);
   }
 
-  glDrawBuffer(GL_NONE);
-
   bool isComplete = checkFramebufferComplete();
-
-  // restore default FBO
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 bool ShadowMap::checkFramebufferComplete() const {
   // Check that our FBO is correctly set up, this can fail if we have
   // incompatible formats in a buffer, or for example if we specify an
   // invalid drawbuffer, among things.
-  glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-  GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+  GLenum status = glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER);
   if (status != GL_FRAMEBUFFER_COMPLETE) {
     gpu::fatal_error("Framebuffer not complete");
   }
@@ -51,12 +44,12 @@ bool ShadowMap::checkFramebufferComplete() const {
 
 void ShadowMap::bindWrite(uint cascade_index) {
   assert(cascade_index < NUM_CASCADES);
-  glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
+  glBindFramebuffer(GL_FRAMEBUFFER, fbo);
   glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_tex, 0, cascade_index);
 }
 
-void ShadowMap::begin(GLuint tex, mat4 proj_matrix, mat4 light_view_matrix) {
+void ShadowMap::begin(uint tex_index, mat4 proj_matrix, mat4 light_view_matrix) {
   GLint shader_program = 0;
   glGetIntegerv(GL_CURRENT_PROGRAM, &shader_program);
 
@@ -72,25 +65,7 @@ void ShadowMap::begin(GLuint tex, mat4 proj_matrix, mat4 light_view_matrix) {
                         light_proj_matrix * light_view_matrix);
   }
 
-  glActiveTexture(tex);
-  glBindTexture(GL_TEXTURE_2D_ARRAY, shadow_tex);
-}
-
-void ShadowMap::debugProjs(mat4 view_matrix, mat4 proj_matrix, mat4 light_view_matrix) {
-  float fovy = 2.0 * atan(1.0 / proj_matrix[1][1]);
-  float ar = proj_matrix[1][1] / proj_matrix[0][0];
-
-  for (uint i = 0; i < NUM_CASCADES; i++) {
-    mat4 proj = perspective(fovy, ar, cascade_splits[i], cascade_splits[i + 1]);
-
-    OrthoProjInfo info = shadow_ortho_info[i];
-
-    mat4 light_proj_matrix = ortho(info.l, info.r, info.b, info.t, info.n, info.f);
-
-    DebugDrawer::instance()->drawPerspectiveFrustum(view_matrix, proj, vec3(1, 0, 0));
-    DebugDrawer::instance()->drawOrthographicFrustum(light_view_matrix, light_proj_matrix,
-                                                     vec3(1, 1, 0));
-  }
+  glBindTextureUnit(tex_index, shadow_tex);
 }
 
 void ShadowMap::calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_matrix, int width,
@@ -182,4 +157,26 @@ mat4 ShadowMap::getLightProjMatrix(uint cascade_index) {
   OrthoProjInfo info = shadow_ortho_info[cascade_index];
 
   return ortho(info.l, info.r, info.b, info.t, info.n, info.f);
+}
+
+void ShadowMap::debugProjs(mat4 view_matrix, mat4 proj_matrix, mat4 light_view_matrix) {
+  float fovy = 2.0 * atan(1.0 / proj_matrix[1][1]);
+  float ar = proj_matrix[1][1] / proj_matrix[0][0];
+
+  for (uint i = 0; i < NUM_CASCADES; i++) {
+    mat4 proj = perspective(fovy, ar, cascade_splits[i], cascade_splits[i + 1]);
+
+    OrthoProjInfo info = shadow_ortho_info[i];
+
+    mat4 light_proj_matrix = ortho(info.l, info.r, info.b, info.t, info.n, info.f);
+
+    DebugDrawer::instance()->drawPerspectiveFrustum(view_matrix, proj, vec3(1, 0, 0));
+    DebugDrawer::instance()->drawOrthographicFrustum(light_view_matrix, light_proj_matrix,
+                                                     vec3(1, 1, 0));
+  }
+}
+
+void ShadowMap::deinit() {
+  glDeleteTextures(NUM_CASCADES, &shadow_tex);
+  glDeleteFramebuffers(1, &this->fbo);
 }

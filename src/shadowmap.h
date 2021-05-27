@@ -56,7 +56,7 @@ public:
   void bindWrite(uint cascade_index);
 
   // Set necessary uniforms
-  void begin(GLuint tex, mat4 proj_matrix, mat4 light_view_matrix);
+  void begin(uint tex_index, mat4 proj_matrix, mat4 light_view_matrix);
 
   // Calculate ortho projections
   void calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_matrix, int width, int height,
@@ -66,4 +66,7 @@ public:
   // Debug
   void debugProjs(mat4 view_matrix, mat4 proj_matrix, mat4 light_view_matrix);
   void gui(SDL_Window* window);
+
+  // Deinit
+  void deinit();
 };

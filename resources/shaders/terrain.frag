@@ -131,7 +131,7 @@ float[4] terrainBlending(vec3 world_pos, vec3 normal) {
 
   float height_percentage = inverseLerpClamped(-(3 * noise.amplitude), noise.amplitude, height);
   for (int i = 0; i < 4; i++) {
-    float height_diff = height_percentage - texture_start_heights[i];
+    float height_diff = height_percentage - texture_start_heights[i] - slope / 5;
 
     float lower_bound = -texture_blends[i] / 2 - 1E-4;
     float upper_bound = texture_blends[i] / 2;
@@ -140,7 +140,8 @@ float[4] terrainBlending(vec3 world_pos, vec3 normal) {
   }
 
   // fix slope blending stuff here
-  draw_strengths[3] *= smoothstep(0.0, 0.2, pow(1 - slope, 2));
+  // draw_strengths[2] *= smoothstep(0.4, 0.7, pow(1 - slope, 1));
+  // draw_strengths[3] *= smoothstep(0.2, 0.6, pow(1 - slope, 2));
 
 	return draw_strengths;
 }

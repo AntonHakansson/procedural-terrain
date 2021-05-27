@@ -14,20 +14,19 @@ void FboInfo::resize(int w, int h) {
   ///////////////////////////////////////////////////////////////////////
   for (auto& colorTextureTarget : colorTextureTargets) {
     if (colorTextureTarget == UINT32_MAX) {
-      glGenTextures(1, &colorTextureTarget);
-      glBindTexture(GL_TEXTURE_2D, colorTextureTarget);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glCreateTextures(GL_TEXTURE_2D, 1, &colorTextureTarget);
+      glTextureParameteri(colorTextureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTextureParameteri(colorTextureTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
   }
 
   if (depthBuffer == UINT32_MAX) {
-    glGenTextures(1, &depthBuffer);
-    glBindTexture(GL_TEXTURE_2D, depthBuffer);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glCreateTextures(GL_TEXTURE_2D, 1, &depthBuffer);
+
+    glTextureParameteri(depthBuffer, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTextureParameteri(depthBuffer, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTextureParameteri(depthBuffer, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTextureParameteri(depthBuffer, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   }
 
   ///////////////////////////////////////////////////////////////////////
@@ -50,28 +49,23 @@ void FboInfo::resize(int w, int h) {
     ///////////////////////////////////////////////////////////////////////
     // Generate and bind framebuffer
     ///////////////////////////////////////////////////////////////////////
-    glGenFramebuffers(1, &framebufferId);
-    glBindFramebuffer(GL_FRAMEBUFFER, framebufferId);
+    glCreateFramebuffers(1, &framebufferId);
 
     // Bind the color textures as color attachments
     for (int i = 0; i < int(colorTextureTargets.size()); i++) {
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D,
-                             colorTextureTargets[i], 0);
+      glNamedFramebufferTexture(framebufferId, GL_COLOR_ATTACHMENT0 + i, colorTextureTargets[0], 0);
     }
 
     std::array<GLenum, 8> attachments(
         {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,
          GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5, GL_COLOR_ATTACHMENT6, GL_COLOR_ATTACHMENT7});
-    glDrawBuffers(int(colorTextureTargets.size()), &attachments[0]);
+    glNamedFramebufferDrawBuffers(framebufferId, int(colorTextureTargets.size()), &attachments[0]);
 
     // bind the texture as depth attachment (to the currently bound framebuffer)
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthBuffer, 0);
+    glNamedFramebufferTexture(framebufferId, GL_DEPTH_ATTACHMENT, depthBuffer, 0);
 
     // check if framebuffer is complete
     isComplete = checkFramebufferComplete();
-
-    // bind default framebuffer, just in case.
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 }
 
@@ -79,8 +73,7 @@ bool FboInfo::checkFramebufferComplete() const {
   // Check that our FBO is correctly set up, this can fail if we have
   // incompatible formats in a buffer, or for example if we specify an
   // invalid drawbuffer, among things.
-  glBindFramebuffer(GL_FRAMEBUFFER, framebufferId);
-  GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+  GLenum status = glCheckNamedFramebufferStatus(framebufferId, GL_FRAMEBUFFER);
   if (status != GL_FRAMEBUFFER_COMPLETE) {
     gpu::fatal_error("Framebuffer not complete");
   }

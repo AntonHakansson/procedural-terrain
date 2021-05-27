@@ -144,9 +144,12 @@ struct App {
   void deinit() {
     terrain.deinit();
     water.deinit();
+    shadow_map.deinit();
     gpu::freeModel(models.fighter);
     gpu::freeModel(models.landingpad);
     gpu::freeModel(models.sphere);
+
+    glDeleteFramebuffers(1, &postfx_fbo.framebufferId);
   }
 
   void debugDrawLight(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix,
@@ -224,7 +227,7 @@ struct App {
     terrain.begin(false);
 
     // Bind shadow map textures
-    shadow_map.begin(GL_TEXTURE10, projMatrix, lightViewMatrix);
+    shadow_map.begin(10, projMatrix, lightViewMatrix);
 
     terrain.render(projMatrix, viewMatrix, camera.position, lightMatrix, water.height);
     water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position,
