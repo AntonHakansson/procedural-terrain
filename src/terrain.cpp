@@ -133,6 +133,8 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix,
     gpu::setUniformSlow(shader_program, "noise.num_octaves", (GLint)noise.num_octaves);
 
     gpu::setUniformSlow(shader_program, "waterHeight", water_height);
+    glUniform1fv(glGetUniformLocation(shader_program, "texture_start_heights"), texture_start_heights.size(), texture_start_heights.data());
+    glUniform1fv(glGetUniformLocation(shader_program, "texture_blends"), texture_blends.size(), texture_blends.data());
 
     glUniform1fv(glGetUniformLocation(shader_program, "tessMultiplier"), 1, &this->tess_multiplier);
 
@@ -174,6 +176,18 @@ void Terrain::gui(SDL_Window* window) {
 
       ImGui::Text("Sun");
       this->sun.gui();
+    }
+
+    ImGui::Text("Texture Start Heights");
+    for (int i = 0; i < texture_start_heights.size(); i++) {
+      auto& h = texture_start_heights[i];
+      ImGui::SliderFloat(("h" + std::to_string(i)).c_str(), &h, 0.0, 1.0);
+    }
+
+    ImGui::Text("Texture blends");
+    for (int i = 0; i < texture_start_heights.size(); i++) {
+      auto& b = texture_blends[i];
+      ImGui::SliderFloat(("b" + std::to_string(i)).c_str(), &b, 0.0, 0.5);
     }
   }
 }
