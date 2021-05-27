@@ -12,8 +12,10 @@ void Terrain::init() {
   this->sand_texture.load("resources/textures/terrain/sand/", "sand.jpg", 3);
   this->snow_texture.load("resources/textures/terrain/snow/", "snow.jpg", 3);
 
-  this->rock_normal.load("resources/textures/", "toon_stone_normal.png", 3);
-  this->grass_normal.load("resources/textures/", "toon_grass_normal.png", 3);
+  this->rock_normal.load("resources/textures/terrain/rock/", "rock_normal.jpg", 3);
+  this->grass_normal.load("resources/textures/terrain/grass/", "grass_normal.jpg", 3);
+  this->sand_normal.load("resources/textures/terrain/sand/", "sand_normal.jpg", 3);
+  this->snow_normal.load("resources/textures/terrain/snow/", "snow_normal.jpg", 3);
 }
 
 void Terrain::deinit() {
@@ -101,6 +103,10 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
     glBindTexture(GL_TEXTURE_2D, this->grass_normal.gl_id);
     glActiveTexture(GL_TEXTURE5);
     glBindTexture(GL_TEXTURE_2D, this->rock_normal.gl_id);
+    glActiveTexture(GL_TEXTURE6);
+    glBindTexture(GL_TEXTURE_2D, this->sand_normal.gl_id);
+    glActiveTexture(GL_TEXTURE7);
+    glBindTexture(GL_TEXTURE_2D, this->snow_normal.gl_id);
 
     if (this->wireframe) {
       glGetIntegerv(GL_POLYGON_MODE, &prev_polygon_mode);
