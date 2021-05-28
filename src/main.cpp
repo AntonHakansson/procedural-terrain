@@ -236,8 +236,6 @@ struct App {
     shadow_map.begin(10, camera.projection, projMatrix, lightViewMatrix);
 
     terrain.render(projMatrix, viewMatrix, center, cam_pos, lightMatrix, water.height);
-    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, cam_pos,
-                 camera.projection.near, camera.projection.far, environment_map.multiplier);
 
     glUseProgram(current_program);
 
@@ -249,6 +247,9 @@ struct App {
                         inverse(transpose(viewMatrix * fighter_model_matrix)));
 
     gpu::render(models.fighter);
+
+    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, cam_pos,
+                 camera.projection.near, camera.projection.far, environment_map.multiplier);
   }
 
   void update(void) { terrain.update(delta_time, current_time); }
