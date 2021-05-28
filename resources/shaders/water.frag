@@ -481,7 +481,6 @@ void main() {
         ssr.z_thickness, true, vec3(0), -ssr.z_near, ssr.stride, ssr.jitter, ssr.max_steps,
         ssr.max_distance, hit_pixel, which, view_hit_point);
 
-    reflection_hit = false;
     if (reflection_hit) {
       reflection_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0).rgb;
     } else {
@@ -507,7 +506,7 @@ void main() {
     vec3 view_hit_point;
     bool reflection_hit = traceScreenSpaceRay1(
         point_on_water, refraction_dir, pixel_projection, depth_buffer, vec2(ssr.depth_buffer_size),
-        ssr.z_thickness * 100, true, vec3(0), -ssr.z_near, ssr.stride, ssr.jitter, ssr.max_steps,
+        ssr.z_thickness, true, vec3(0), -ssr.z_near, ssr.stride, ssr.jitter, ssr.max_steps,
         ssr.max_distance, hit_pixel, which, view_hit_point);
 
     if (reflection_hit) {
