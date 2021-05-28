@@ -64,6 +64,8 @@ uniform mat4 inv_view_matrix;
 uniform mat4 pixel_projection;  // `pixel_projection` projects from view space to pixel coordinate
 uniform float environment_multiplier;
 
+uniform int debug_flag; // 0 = off; 1 = screen space reflection; 2 = screen space refraction;
+
 // Constants
 const vec3 ocean_blue = vec3(0.1, 0.3, 0.6);
 const vec3 ocean_blue_deep = vec3(0.05, 0.1, 0.2);
@@ -407,6 +409,10 @@ bool trace(vec3 ray_origin, vec3 ray_dir, ScreenSpaceReflection ssr, mat4 pixel_
 }
 
 vec3 getDuDv(vec2 tex_coord) {
+  if (debug_flag == 1 || debug_flag == 2) {
+      return vec3(0);
+  }
+
   vec3 dudv_x
       = texture(dudv_map, (tex_coord / water.wave_scale) + vec2(current_time * water.wave_speed, 0))
             .rgb;
@@ -496,9 +502,12 @@ void main() {
       vec2 lookup = vec2(phi / (2.0 * PI), theta / PI);
       reflection_color = texture(environment_map, lookup).xyz * environment_multiplier;
     }
+    if (debug_flag == 1) {
+        fragmentColor = vec4(reflection_color, 1.0);
+        return;
+    }
   }
 
-  // vec3 reflection_dir = normalize(reflect(view_dir, view_water_normal));
   vec3 refraction_color = vec3(0);
   {
     vec2 hit_pixel;
@@ -514,6 +523,10 @@ void main() {
     } else {
       // REVIEW: is there some hack here?
       refraction_color = color;
+    }
+    if (debug_flag == 2) {
+        fragmentColor = vec4(refraction_color, 1.0);
+        return;
     }
   }
 

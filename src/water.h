@@ -10,6 +10,13 @@
 #include "shader.h"
 
 struct Water {
+  static constexpr std::array<const char*, 3> DebugNames{{"Off", "SSR_Reflection", "SSR_Refraction"}};
+  enum WaterDebugFlags {
+    Off,
+    SSR_Reflection,
+    SSR_Refraction,
+  };
+
   void init() {
     indices_count = gpu::createSubdividedPlane(1, 0, &vao, &positions_bo, &indices_bo);
     loadShader(false);
@@ -75,6 +82,7 @@ struct Water {
     glBindTextureUnit(2, dudv_map.gl_id);
 
     glUseProgram(this->shader_program);
+    gpu::setUniformSlow(this->shader_program, "debug_flag", debug_flag);
     gpu::setUniformSlow(this->shader_program, "current_time", current_time);
     gpu::setUniformSlow(this->shader_program, "model_matrix", model_matrix);
     gpu::setUniformSlow(this->shader_program, "view_matrix", view_matrix);
@@ -101,6 +109,9 @@ struct Water {
 
   void gui() {
     if (ImGui::CollapsingHeader("Water")) {
+
+      ImGui::Combo("Debug", &debug_flag, &DebugNames[0], DebugNames.size());
+
       ImGui::DragFloat("Water size", &size, 4);
       ImGui::DragFloat("Water Level Height", &height, 0.1);
       ImGui::DragFloat("Water Foam Distance", &foam_distance, 0.1);
@@ -155,6 +166,8 @@ struct Water {
       ImGui::DragFloat("Max distance", &max_distance, 0.1);
     }
   } ssr;
+
+  int debug_flag = WaterDebugFlags::Off;
 
   int indices_count;
 
