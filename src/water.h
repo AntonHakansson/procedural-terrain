@@ -10,11 +10,13 @@
 #include "shader.h"
 
 struct Water {
-  static constexpr std::array<const char*, 3> DebugNames{{"Off", "SSR_Reflection", "SSR_Refraction"}};
+  static constexpr std::array<const char*, 4> DebugNames{
+      {"Off", "SSR Reflection", "SSR Refraction", "SSR Refraction Misses"}};
   enum WaterDebugFlags {
     Off,
     SSR_Reflection,
     SSR_Refraction,
+    SSR_Refraction_Misses,
   };
 
   void init() {
@@ -47,8 +49,9 @@ struct Water {
     }
   }
 
-  void render(Terrain* terrain, int width, int height, float current_time, glm::mat4 projection_matrix,
-              glm::mat4 view_matrix, glm::vec3 center, Projection projection, float environment_multiplier) {
+  void render(Terrain* terrain, int width, int height, float current_time,
+              glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 center,
+              Projection projection, float environment_multiplier) {
     if (screen_fbo.width != width || screen_fbo.height != height) {
       screen_fbo.resize(width, height);
     }
@@ -104,7 +107,10 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "water.wave_strength", wave_strength);
     gpu::setUniformSlow(this->shader_program, "water.wave_scale", wave_scale);
     gpu::setUniformSlow(this->shader_program, "water.size", this->size);
-    ssr.upload(this->shader_program, screen_fbo.width, screen_fbo.height, projection);
+    ssr_reflection.upload(this->shader_program, "ssr_reflection", screen_fbo.width,
+                          screen_fbo.height, projection);
+    ssr_refraction.upload(this->shader_program, "ssr_refraction", screen_fbo.width,
+                          screen_fbo.height, projection);
 
     gpu::setUniformSlow(this->shader_program, "environment_multiplier", environment_multiplier);
 
@@ -117,17 +123,22 @@ struct Water {
 
   void gui() {
     if (ImGui::CollapsingHeader("Water")) {
-
       ImGui::Combo("Debug", &debug_flag, &DebugNames[0], DebugNames.size());
 
-      ImGui::DragFloat("Water size", &size, 4);
-      ImGui::DragFloat("Water Level Height", &height, 0.1);
-      ImGui::DragFloat("Water Foam Distance", &foam_distance, 0.1);
-      ImGui::DragFloat("Wave speed", &wave_speed, 0.003);
-      ImGui::DragFloat("Wave strength", &wave_strength, 0.003);
-      ImGui::DragFloat("Wave scale", &wave_scale);
+      ImGui::DragFloat("Water size", &size, 4, 0, FLT_MAX);
+      ImGui::DragFloat("Water Level Height", &height, 0.1, 0, FLT_MAX);
+      ImGui::DragFloat("Water Foam Distance", &foam_distance, 0.1, 0, FLT_MAX);
+      ImGui::DragFloat("Wave speed", &wave_speed, 0.003, 0, FLT_MAX);
+      ImGui::DragFloat("Wave strength", &wave_strength, 0.003, 0, FLT_MAX);
+      ImGui::DragFloat("Wave scale", &wave_scale, 0.1, 0, FLT_MAX);
 
-      ssr.gui();
+      if (ImGui::CollapsingHeader("SSR Reflection")) {
+        ssr_reflection.gui();
+      }
+      if (ImGui::CollapsingHeader("SSR Refraction")) {
+        ssr_refraction.gui();
+      }
+
       ImGui::Text("Color Attachment");
       ImGui::Image((void*)(intptr_t)screen_fbo.colorTextureTargets[0], ImVec2(252, 252),
                    ImVec2(0, 1), ImVec2(1, 0));
@@ -148,30 +159,32 @@ struct Water {
     float max_steps = 50.0;
     float max_distance = 500.0;
 
-    void upload(GLuint program, int width, int height, Projection projection) {
+    void upload(GLuint program, std::string uniform_name, int width, int height,
+                Projection projection) {
       this->depth_buffer_size = glm::ivec2(width, height);
       this->projection = projection;
 
-      gpu::setUniformSlow(program, "ssr.depth_buffer_size", depth_buffer_size);
-      gpu::setUniformSlow(program, "ssr.z_near", projection.near);
-      gpu::setUniformSlow(program, "ssr.z_far", projection.far);
-      gpu::setUniformSlow(program, "ssr.z_thickness", z_thickness);
-      gpu::setUniformSlow(program, "ssr.stride", stride);
-      gpu::setUniformSlow(program, "ssr.jitter", jitter);
-      gpu::setUniformSlow(program, "ssr.max_steps", max_steps);
-      gpu::setUniformSlow(program, "ssr.max_distance", max_distance);
+      gpu::setUniformSlow(program, (uniform_name + ".depth_buffer_size").c_str(),
+                          depth_buffer_size);
+      gpu::setUniformSlow(program, (uniform_name + ".z_near").c_str(), projection.near);
+      gpu::setUniformSlow(program, (uniform_name + ".z_far").c_str(), projection.far);
+      gpu::setUniformSlow(program, (uniform_name + ".z_thickness").c_str(), z_thickness);
+      gpu::setUniformSlow(program, (uniform_name + ".stride").c_str(), stride);
+      gpu::setUniformSlow(program, (uniform_name + ".jitter").c_str(), jitter);
+      gpu::setUniformSlow(program, (uniform_name + ".max_steps").c_str(), max_steps);
+      gpu::setUniformSlow(program, (uniform_name + ".max_distance").c_str(), max_distance);
     }
 
     void gui() {
       ImGui::Text("Buffer size: %dx%d", depth_buffer_size.x, depth_buffer_size.y);
       ImGui::Text("Near: %f, Far: %d", projection.near, projection.far);
-      ImGui::DragFloat("z thickness", &z_thickness, 0.0001);
-      ImGui::DragFloat("stride", &stride, 0.0001);
+      ImGui::DragFloat("z thickness", &z_thickness, 0.0001, 0, FLT_MAX);
+      ImGui::DragFloat("stride", &stride, 0.0001, 0, FLT_MAX);
       ImGui::SliderFloat("jitter", &jitter, 0.0, 1.0);
-      ImGui::DragFloat("Max steps", &max_steps, 0.1);
-      ImGui::DragFloat("Max distance", &max_distance, 0.1);
+      ImGui::DragFloat("Max steps", &max_steps, 0.1, 0.0, FLT_MAX);
+      ImGui::DragFloat("Max distance", &max_distance, 0.1, 0.0, FLT_MAX);
     }
-  } ssr;
+  };
 
   int debug_flag = WaterDebugFlags::Off;
 
@@ -184,6 +197,12 @@ struct Water {
   float wave_speed = 0.045f;
   float wave_strength = 0.053f;
   float wave_scale = 406;
+  ScreenSpaceReflection ssr_reflection;
+  ScreenSpaceReflection ssr_refraction = ScreenSpaceReflection{
+      .z_thickness = 20,
+      .stride = 10,
+      .max_steps = 20,
+  };
   gpu::Texture dudv_map;
 
   GLuint shader_program;
