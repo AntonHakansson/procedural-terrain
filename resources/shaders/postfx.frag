@@ -101,6 +101,7 @@ void main() {
 
   float height = In.world_pos.y;
 
+  // Underwater filter
   if (height < water.height) {
     vec3 col = texture(tex, In.tex_coord + vec2(0, sin(currentTime) * 0.01)).xyz;
     vec3 out_color = mix(col, ocean_blue_deep, 0.9);
@@ -115,14 +116,12 @@ void main() {
   float depth = texture(depth_tex, In.tex_coord).x;
   float linear_depth = linearizeDepth(depth);
 
-  out_color = shiftHSV(out_color, 0.0, 0.1, -0.0);
-
-  fragmentColor = vec4(out_color, 1.0);
+  // Increase saturation for more vididness
+  out_color = shiftHSV(out_color, 0.0, 0.1, 0.0);
 
   /*
    * Procedural sun and horizon
    */
-
   float wdots = max(dot(world_dir, -sun.direction), 0.0);
   float hf = -sun.direction.y;
   float sunset_trans = inverseLerpClamped(0.2, 0.6, hf);
@@ -133,19 +132,20 @@ void main() {
   float sun_threshold = 0.998;
 
   if (wdots > sun_threshold) {
+    // Render sun
     if (linear_depth == postfx.z_far) {
       float f1 = smoothstep(0.0, 1.0,
                             inverseLerpClamped(sun_threshold, (1 + sun_threshold) / 2.0, wdots));
       float f2 = smoothstep(0.2, 1.0, inverseLerpClamped(sun_threshold, 1, wdots));
 
-      fragmentColor += vec4(sun_color * f1 + vec3(1) * f2 * 1.5, 1.0);
+      out_color += vec3(sun_color * f1 + vec3(1) * f2 * 1.5);
     } else {
       // Sample some nearby pixels to give some "bloom" onto the mountaintops
-
       float size = 3;
       int maxBound = int(floor(size / 2));
       int minBound = -int(floor((size - 0.01) / 2));
 
+      // PCF?
       float percentage_lit = 0;
       for (int k = minBound; k <= maxBound; k++) {
         for (int l = minBound; l <= maxBound; l++) {
@@ -161,32 +161,36 @@ void main() {
         }
       }
 
+      // PCF!
       float average = percentage_lit / (size * size);
 
       float f1 = smoothstep(0, 1, inverseLerpClamped(sun_threshold, 1, wdots));
-      fragmentColor += vec4(sun_color * average * f1, 1.0);
+      out_color += vec3(sun_color * average * f1);
     }
   }
 
-  float horizon_mask = linear_depth == postfx.z_far
-                           ? clamp(inverseLerpClamped(0, 0.8, world_dir.y)
-                                       + (inverseLerpClamped(sun_threshold, 1, wdots)),
-                                   0, 1)
-                           : 1;
+  // Calculate horizon mask
+  float horizon_mask = 1;
+  if (linear_depth == postfx.z_far) {
+    horizon_mask = clamp(inverseLerpClamped(0, 0.8, world_dir.y) + (inverseLerpClamped(sun_threshold, 1, wdots)), 0, 1);
+  }
+
   float horizon_sunset_mask = mix(horizon_mask, 1, sunset_trans);
 
+  // Apply sunset and night colors
   vec3 sunset_color = shiftHSV(sun_color, 0, -0.6, 0.0);
   vec3 night_color = shiftHSV(sun_color, -0.42, -0.3, -0.5);
-  fragmentColor
-      = vec4(mix(fragmentColor.xyz * sunset_color, fragmentColor.xyz, horizon_sunset_mask), 1);
-  fragmentColor = vec4(
-      mix(fragmentColor.xyz * night_color, fragmentColor.xyz, smoothstep(0, 1, night_trans)), 1);
+  out_color = mix(out_color * sunset_color, out_color, horizon_sunset_mask);
+  out_color = mix(out_color * night_color, out_color, smoothstep(0, 1, night_trans));
+
 
   // float god_mask = calculateGodMask(depth, wdots, sun_threshold);
   // fragmentColor = vec4(vec3(horizon_sunset_mask), 1);
   // return;
 
-  // God rays
+  /**
+   * God rays
+   */
   vec2 screen_pos = vec2(In.tex_coord) * 2.0 - 1;
 
   // Calculate sun position in screen space coordinates
@@ -215,11 +219,9 @@ void main() {
   }
   visibility_factor /= float(NUM_RAY_STEPS);
 
-  // fragmentColor = vec4(vec3(visibility_factor), 1);
-
   vec3 god_ray_color = mix(sunset_color, sunset_color, sunset_trans);
+  out_color += god_ray_color * visibility_factor * (1 - sunset_trans * 0.4) * clamp((1 - ray_dist / 1), 0.0, 1.0) * 0.6;
 
-  fragmentColor += vec4(god_ray_color * visibility_factor * (1 - sunset_trans * 0.4)
-                            * clamp((1 - ray_dist / 1), 0.0, 1.0) * 0.6,
-                        1);
+  // Finally, update
+  fragmentColor = vec4(out_color, 1.0);
 }

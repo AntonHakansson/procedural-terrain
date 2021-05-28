@@ -28,6 +28,7 @@ class ShadowMap {
 public:
   int resolution = 1024 * 4;
   float bias = 4098;
+  float blend_distance = 150.0;
 
   GLuint fbo;
   GLuint shadow_tex;
@@ -42,7 +43,9 @@ public:
   ShadowMap(void);
 
   // Init shadow map
-  void init(float z_near, float z_far);
+  void init(Projection projection);
+
+  void calculateSplits(Projection projection);
 
   bool checkFramebufferComplete() const;
 
@@ -50,7 +53,7 @@ public:
   void bindWrite(uint cascade_index);
 
   // Set necessary uniforms
-  void begin(uint tex_index, mat4 proj_matrix, mat4 light_view_matrix);
+  void begin(uint tex_index, Projection projection, mat4 proj_matrix, mat4 light_view_matrix);
 
   // Calculate ortho projections
   void calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_matrix, int width, int height,
