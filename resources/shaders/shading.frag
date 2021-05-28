@@ -59,8 +59,10 @@ layout(location = 0) out vec4 fragmentColor;
 vec3 calculateDirectIllumiunation(vec3 wo, vec3 n) {
   vec3 direct_illum = material_color;
   vec3 wi = normalize(viewSpaceLightPosition - viewSpacePosition);
+
   float dist_to_light = length(viewSpaceLightPosition - viewSpacePosition);
   float attenuation = 1.0 / (dist_to_light * dist_to_light);
+
   vec3 L_i = point_light_intensity_multiplier * point_light_color * attenuation;
 
   float cos_theta = max(dot(n, wi), 0.0);

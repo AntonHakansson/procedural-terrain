@@ -32,6 +32,12 @@ In;
 // Uniforms
 uniform float current_time;
 
+struct Sun {
+  vec3 direction;
+  vec3 color;
+};
+uniform Sun sun;
+
 struct Water {
   float height;
   float foam_distance;
@@ -429,6 +435,7 @@ vec3 getDuDv(vec2 tex_coord) {
 }
 
 float inverseLerp(float a, float b, float x) { return (x - a) / (b - a); }
+float inverseLerpClamped(float a, float b, float x) { return clamp(inverseLerp(a, b, x), 0, 1); }
 
 void main() {
   // REVIEW: Does `texture` filter the result? maybe opt for `texelFetch` to get unfiltered value
@@ -504,6 +511,17 @@ void main() {
       // Use these to lookup the color in the environment map
       vec2 lookup = vec2(phi / (2.0 * PI), theta / PI);
       reflection_color = texture(environment_map, lookup).xyz * environment_multiplier;
+
+
+      float sun_threshold = 0.998;
+      float wdots = max(dot(world_reflection_dir, -sun.direction), 0.0);
+
+      // reflection_color = vec3(wdots);
+      float f1 = smoothstep(0.0, 1.0,
+                            inverseLerpClamped(sun_threshold, (1 + sun_threshold) / 2.0, wdots));
+      float f2 = smoothstep(0.2, 1.0, inverseLerpClamped(sun_threshold, 1, wdots));
+
+      reflection_color += vec3(sun.color * f1 * 2 + vec3(1) * f2 * 4.5) * 2;
     }
     if (debug_flag == DEBUG_SSR_REFLECTION) {
         fragmentColor = vec4(reflection_color, 1.0);
