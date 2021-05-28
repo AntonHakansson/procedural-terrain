@@ -100,8 +100,8 @@ void Terrain::begin(bool simple) {
   this->simple = simple;
 }
 
-void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position,
-                     glm::mat4 light_matrix, float water_height) {
+void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 center, 
+                     glm::vec3 camera_position, glm::mat4 light_matrix, float water_height) {
   GLint prev_polygon_mode;
 
   GLuint shader_program = this->simple ? this->shader_program_simple : this->shader_program;
@@ -120,7 +120,7 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
     float s = (this->terrain_size / (this->terrain_subdivision + 1));
 
     this->model_matrix = glm::translate(
-        glm::vec3(glm::floor(camera_position.x / s) * s, 0, glm::floor(camera_position.z / s) * s)
+        glm::vec3(glm::floor(center.x / s) * s, 0, glm::floor(center.z / s) * s)
         - glm::vec3(1, 0, 1) * this->terrain_size / 2.0f);
 
     // this->model_matrix = glm::mat4(1.0f);

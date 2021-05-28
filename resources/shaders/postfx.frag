@@ -140,9 +140,9 @@ void main() {
 
       fragmentColor += vec4(sun_color * f1 + vec3(1) * f2 * 1.5, 1.0);
     } else {
-      // Sample some nearby pixels
+      // Sample some nearby pixels to give some "bloom" onto the mountaintops
 
-      float size = 7;
+      float size = 3;
       int maxBound = int(floor(size / 2));
       int minBound = -int(floor((size - 0.01) / 2));
 
@@ -176,7 +176,7 @@ void main() {
   float horizon_sunset_mask = mix(horizon_mask, 1, sunset_trans);
 
   vec3 sunset_color = shiftHSV(sun_color, 0, -0.6, 0.0);
-  vec3 night_color = shiftHSV(sun_color, -0.39, -0.2, -0.8);
+  vec3 night_color = shiftHSV(sun_color, -0.42, -0.3, -0.5);
   fragmentColor
       = vec4(mix(fragmentColor.xyz * sunset_color, fragmentColor.xyz, horizon_sunset_mask), 1);
   fragmentColor = vec4(
@@ -198,7 +198,7 @@ void main() {
   float ray_dist = length(ray_dir);
   ray_dir = normalize(ray_dir);
 
-  const uint NUM_RAY_STEPS = 50;
+  const uint NUM_RAY_STEPS = 40;
   float step_size = ray_dist / float(NUM_RAY_STEPS);
 
   // March towards the sun in screen space
@@ -213,10 +213,12 @@ void main() {
 
     visibility_factor += god_mask;
   }
+  visibility_factor /= float(NUM_RAY_STEPS);
+
+  // fragmentColor = vec4(vec3(visibility_factor), 1);
 
   vec3 god_ray_color = mix(sunset_color, sunset_color, sunset_trans);
 
-  visibility_factor /= float(NUM_RAY_STEPS);
   fragmentColor += vec4(god_ray_color * visibility_factor * (1 - sunset_trans * 0.4)
                             * clamp((1 - ray_dist / 1), 0.0, 1.0) * 0.6,
                         1);

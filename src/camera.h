@@ -94,17 +94,32 @@ struct Camera {
   }
 
   mat4 getViewMatrix() {
-    if (mode == CameraMode::Fly) {
-      return lookAt(position, position + direction, world_up);
-    }
-    if (mode == CameraMode::Orbit) {
-      return lookAt(orbit_target - direction * orbit_distance, orbit_target, world_up);
+    switch (mode) {
+      case CameraMode::Fly: {
+        return lookAt(position, position + direction, world_up);
+      }
+
+      case CameraMode::Orbit: {
+        return lookAt(orbit_target - direction * orbit_distance, orbit_target, world_up);
+      }
     }
   }
 
   mat4 getProjMatrix(int window_width, int window_height) {
     return perspective(radians(projection.fovy), float(window_width) / float(window_height),
                        projection.near, projection.far);
+  }
+
+  vec3 getWorldPos() {
+    switch (mode) {
+      case CameraMode::Fly: {
+        return position;
+      }
+
+      case CameraMode::Orbit: {
+        return orbit_target - direction * orbit_distance;
+      }
+    }
   }
 
   void gui() {

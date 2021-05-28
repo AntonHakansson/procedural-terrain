@@ -158,7 +158,7 @@ struct Water {
   int indices_count;
 
   // Height of the water level
-  float height = 145;
+  float height = 141;
   float size = 4096 * 2.0;
   float foam_distance = 30.f;
   float wave_speed = 0.045;

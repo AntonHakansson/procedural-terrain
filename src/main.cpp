@@ -171,7 +171,7 @@ struct App {
     glUseProgram(background_program);
     gpu::setUniformSlow(background_program, "environment_multiplier", environment_map.multiplier);
     gpu::setUniformSlow(background_program, "inv_PV", inverse(projectionMatrix * viewMatrix));
-    gpu::setUniformSlow(background_program, "camera_pos", camera.position);
+    gpu::setUniformSlow(background_program, "camera_pos", camera.getWorldPos());
     gpu::drawFullScreenQuad();
   }
 
@@ -179,6 +179,9 @@ struct App {
                   const mat4& light_view_matrix) {
     shadow_map.calculateLightProjMatrices(view_matrix, light_view_matrix, window.width,
                                           window.height, camera.projection.fovy);
+
+    vec3 cam_pos = static_camera_enabled ? static_camera_pos : camera.getWorldPos();
+    vec3 center = static_camera_enabled ? static_camera_pos : camera.position;
 
     glUseProgram(current_program);
 
@@ -194,7 +197,7 @@ struct App {
       terrain.begin(true);
 
       glDisable(GL_CULL_FACE);
-      terrain.render(light_proj_matrix, light_view_matrix, static_camera_pos, mat4(), water.height);
+      terrain.render(light_proj_matrix, light_view_matrix, center, cam_pos, mat4(), water.height);
       glEnable(GL_CULL_FACE);
 
       glUseProgram(current_program);
@@ -215,7 +218,8 @@ struct App {
                   const mat4& lightViewMatrix) {
     glUseProgram(current_program);
 
-    vec3 cam_pos = static_camera_enabled ? static_camera_pos : camera.position;
+    vec3 cam_pos = static_camera_enabled ? static_camera_pos : camera.getWorldPos();
+    vec3 center = static_camera_enabled ? static_camera_pos : camera.position;
 
     // Environment
     gpu::setUniformSlow(current_program, "environment_multiplier", environment_map.multiplier);
@@ -231,7 +235,7 @@ struct App {
     // Bind shadow map textures
     shadow_map.begin(10, projMatrix, lightViewMatrix);
 
-    terrain.render(projMatrix, viewMatrix, cam_pos, lightMatrix, water.height);
+    terrain.render(projMatrix, viewMatrix, center, cam_pos, lightMatrix, water.height);
     water.render(window.width, window.height, current_time, projMatrix, viewMatrix, cam_pos,
                  camera.projection.near, camera.projection.far);
 

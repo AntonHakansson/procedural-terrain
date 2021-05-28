@@ -26,10 +26,10 @@
 
 struct TerrainNoise {
   int num_octaves = 7;
-  float amplitude = 900.0;
-  float frequency = 0.105;
-  float persistence = .08;
-  float lacunarity = 8.0;
+  float amplitude = 1055.0;
+  float frequency = 0.110;
+  float persistence = 0.063;
+  float lacunarity = 8.150;
 
   bool gui() {
     auto did_change = false;
@@ -99,7 +99,7 @@ struct Terrain {
   TerrainNoise noise;
   Sun sun;
 
-  float tess_multiplier = 16.0;
+  float tess_multiplier = 8.0;
 
   GLuint shader_program;
   GLuint shader_program_simple;
@@ -110,10 +110,10 @@ struct Terrain {
   gpu::Texture normals;
   gpu::Texture displacements;
 
-  std::array<float, 4> texture_start_heights{150, 270, 500, 500};
+  std::array<float, 4> texture_start_heights{155, 270, 520, 866};
   std::array<float, 4> texture_blends{0.0, 80, 415, 610};
-  std::array<float, 4> texture_sizes{10, 10, 7, 10};
-  std::array<float, 4> texture_displacement_weights{1, 1, 1, 1};
+  std::array<float, 4> texture_sizes{70.40, 16.229, 6.629, 11.657};
+  std::array<float, 4> texture_displacement_weights{0.5, 0.671, 0.676, 0.869};
 
   // Buffers on GPU
   uint32_t positions_bo;
@@ -131,7 +131,7 @@ struct Terrain {
   void buildMesh(bool is_reload);
 
   void begin(bool simple);
-  void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position,
-              glm::mat4 light_matrix, float water_height);
+  void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 center,
+              glm::vec3 camera_position, glm::mat4 light_matrix, float water_height);
   void gui(Camera* camera);
 };
