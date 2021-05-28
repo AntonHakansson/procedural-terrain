@@ -39,7 +39,7 @@ struct Camera {
 
   vec3 position = vec3(-70.0, 500.0, 70.0);
   vec3 direction = cross(normalize(position), world_up);
-  float speed = 10;
+  float speed = 40;
   float rotation_speed = 0.12f;
 
   int mode = CameraMode::Fly;

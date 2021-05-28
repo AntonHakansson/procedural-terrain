@@ -64,6 +64,9 @@ uniform mat4 inv_view_matrix;
 uniform mat4 pixel_projection;  // `pixel_projection` projects from view space to pixel coordinate
 uniform float environment_multiplier;
 
+#define DEBUG_OFF 0
+#define DEBUG_SSR_REFLECTION 1
+#define DEBUG_SSR_REFRACTION 2
 uniform int debug_flag; // 0 = off; 1 = screen space reflection; 2 = screen space refraction;
 
 // Constants
@@ -409,7 +412,7 @@ bool trace(vec3 ray_origin, vec3 ray_dir, ScreenSpaceReflection ssr, mat4 pixel_
 }
 
 vec3 getDuDv(vec2 tex_coord) {
-  if (debug_flag == 1 || debug_flag == 2) {
+  if (debug_flag == DEBUG_SSR_REFLECTION) {
       return vec3(0);
   }
 
@@ -444,7 +447,7 @@ void main() {
 
   vec3 dudv = getDuDv(In.world_pos.xz);
   vec3 reflection_dir = normalize(reflect(view_dir, In.view_space_normal));
-  vec3 refraction_dir = normalize(reflection_dir - 2 * normalize(In.view_space_normal));
+  vec3 refraction_dir = normalize(refract(view_dir, In.view_space_normal, 0.8));
 
   reflection_dir = normalize(reflection_dir + dudv);
   refraction_dir = normalize(refraction_dir + dudv);
@@ -502,7 +505,7 @@ void main() {
       vec2 lookup = vec2(phi / (2.0 * PI), theta / PI);
       reflection_color = texture(environment_map, lookup).xyz * environment_multiplier;
     }
-    if (debug_flag == 1) {
+    if (debug_flag == DEBUG_SSR_REFLECTION) {
         fragmentColor = vec4(reflection_color, 1.0);
         return;
     }
@@ -524,7 +527,7 @@ void main() {
       // REVIEW: is there some hack here?
       refraction_color = color;
     }
-    if (debug_flag == 2) {
+    if (debug_flag == DEBUG_SSR_REFRACTION) {
         fragmentColor = vec4(refraction_color, 1.0);
         return;
     }
