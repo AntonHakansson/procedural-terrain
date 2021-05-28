@@ -71,13 +71,15 @@ struct Camera {
         movement_dir += camera_right;
       }
 
-      movement_dir = normalize(movement_dir);
+      if (length(movement_dir) > 0)
+        movement_dir = normalize(movement_dir);
+
 
       if (key_state[SDL_SCANCODE_Q]) {
-        movement_dir -= world_up;
+        movement_dir.y -= 1;
       }
       if (key_state[SDL_SCANCODE_E]) {
-        movement_dir += world_up;
+        movement_dir.y += 1;
       }
 
       if (length(movement_dir) > 0.01) {
