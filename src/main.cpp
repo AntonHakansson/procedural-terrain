@@ -1,7 +1,10 @@
-#include <ImGuizmo.h>
 #include <glad/glad.h>
 #include <imgui.h>
 #include <imgui_internal.h>
+
+// clang-format: off
+#include <ImGuizmo.h>
+// clang-format: on
 
 #include <algorithm>
 #include <chrono>

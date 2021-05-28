@@ -1,10 +1,13 @@
 #pragma once
 
-#include <ImGuizmo.h>
 #include <SDL.h>
 #include <glad/glad.h>
 #include <imgui.h>
 #include <stb_image.h>
+
+// clang-format: off
+#include <ImGuizmo.h>
+// clang-format: on
 
 #include <array>
 #include <fstream>
