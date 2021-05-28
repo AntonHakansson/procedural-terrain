@@ -109,10 +109,12 @@ struct Terrain {
 
   gpu::Texture albedos;
   gpu::Texture normals;
+  gpu::Texture displacements;
 
-  std::array<float, 4> texture_start_heights{0, 0.760, 0.797, 0.840};
-  std::array<float, 4> texture_blends{0.0, 0.021, 0.030, 0.011};
-  std::array<float, 4> texture_sizes{4, 4, 4, 4};
+  std::array<float, 4> texture_start_heights{150, 270, 500, 500};
+  std::array<float, 4> texture_blends{0.0, 80, 415, 610};
+  std::array<float, 4> texture_sizes{10, 10, 7, 10};
+  std::array<float, 4> texture_displacement_weights{1, 1, 1, 1};
 
   // Buffers on GPU
   uint32_t positions_bo;

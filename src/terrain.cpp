@@ -8,37 +8,39 @@ void Terrain::init() {
   loadShader(false);
 
   std::array<std::string, 4> albedo_paths = {
-      "resources/textures/terrain/sand/albedo.jpg",
+      "resources/textures/terrain/beach/albedo.jpg",
       "resources/textures/terrain/grass/albedo.jpg",
-      "resources/textures/terrain/rock/albedo.jpg",
+      "resources/textures/terrain/rock_beach/albedo.jpg",
       "resources/textures/terrain/snow/albedo.jpg",
   };
   std::array<std::string, 4> normal_paths = {
-      "resources/textures/terrain/sand/normal.jpg",
+      "resources/textures/terrain/beach/normal.jpg",
       "resources/textures/terrain/grass/normal.jpg",
-      "resources/textures/terrain/rock/normal.jpg",
+      "resources/textures/terrain/rock_beach/normal.jpg",
       "resources/textures/terrain/snow/normal.jpg",
   };
   std::array<std::string, 4> displacement_paths = {
-      "resources/textures/terrain/sand/displacement.jpg",
+      "resources/textures/terrain/beach/displacement.jpg",
       "resources/textures/terrain/grass/displacement.jpg",
-      "resources/textures/terrain/rock/displacement.jpg",
+      "resources/textures/terrain/rock_beach/displacement.jpg",
       "resources/textures/terrain/snow/displacement.jpg",
   };
   std::array<std::string, 4> roughness_paths = {
-      "resources/textures/terrain/sand/roughness.jpg",
+      "resources/textures/terrain/beach/roughness.jpg",
       "resources/textures/terrain/grass/roughness.jpg",
-      "resources/textures/terrain/rock/roughness.jpg",
+      "resources/textures/terrain/rock_beach/roughness.jpg",
       "resources/textures/terrain/snow/roughness.jpg",
   };
 
   albedos.load2DArray<4>(albedo_paths, 5);
   normals.load2DArray<4>(normal_paths, 5);
+  displacements.load2DArray<4>(displacement_paths, 5);
 }
 
 void Terrain::deinit() {
   glDeleteTextures(1, &albedos.gl_id);
   glDeleteTextures(1, &normals.gl_id);
+  glDeleteTextures(1, &displacements.gl_id);
   glDeleteBuffers(1, &this->positions_bo);
   glDeleteBuffers(1, &this->indices_bo);
   glDeleteVertexArrays(1, &this->vao);
@@ -107,6 +109,7 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
   {
     glBindTextureUnit(0, albedos.gl_id);
     glBindTextureUnit(1, normals.gl_id);
+    glBindTextureUnit(2, displacements.gl_id);
 
     if (this->wireframe) {
       glGetIntegerv(GL_POLYGON_MODE, &prev_polygon_mode);
@@ -151,6 +154,8 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
                  texture_blends.data());
     glUniform1fv(glGetUniformLocation(shader_program, "texture_sizes"), texture_sizes.size(),
                  texture_sizes.data());
+    glUniform1fv(glGetUniformLocation(shader_program, "texture_displacement_weights"), texture_displacement_weights.size(),
+                 texture_displacement_weights.data());
 
     glUniform1fv(glGetUniformLocation(shader_program, "tessMultiplier"), 1, &this->tess_multiplier);
 
@@ -197,19 +202,25 @@ void Terrain::gui(Camera* camera) {
     ImGui::Text("Texture Start Heights");
     for (int i = 0; i < texture_start_heights.size(); i++) {
       auto& h = texture_start_heights[i];
-      ImGui::SliderFloat(("h" + std::to_string(i)).c_str(), &h, 0.0, 1.0);
+      ImGui::DragFloat(("h" + std::to_string(i)).c_str(), &h);
     }
 
     ImGui::Text("Texture Blends");
     for (int i = 0; i < texture_start_heights.size(); i++) {
       auto& b = texture_blends[i];
-      ImGui::SliderFloat(("b" + std::to_string(i)).c_str(), &b, 0.0, 0.5);
+      ImGui::DragFloat(("b" + std::to_string(i)).c_str(), &b);
     }
 
     ImGui::Text("Texture Scaling");
     for (int i = 0; i < texture_sizes.size(); i++) {
       auto& b = texture_sizes[i];
       ImGui::SliderFloat(("s" + std::to_string(i)).c_str(), &b, 0.0, 80);
+    }
+
+    ImGui::Text("Texture Displacement weight");
+    for (int i = 0; i < texture_displacement_weights.size(); i++) {
+      auto& b = texture_displacement_weights[i];
+      ImGui::SliderFloat(("d" + std::to_string(i)).c_str(), &b, 0.5, 2.0);
     }
   }
 }
