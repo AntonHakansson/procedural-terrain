@@ -23,12 +23,14 @@ struct OrthoProjInfo {
   float f;  // z far
 };
 
+struct Projection {
+  float fovy = 70.0f;
+  float far = 5000.0f;
+  float near = 1.0f;
+};
+
 struct Camera {
-  struct Projection {
-    float fovy = 70.0f;
-    float far = 5000.0f;
-    float near = 1.0f;
-  } projection;
+  Projection projection;
 
   vec3 world_up = vec3(0.0, 1.0, 0.0);
 

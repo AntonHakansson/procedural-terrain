@@ -2,11 +2,7 @@
 
 ShadowMap::ShadowMap(void) {}
 
-void ShadowMap::init(float z_near, float z_far) {
-  cascade_splits[0] = z_near;
-  cascade_splits[1] = 500.0f, cascade_splits[2] = 1000.0f;
-  cascade_splits[3] = z_far;
-
+void ShadowMap::init(Projection projection) {
   // Layered texture
   glCreateTextures(GL_TEXTURE_2D_ARRAY, NUM_CASCADES, &shadow_tex);
   glTextureStorage3D(shadow_tex, 1, GL_DEPTH_COMPONENT32F, resolution, resolution, NUM_CASCADES);
@@ -27,6 +23,19 @@ void ShadowMap::init(float z_near, float z_far) {
   }
 
   bool isComplete = checkFramebufferComplete();
+
+  calculateSplits(projection);
+}
+
+void ShadowMap::calculateSplits(Projection projection) {
+  // Only update if we need to
+  if (projection.near == cascade_splits[0] && projection.far == cascade_splits[3]) 
+    return;
+
+  cascade_splits[0] = projection.near;
+  cascade_splits[1] = (projection.near + projection.far) / 4;
+  cascade_splits[2] = (projection.near + projection.far) / 3 * 2;
+  cascade_splits[3] = projection.far;
 }
 
 bool ShadowMap::checkFramebufferComplete() const {
@@ -48,7 +57,9 @@ void ShadowMap::bindWrite(uint cascade_index) {
   glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_tex, 0, cascade_index);
 }
 
-void ShadowMap::begin(uint tex_index, mat4 proj_matrix, mat4 light_view_matrix) {
+void ShadowMap::begin(uint tex_index, Projection projection, mat4 proj_matrix, mat4 light_view_matrix) {
+  calculateSplits(projection);
+
   GLint shader_program = 0;
   glGetIntegerv(GL_CURRENT_PROGRAM, &shader_program);
 
@@ -64,6 +75,7 @@ void ShadowMap::begin(uint tex_index, mat4 proj_matrix, mat4 light_view_matrix) 
                         light_proj_matrix * light_view_matrix);
   }
 
+  gpu::setUniformSlow(shader_program, "shadow_map.blend_distance", blend_distance);
   gpu::setUniformSlow(shader_program, "shadow_map.debug_show_splits", debug_show_splits);
   gpu::setUniformSlow(shader_program, "shadow_map.debug_show_blend", debug_show_blend);
 
@@ -139,6 +151,7 @@ void ShadowMap::calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_mat
 void ShadowMap::gui(SDL_Window* window) {
   if (ImGui::CollapsingHeader("Cascading Shadow Map")) {
     ImGui::DragFloat("Bias", &this->bias);
+    ImGui::DragFloat("Blend distance", &this->blend_distance);
 
     ImGui::Text("Debug");
     ImGui::Checkbox("Show cascade splits", &debug_show_splits);

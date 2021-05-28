@@ -47,6 +47,7 @@ const int NUM_CASCADES = 3;
 struct ShadowMap {
   float cascade_clip_splits[NUM_CASCADES];
   mat4 light_wvp_matrix[NUM_CASCADES];
+  float blend_distance;
   bool debug_show_splits;
   bool debug_show_blend;
 };
@@ -261,6 +262,8 @@ float calcShadowFactor(int index, vec4 shadow_light_pos, vec3 normal) {
   int maxBound = int(floor(size / 2));
   int minBound = -int(floor((size - 0.01) / 2));
 
+  
+
   // PCF sampling
   for (int k = minBound; k <= maxBound; k++) {
     for (int l = minBound; l <= maxBound; l++) {
@@ -278,55 +281,52 @@ float calcShadowFactor(int index, vec4 shadow_light_pos, vec3 normal) {
 }
 
 void main() {
-  if (shadow_map.debug_show_splits) {
-    fragmentColor = vec4(1, 0, 0, 1);
-    return;
-  }
+  vec3 out_color = vec3(0);
 
   float shadow_factor = 0.0;
   vec3 cascade_indicator = vec3(0.0, 0.0, 0);
-  vec3 prev_color = cascade_indicator;
 
-  float blend_distance = 50;
-  float prev_shadow_factor = 0;
+  {
+    float prev_shadow_factor = 0;
+    vec3 prev_cascade_color = cascade_indicator;
 
-  for (int i = 0; i < NUM_CASCADES; i++) {
-    float end = shadow_map.cascade_clip_splits[i];
-    float prev_end = i == 0 ? 0 : shadow_map.cascade_clip_splits[i - 1];
+    for (int i = 0; i < NUM_CASCADES; i++) {
+      float end = shadow_map.cascade_clip_splits[i];
+      float prev_end = i == 0 ? 0 : shadow_map.cascade_clip_splits[i - 1];
 
-    vec3 indicator_color = vec3(1, 0, 0);
-    if (i == 1)
-      indicator_color = vec3(0, 1, 0);
-    else if (i == 2)
-      indicator_color = vec3(0, 0, 1);
-
-    if (i > 0 && shadow_clip_depth > prev_end && shadow_clip_depth < prev_end + blend_distance) {
-      prev_shadow_factor = calcShadowFactor(i - 1, shadow_light_pos[i - 1], In.normal);
-
-      prev_color = vec3(0, 0, 0);
+      vec3 indicator_color = vec3(1, 0, 0);
       if (i == 1)
-        prev_color = vec3(1, 0, 0);
+        indicator_color = vec3(0, 1, 0);
       else if (i == 2)
-        prev_color = vec3(0, 1, 0);
+        indicator_color = vec3(0, 0, 1);
+
+      if (i > 0 && shadow_clip_depth > prev_end && shadow_clip_depth < prev_end + shadow_map.blend_distance) {
+        prev_shadow_factor = calcShadowFactor(i - 1, shadow_light_pos[i - 1], In.normal);
+
+        prev_cascade_color = vec3(0, 0, 0);
+        if (i == 1)
+          prev_cascade_color = vec3(1, 0, 0);
+        else if (i == 2)
+          prev_cascade_color = vec3(0, 1, 0);
+      }
+
+      if (shadow_clip_depth <= end) {
+        float sf = calcShadowFactor(i, shadow_light_pos[i], In.normal);
+
+        float f = i == 0 ? 0 : 1 - clamp(inverseLerp(prev_end, prev_end + shadow_map.blend_distance, shadow_clip_depth), 0, 1);
+
+        shadow_factor = mix(sf, prev_shadow_factor, f);
+
+        if (shadow_map.debug_show_blend) {
+          cascade_indicator = mix(indicator_color, prev_cascade_color, f);
+        }
+        else {
+          cascade_indicator = indicator_color;
+        }
+      }
+
+      if (shadow_clip_depth <= end) break;
     }
-
-    if (shadow_clip_depth <= end) {
-      float sf = calcShadowFactor(i, shadow_light_pos[i], In.normal);
-
-      float f0
-          = i == 0 ? 0
-                   : 1
-                         - clamp(inverseLerp(prev_end, prev_end + blend_distance, shadow_clip_depth),
-                                 0, 1);
-      float f1 = clamp(inverseLerp(end - blend_distance, end, shadow_clip_depth), 0, 1);
-      float f = max(f0, f1);
-
-      shadow_factor = mix(sf, prev_shadow_factor, f0);
-
-      cascade_indicator = mix(indicator_color, prev_color, f0);
-    }
-
-    if (shadow_clip_depth <= end) break;
   }
 
   float[4] draw_strengths = terrainBlending(In.world_pos, In.normal);
@@ -340,11 +340,11 @@ void main() {
   vec3 ambient = ambient();
   vec3 diffuse = diffuse(In.world_pos, terrain_normal);
 
-  fragmentColor = vec4(terrain_color * shadow_factor * (ambient + diffuse), 1.0);
+  out_color = vec3(terrain_color * shadow_factor * (ambient + diffuse));
 
   // Debug normals
 #if 0
-  fragmentColor = vec4(terrain_normal, 1);
+  out_color = terrain_normal;
   return;
 #endif
 
@@ -353,13 +353,15 @@ void main() {
   float[4] draw_strengths = terrainBlending(In.world_pos, In.normal);
   float tot = draw_strengths[0] + draw_strengths[1] + draw_strengths[2] + draw_strengths[3];
   if (tot > 1.0001) {
-      fragmentColor = vec4(1.0, 0.0, 0.0, 1.0);
+      out_color = vec3(1.0, 0.0, 0.0);
       return;
   }
   else if (tot < 0.9999) {
-      fragmentColor = vec4(0.0, 0.0, 1.0, 1.0);
+      out_color = vec3(0.0, 0.0, 1.0);
       return;
   }
   return;
 #endif
+
+  fragmentColor = vec4(out_color, 1.0);
 }

@@ -18,6 +18,7 @@ const int NUM_CASCADES = 3;
 struct ShadowMap {
   float cascade_clip_splits[NUM_CASCADES];
   mat4 light_wvp_matrix[NUM_CASCADES];
+  float blend_distance;
   bool debug_show_splits;
   bool debug_show_blend;
 };

@@ -455,11 +455,12 @@ void main() {
   float foam_mask;
   float ocean_mask;
 
-  foam_mask += max(1.0 - (diff_depth) / water.foam_distance, 0);
-  foam_mask *= max(sin((diff_depth / 1.5 + current_time * 4 + dudv.y * 50) / 2), 0);
-  foam_mask += max(1.0 - (diff_depth - water.foam_distance / 4.0) / (water.foam_distance * 0.5), 0);
-  if (diff_depth < water.foam_distance / 5.0)
-    foam_mask += inverseLerp(water.foam_distance / 5.0, 0, diff_depth);
+  foam_mask += max(1.0 - diff_depth / water.foam_distance, 0);
+  foam_mask *= max(sin((diff_depth / 1.5 + current_time * 8 + dudv.y * water.wave_scale / 8) / 2) * 1.5, 0);
+  foam_mask += max(1.0 - (diff_depth - water.foam_distance / 4.0) / (water.foam_distance * 0.6), 0);
+  
+  if (diff_depth < water.foam_distance / 3.0)
+    foam_mask += inverseLerp(water.foam_distance / 3.0, 0.4, diff_depth) * 1.5;
 
   ocean_mask = clamp((diff_depth - 100) / 1200.0, 0.0, 0.12) / 0.18;
 

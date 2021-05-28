@@ -139,7 +139,7 @@ struct App {
           "resources/envmaps/" + environment_map.base_name + "_irradiance.hdr");
     }
 
-    shadow_map.init(camera.projection.near, camera.projection.far);
+    shadow_map.init(camera.projection);
     terrain.init();
     water.init();
   }
@@ -233,7 +233,7 @@ struct App {
     terrain.begin(false);
 
     // Bind shadow map textures
-    shadow_map.begin(10, projMatrix, lightViewMatrix);
+    shadow_map.begin(10, camera.projection, projMatrix, lightViewMatrix);
 
     terrain.render(projMatrix, viewMatrix, center, cam_pos, lightMatrix, water.height);
     water.render(window.width, window.height, current_time, projMatrix, viewMatrix, cam_pos,

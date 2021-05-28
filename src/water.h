@@ -137,7 +137,7 @@ struct Water {
 
     float z_thickness = 0.01;
     float stride = 15.00;
-    float jitter = 1;
+    float jitter = 0.5;
     float max_steps = 50.0;
     float max_distance = 500.0;
 
@@ -172,12 +172,12 @@ struct Water {
   int indices_count;
 
   // Height of the water level
-  float height = 141;
+  float height = 140;
   float size = 4096 * 2.0;
   float foam_distance = 30.f;
-  float wave_speed = 0.045;
-  float wave_strength = 0.2;
-  float wave_scale = 190;
+  float wave_speed = 0.045f;
+  float wave_strength = 0.053f;
+  float wave_scale = 406;
   gpu::Texture dudv_map;
 
   GLuint shader_program;
