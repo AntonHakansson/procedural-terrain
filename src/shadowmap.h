@@ -14,6 +14,7 @@
 
 #include "debug.h"
 #include "fbo.h"
+#include "camera.h"
 
 using namespace glm;
 using std::string;
@@ -22,27 +23,15 @@ using std::string;
 #define NUM_FRUSTUM_CORNERS 8
 
 enum ShadowClampMode { Edge = 1, Border = 2 };
-
-struct OrthoProjInfo {
-  float r;  // right
-  float l;  // left
-  float b;  // bottom
-  float t;  // top
-  float n;  // z near
-  float f;  // z far
-};
-
 class ShadowMap {
 public:
   int resolution = 1024 * 4;
-  bool use_polygon_offset = true;
-  float polygon_offset_factor = 1.125f;
-  float polygon_offset_units = 2.0f;
   float bias = 2000;
 
   GLuint fbo;
   GLuint shadow_tex;
   OrthoProjInfo shadow_ortho_info[NUM_CASCADES];
+  mat4 shadow_projections[NUM_CASCADES];
   float cascade_splits[NUM_CASCADES + 1];
 
   ShadowMap(void);

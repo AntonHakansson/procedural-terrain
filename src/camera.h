@@ -14,6 +14,15 @@ enum CameraMode {
   Orbit,
 };
 
+struct OrthoProjInfo {
+  float r;  // right
+  float l;  // left
+  float b;  // bottom
+  float t;  // top
+  float n;  // z near
+  float f;  // z far
+};
+
 struct Camera {
   struct Projection {
     float fovy = 70.0f;

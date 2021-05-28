@@ -77,10 +77,7 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "current_time", current_time);
     gpu::setUniformSlow(this->shader_program, "model_matrix", model_matrix);
     gpu::setUniformSlow(this->shader_program, "view_matrix", view_matrix);
-    gpu::setUniformSlow(this->shader_program, "inv_view_matrix", glm::inverse(view_matrix));
     gpu::setUniformSlow(this->shader_program, "projection_matrix", projection_matrix);
-    gpu::setUniformSlow(this->shader_program, "inv_projection_matrix",
-                        glm::inverse(projection_matrix));
     gpu::setUniformSlow(this->shader_program, "pixel_projection", pixel_projection);
 
     gpu::setUniformSlow(this->shader_program, "water.height", this->height);
@@ -165,7 +162,7 @@ struct Water {
   float foam_distance = 30.f;
   float wave_speed = 0.045;
   float wave_strength = 0.2;
-  float wave_scale = 160;
+  float wave_scale = 190;
   gpu::Texture dudv_map;
 
   GLuint shader_program;

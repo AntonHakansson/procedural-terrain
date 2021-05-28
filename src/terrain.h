@@ -44,7 +44,7 @@ struct TerrainNoise {
 
 struct Sun {
   glm::vec3 direction = glm::vec3(0.702, -0.713, 0.0);
-  glm::vec3 color = glm::vec3(1.0, 1.0, 1.0);
+  glm::vec3 color = glm::vec3(1.0, 0.4745, 0.062745);
   float intensity = 1;
 
   glm::vec3 orbit_axis = glm::vec3(0.702, 0, -0.713);
@@ -128,8 +128,6 @@ struct Terrain {
 
   void loadShader(bool is_reload);
   void buildMesh(bool is_reload);
-
-  void setPolyOffset(float factor, float units);
 
   void begin(bool simple);
   void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 camera_position,

@@ -3,15 +3,24 @@
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
 
+// Inputs
 layout(location = 0) out vec4 fragmentColor;
 layout(binding = 0) uniform sampler2D tex;
 layout(binding = 1) uniform sampler2D depth_tex;
 
-in vec2 texCoord;
+// Data
+in DATA {
+  vec2 tex_coord;
+  vec3 view_pos;
+  vec3 world_pos;
+  vec3 world_dir;
+} In;
 
+
+// Uniforms
+uniform float currentTime;
 uniform mat4 viewMatrix;
 uniform mat4 projMatrix;
-uniform float currentTime;
 
 struct Water {
   float height;
@@ -31,36 +40,43 @@ struct PostFX {
 };
 uniform PostFX postfx;
 
+// Constants
 const float Epsilon = 1e-10;
+const vec3 ocean_blue_deep = vec3(0.05, 0.1, 0.25);
 
-vec3 RGBtoHSV(in vec3 RGB) {
-  vec4 P = (RGB.g < RGB.b) ? vec4(RGB.bg, -1.0, 2.0 / 3.0) : vec4(RGB.gb, 0.0, -1.0 / 3.0);
-  vec4 Q = (RGB.r < P.x) ? vec4(P.xyw, RGB.r) : vec4(RGB.r, P.yzx);
-  float C = Q.x - min(Q.w, Q.y);
-  float H = abs((Q.w - Q.y) / (6.0 * C + Epsilon) + Q.z);
-  vec3 HCV = vec3(H, C, Q.x);
-  float S = HCV.y / (HCV.z + Epsilon);
-  return vec3(HCV.x, S, HCV.z);
+// HSV RGB conversion
+// http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl.
+// Licensed under the WTFPL.
+// All components are in the range [0…1], including hue.
+vec3 rgb2hsv(vec3 c)
+{
+    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
 
-vec3 HSVtoRGB(in vec3 HSV) {
-  float H = HSV.x;
-  float R = abs(H * 6.0 - 3.0) - 1.0;
-  float G = 2.0 - abs(H * 6.0 - 2.0);
-  float B = 2.0 - abs(H * 6.0 - 4.0);
-  vec3 RGB = clamp(vec3(R, G, B), 0.0, 1.0);
-  return ((RGB - 1.0) * HSV.y + 1.0) * HSV.z;
+// All components are in the range [0…1], including hue.
+vec3 hsv2rgb(vec3 c)
+{
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
 vec3 shiftHSV(in vec3 in_col, float hue, float saturate, float value) {
-  vec3 col_hsv = RGBtoHSV(in_col);
-  col_hsv.x *= (hue * 2.0);
-  col_hsv.y *= (saturate * 2.0);
-  col_hsv.z *= (value * 2.0);
+  vec3 col_hsv = rgb2hsv(in_col);
+  col_hsv.x += hue;
+  col_hsv.y += saturate;
+  col_hsv.z += value;
 
-  return HSVtoRGB(col_hsv.xyz);
+  return hsv2rgb(col_hsv.xyz);
 }
 
+// Utilities
 float linearizeDepth(float depth) {
   return 2.0 * postfx.z_near * postfx.z_far
          / (postfx.z_far + postfx.z_near - (2.0 * depth - 1.0) * (postfx.z_far - postfx.z_near));
@@ -69,44 +85,40 @@ float linearizeDepth(float depth) {
 float inverseLerp(float a, float b, float x) { return (x - a) / (b - a); }
 float inverseLerpClamped(float a, float b, float x) { return clamp(inverseLerp(a, b, x), 0, 1); }
 
+
+float calculateGodMask(float depth, float wdots, float sun_threshold) {
+  float linear_depth = linearizeDepth(depth);
+  if (linear_depth == postfx.z_far) {
+    if (wdots > sun_threshold) return 1.0;
+
+    return smoothstep(0.5, 1.0, wdots);
+  }
+
+  return 0;
+}
+
+// Render
 void main() {
-  vec3 screen_space_position = vec3(texCoord, 0) * 2.0 - vec3(1);
+  vec3 view_dir = normalize(In.view_pos);
+  vec3 world_dir = normalize(In.world_dir);
 
-  mat4 view_inverse = inverse(viewMatrix);
-
-  vec4 view_pos_h = inverse(projMatrix) * vec4(screen_space_position, 1.0);
-  vec3 view_pos = view_pos_h.xyz / view_pos_h.w;
-  vec3 view_dir = normalize(view_pos);
-
-  vec3 world_pos = (view_inverse * vec4(view_pos, 1)).xyz;
-  vec3 world_dir = (view_inverse * vec4(view_dir, 0)).xyz;
-
-  float height = world_pos.y;
-
-  vec3 ocean_blue_deep = vec3(0.05, 0.1, 0.25);
+  float height = In.world_pos.y;
 
   if (height < water.height) {
-    vec3 col = texture(tex, texCoord + vec2(0, sin(currentTime) * 0.01)).xyz;
+    vec3 col = texture(tex, In.tex_coord + vec2(0, sin(currentTime) * 0.01)).xyz;
     vec3 out_color = mix(col, ocean_blue_deep, 0.9);
-
-    float diff_depth = water.height - height;
-    float foam_distance = 8;
-    float foam_mask = max(1.0 - diff_depth / foam_distance, 0);
-    foam_mask *= max(sin(diff_depth / 1.5 + sin(currentTime * 1.0) * 4), 0);
-
-    foam_mask += max(1.0 - diff_depth / (foam_distance / 2.0), 0);
+    out_color = shiftHSV(out_color, 0.0, 0.15, 0.0);
 
     fragmentColor = vec4(out_color, 1);
-    // fragmentColor = vec4(vec3(foam_mask), 1);
 
     return;
   }
 
-  vec3 out_color = texture(tex, texCoord).xyz;
-  float depth = texture(depth_tex, texCoord).x;
+  vec3 out_color = texture(tex, In.tex_coord).xyz;
+  float depth = texture(depth_tex, In.tex_coord).x;
   float linear_depth = linearizeDepth(depth);
 
-  out_color = shiftHSV(out_color, 0.5, 0.65, 0.5);
+  out_color = shiftHSV(out_color, 0.0, 0.1, -0.0);
 
   fragmentColor = vec4(out_color, 1.0);
 
@@ -114,22 +126,21 @@ void main() {
    * Procedural sun and horizon
    */
 
-  float f = max(dot(world_dir, -sun.direction), 0.0);
+  float wdots = max(dot(world_dir, -sun.direction), 0.0);
   float hf = -sun.direction.y;
-  float horizon_trans = inverseLerpClamped(0.2, 0.6, hf);
+  float sunset_trans = inverseLerpClamped(0.2, 0.6, hf);
   float night_trans = inverseLerpClamped(-0.4, 0.45, hf);
 
-  vec3 sun_color = mix(vec3(1, 0.6, 0.4), sun.color, horizon_trans);
+  vec3 sun_color = mix(shiftHSV(sun.color, 0.0, 0.3, 0.0), sun.color, sunset_trans);
 
-  float sun_threshold = 0.997;
-  float sun_fade = 0.0025;
+  float sun_threshold = 0.998;
 
-  if (f > sun_threshold) {
+  if (wdots > sun_threshold) {
     if (linear_depth == postfx.z_far) {
-      float f1 = smoothstep(0, 1, inverseLerpClamped(sun_threshold, min(sun_threshold + sun_fade, 1), f));
+      float f1 = smoothstep(0.0, 1.0, inverseLerpClamped(sun_threshold, (1 + sun_threshold) / 2.0, wdots));
+      float f2 = smoothstep(0.2, 1.0, inverseLerpClamped(sun_threshold, 1, wdots));
 
-      // vec3 sun_col = shiftHSV(sun.col, 0.5, 0.5, 0.5);
-      fragmentColor += vec4(mix(vec3(1, 0.6, 0.2), sun_color, horizon_trans) * f1, 1.0);
+      fragmentColor += vec4(sun_color * f1 + vec3(1) * f2 * 1.5, 1.0);
     }
     else {
       // Sample some nearby pixels
@@ -144,10 +155,10 @@ void main() {
           vec2 texel = vec2(1 / 128.0, 1 / 128.0);
           vec2 offset = vec2(texel * vec2(l, k));
 
-          float depth = texture(depth_tex, texCoord + offset).x;
+          float depth = texture(depth_tex, In.tex_coord + offset).x;
           float linear_depth = linearizeDepth(depth);
 
-          if (f > sun_threshold && linear_depth == postfx.z_far) {
+          if (wdots > sun_threshold && linear_depth == postfx.z_far) {
             percentage_lit++;
           }
         }
@@ -155,20 +166,54 @@ void main() {
 
       float average = percentage_lit / (size * size);
 
-      float f1 = smoothstep(0, 1, inverseLerpClamped(sun_threshold, 1, f));
+      float f1 = smoothstep(0, 1, inverseLerpClamped(sun_threshold, 1, wdots));
       fragmentColor += vec4(sun_color * average * f1, 1.0);
     }
   }
 
-// (1 - horizon_trans) * 
-  float hfs = linear_depth == postfx.z_far ? clamp(inverseLerpClamped(0, 0.4, world_dir.y) + (inverseLerpClamped(sun_threshold + sun_fade / 2, 1, f)), 0, 1) : 1;
-  float hfs2 = mix(hfs, 1, horizon_trans);
+  float horizon_mask = linear_depth == postfx.z_far ? clamp(inverseLerpClamped(0, 0.8, world_dir.y) + (inverseLerpClamped(sun_threshold, 1, wdots)), 0, 1) : 1;
+  float horizon_sunset_mask = mix(horizon_mask, 1, sunset_trans);
 
-  if (hf < 0) {
+  vec3 sunset_color = shiftHSV(sun_color, 0, -0.6, 0.0);
+  vec3 night_color = shiftHSV(sun_color, -0.39, -0.2, -0.8);
+  fragmentColor = vec4(mix(fragmentColor.xyz * sunset_color, fragmentColor.xyz, horizon_sunset_mask), 1);
+  fragmentColor = vec4(mix(fragmentColor.xyz * night_color, fragmentColor.xyz, smoothstep(0, 1, night_trans)), 1);
+
+  // float god_mask = calculateGodMask(depth, wdots, sun_threshold);
+  // fragmentColor = vec4(vec3(horizon_sunset_mask), 1);
+  // return;
+  
+
+  // God rays
+  vec2 screen_pos = vec2(In.tex_coord) * 2.0 - 1;
+
+  // Calculate sun position in screen space coordinates
+  vec3 sun_dir_view = normalize((viewMatrix * vec4(-sun.direction, 0.0)).xyz);
+  vec4 sun_dir_proj = projMatrix * vec4(sun_dir_view, 0);
+  vec2 sun_pos_screen = (sun_dir_proj.xy / sun_dir_proj.z);
+
+  vec2 ray_dir = sun_pos_screen - screen_pos;
+  float ray_dist = length(ray_dir);
+  ray_dir = normalize(ray_dir);
+
+  const uint NUM_RAY_STEPS = 50;
+  float step_size = ray_dist / float(NUM_RAY_STEPS);
+
+  // March towards the sun in screen space
+  float visibility_factor = 0;
+  for (uint i = 0; i < NUM_RAY_STEPS; ++i) {
+    vec2 coords = 0.5 * (screen_pos + ray_dir * step_size * i + 1);
+
+    // if (coords.x < 0 || coords.x > 1 || coords.y < 0 || coords.y > 1) continue;
+
+    float depth = texture(depth_tex, coords).x;
+    float god_mask = calculateGodMask(depth, wdots, sun_threshold);
+
+    visibility_factor += god_mask;
   }
-  else {
-  }
-  fragmentColor = vec4(mix(fragmentColor.xyz * vec3(1, 0.6, 0.4), fragmentColor.xyz, hfs2), 1);
-  fragmentColor = vec4(mix(fragmentColor.xyz * vec3(0.1, 0.1, 0.4), fragmentColor.xyz, smoothstep(0, 1, night_trans)), 1);
-  // fragmentColor = vec4(vec3(min(hfs2, night_trans)), 1);
+
+  vec3 god_ray_color = mix(sunset_color, sunset_color, sunset_trans);
+
+  visibility_factor /= float(NUM_RAY_STEPS);
+  fragmentColor += vec4(god_ray_color * visibility_factor * (1 - sunset_trans * 0.4) * clamp((1 - ray_dist / 1), 0.0, 1.0) * 0.6, 1);
 }

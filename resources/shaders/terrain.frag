@@ -187,7 +187,7 @@ vec3 terrainColor(vec3 world_pos, vec3 normal) {
 }
 
 vec3 ambient() {
-  vec3 ambient = sun.color * sun.intensity;
+  vec3 ambient = vec3(1) * sun.intensity;
   return ambient;
 }
 
@@ -195,15 +195,17 @@ vec3 diffuse(vec3 world_pos, vec3 normal) {
   vec3 norm = terrainNormal(world_pos, normal);
 
   float diffuse_factor = max(0.0, dot(-sun.direction, norm));
-  vec3 diffuse = diffuse_factor * sun.color * sun.intensity;
+  vec3 diffuse = diffuse_factor * vec3(1) * sun.intensity;
 
   return diffuse;
 }
 
-float calcShadowFactor(int index, vec4 light_space_pos) {
+float calcShadowFactor(int index, vec4 light_space_pos, vec3 normal) {
   vec3 ProjCoords = light_space_pos.xyz / light_space_pos.w;
 
-  if (sun.direction.y >= 0.05) return 0.5;
+  float ndotl = dot(normal, -sun.direction);
+
+	float l = clamp(smoothstep(0.0, 0.2, ndotl), 0, 1);
 
   vec2 UVCoords;
   UVCoords.x = 0.5 * ProjCoords.x + 0.5;
@@ -211,7 +213,7 @@ float calcShadowFactor(int index, vec4 light_space_pos) {
 
   float z = 0.5 * ProjCoords.z + 0.5;
 
-  float bias = 0.0005;
+  float bias = 0.005; //0.0005 * (dot(normal, sun.direction) > 0 ? -1 : 1);
 
   float percentLit = 0;
   float size = 5;
@@ -220,7 +222,7 @@ float calcShadowFactor(int index, vec4 light_space_pos) {
 
   for (int k = minBound; k <= maxBound; k++) {
     for (int l = minBound; l <= maxBound; l++) {
-      vec2 texel = vec2(1 / 4096.0, 1 / 4096.0);
+      vec2 texel = vec2(1 / 2048.0, 1 / 2048.0);
       vec2 offset = vec2(texel * vec2(l, k));
 
       // x, y, level, depth
@@ -230,7 +232,7 @@ float calcShadowFactor(int index, vec4 light_space_pos) {
     }
   }
 
-  return mix(0.5, 1.0, percentLit / (size * size));
+  return mix(0.5, 1.0, percentLit / (size * size) * l);
 
   // // Finish the average of all samples, and gamma correct the shadow factor.
   // return pow(percentLit /= 25.0f, 2.2);
@@ -257,7 +259,7 @@ void main() {
       indicator_color = vec3(0, 0, 1);
 
     if (i > 0 && clip_space_depth > prev_end && clip_space_depth < prev_end + blend_distance) {
-      prev_shadow_factor = calcShadowFactor(i - 1, light_space_pos[i - 1]);
+      prev_shadow_factor = calcShadowFactor(i - 1, light_space_pos[i - 1], In.normal);
 
       prev_color = vec3(0, 0, 0);
       if (i == 1)
@@ -267,7 +269,7 @@ void main() {
     }
 
     if (clip_space_depth <= end) {
-      float sf = calcShadowFactor(i, light_space_pos[i]);
+      float sf = calcShadowFactor(i, light_space_pos[i], In.normal);
 
       float f0 = i == 0 ? 0 : 1 - clamp(inverseLerp(prev_end, prev_end + blend_distance, clip_space_depth), 0, 1);
       float f1 = clamp(inverseLerp(end - blend_distance, end, clip_space_depth), 0, 1);

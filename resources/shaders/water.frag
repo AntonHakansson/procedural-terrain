@@ -8,14 +8,23 @@ precision highp float;
 //
 // Also relevant: http://roar11.com/2015/07/screen-space-glossy-reflections/
 
+// Inputs
+layout(binding = 0) uniform sampler2D pixel_buffer;
+layout(binding = 1) uniform sampler2D depth_buffer;
+layout(binding = 2) uniform sampler2D dudv_map;
+
+// Output
+layout(location = 0) out vec4 fragmentColor;
+
+// Data
 in DATA {
   vec2 tex_coord;
   vec3 view_space_normal;
   vec3 view_space_position;
   vec3 world_pos;
-}
-In;
+} In;
 
+// Uniforms
 uniform float current_time;
 
 struct Water {
@@ -46,18 +55,15 @@ struct ScreenSpaceReflection {
 };
 uniform ScreenSpaceReflection ssr;
 
-uniform mat4 view_matrix;
 uniform mat4 inv_view_matrix;
 uniform mat4 projection_matrix;
-uniform mat4 inv_projection_matrix;
 uniform mat4 pixel_projection;  // `pixel_projection` projects from view space to pixel coordinate
 
-layout(binding = 0) uniform sampler2D pixel_buffer;
-layout(binding = 1) uniform sampler2D depth_buffer;
-layout(binding = 2) uniform sampler2D dudv_map;
+// Constants
+const vec3 ocean_blue = vec3(0.1, 0.3, 0.6);
+const vec3 ocean_blue_deep = vec3(0.05, 0.1, 0.2);
 
-layout(location = 0) out vec4 fragmentColor;
-
+// Utilities
 #define point2 vec2
 #define point3 vec3
 
@@ -289,18 +295,6 @@ bool traceScreenSpaceRay1(Point3 csOrigin, Vector3 csDirection, mat4x4 projectTo
   return (rayZMax >= sceneZMax - csZThickness) && (rayZMin <= sceneZMax);
 }
 
-// Returns distance to plane along ray_dir
-bool rayPlaneIntersection(vec3 ray_origin, vec3 ray_dir, vec3 point_on_plane, vec3 plane_normal,
-                          out float hit_depth) {
-  float denom = dot(plane_normal, ray_dir);
-  if (denom < -1e-6) {
-    float t = dot(point_on_plane - ray_origin, plane_normal) / denom;
-    hit_depth = t;
-    return true;
-  }
-  return false;
-}
-
 // paper approach
 bool trace(vec3 ray_origin, vec3 ray_dir, ScreenSpaceReflection ssr, mat4 pixel_projection,
            out vec2 hit_pixel, out vec3 hit_point) {
@@ -420,6 +414,8 @@ vec3 getDuDv(vec2 tex_coord) {
   return dudv;
 }
 
+float inverseLerp(float a, float b, float x) { return (x - a) / (b - a); }
+
 void main() {
   // REVIEW: Does `texture` filter the result? maybe opt for `texelFetch` to get unfiltered value
   vec3 color = texelFetch(pixel_buffer, ivec2(gl_FragCoord.xy), 0).xyz;
@@ -435,8 +431,6 @@ void main() {
 
   vec3 view_dir = normalize(In.view_space_position);
 
-
-
   vec3 dudv = getDuDv(In.world_pos.xz);
   vec3 reflection_dir = normalize(reflect(view_dir, In.view_space_normal));
   vec3 refraction_dir = normalize(reflection_dir - 2 * normalize(In.view_space_normal));
@@ -444,28 +438,28 @@ void main() {
   reflection_dir = normalize(reflection_dir + dudv);
   refraction_dir = normalize(refraction_dir + dudv);
 
+  vec3 out_color = color;
+
   // foam
   float foam_mask;
   float ocean_mask;
-  vec3 out_color = color;
-  vec3 ocean_blue = vec3(0.1, 0.3, 0.6);
-  vec3 ocean_blue_deep = vec3(0.05, 0.1, 0.2);
 
   foam_mask += max(1.0 - (diff_depth) / water.foam_distance, 0);
   foam_mask *= max(sin((diff_depth / 1.5 + current_time * 4 + dudv.y * 50) / 2), 0);
-  foam_mask += max(1.0 - diff_depth / (water.foam_distance / 3.0), 0);
+  foam_mask += max(1.0 - (diff_depth - water.foam_distance / 4.0) / (water.foam_distance * 0.5), 0);
+  if (diff_depth < water.foam_distance / 5.0) foam_mask += inverseLerp(water.foam_distance / 5.0, 0, diff_depth);
 
   ocean_mask = clamp((diff_depth - 100) / 1200.0, 0.0, 0.12) / 0.18;
 
 // reflection based on paper
 // -----------
 #if 0
-            {
-            vec2 hit_pixel;
-            vec3 view_hit_point;
-            bool reflection_hit = trace(point_on_water, reflection_dir, ssr, pixel_projection, hit_pixel, view_hit_point);
-            vec4 reflection_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0);
-            }
+  {
+    vec2 hit_pixel;
+    vec3 view_hit_point;
+    bool reflection_hit = trace(point_on_water, reflection_dir, ssr, pixel_projection, hit_pixel, view_hit_point);
+    vec4 reflection_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0);
+  }
 #endif
 
 // reflection with paper impl
@@ -511,36 +505,10 @@ void main() {
       = mix(reflection_color, refraction_color, max(-dot(view_dir, In.view_space_normal), 0.0));
 
   out_color = mix(fresnel_color, ocean_blue, 0.5);
-  out_color = out_color + (foam_mask * 0.4);
+  out_color = out_color + (foam_mask * 0.3);
 
   out_color = mix(out_color.xyz, ocean_blue_deep, ocean_mask);
-  // fragmentColor = vec4(vec3(ocean_mask), 1.0);
 #endif
-
-// debug pixel_projection
-#if 0
-            vec4 pixel_coord_h = pixel_projection * vec4(In.view_space_position, 1.0);
-            vec2 pixel_coord = pixel_coord_h.xy / pixel_coord_h.w;
-
-            float depth = texelFetch(depth_buffer, ivec2(pixel_coord), 0).r;
-            float ldepth = linearizeDepth(depth);
-            fragmentColor = vec4(abs(depth), 0.0, 0.0, 1.0);
-            fragmentColor = vec4((ldepth) / 1000, 0.0, 0.0, 1.0);
-            return;
-#endif
-
-  // if (dist_to_water > 3000 && length(view_pos) > 3000) {
-  //   float f = clamp((length(view_pos) - 3000) / 1000, 0, 1);
-  //   float f2 = clamp((dist_to_water - 8000) / 20000, 0, 1);
-
-  //   vec4 world_dir = inv_view_matrix * vec4(view_dir, 0);
-  //   float horizon_dot = dot(world_dir.xyz / world_dir.w, vec3(0, 1, 0));
-
-  //   out_color = mix(out_color, mix(ocean_blue_deep, out_color, f2), f);
-  //   // out_color = vec3(world_dir.y);
-  // }
 
   fragmentColor = vec4(out_color, 1.0);
-  // fragmentColor = vec4(vec3(terrain_depth / 2000), 1.0);
-  // fragmentColor = vec4(vec3(f), 1.0);
 }

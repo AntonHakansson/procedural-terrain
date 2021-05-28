@@ -19,8 +19,6 @@ uniform vec3 eyeWorldPos;
 const int NUM_CASCADES = 3;
 
 uniform mat4 gLightWVP[NUM_CASCADES];
-uniform float polygon_offset_factor;
-uniform float polygon_offset_units;
 
 out vec4 light_space_pos[NUM_CASCADES];
 out float clip_space_depth;
@@ -155,10 +153,11 @@ float terrain_height(vec2 pos) {
       n = pow(voronoi2d(pos * frequency / 200.0), 2);
     }
     else if (i == 1) {
-      n = snoise(pos * frequency / 300.0) / 1.5;
+      n = snoise(pos * frequency / 400.0) / 1.5;
     }
     else {
-      n = voronoi2d(pos * frequency / 400.0 + vec2(112, 532));
+      // n = voronoi2d(pos * frequency / 400.0 + vec2(112, 532));
+      n = snoise(pos * frequency / 800.0 + vec2(1231, 721)) / 2;
     }
 
     noise_value += n * amplitude;
@@ -193,12 +192,7 @@ void main() {
   Out.tangent = computeTangent(Out.world_pos, Out.normal);
   Out.bitangent = normalize(cross(Out.tangent, Out.normal));
 
-  // vec3 T = normalize(vec3(model * vec4(aTangent,   0.0)));
-  // vec3 B = normalize(vec3(model * vec4(aBitangent, 0.0)));
-  // vec3 N = normalize(vec3(model * vec4(aNormal,    0.0)));
   Out.tangent_matrix = mat3(Out.tangent, Out.bitangent, Out.normal);
-
-  // Out.world_pos -= Out.tangent * polygon_offset_factor;
 
   Out.shadow_coord = lightMatrix * vec4(Out.view_pos, 1.f);
 

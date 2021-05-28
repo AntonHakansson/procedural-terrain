@@ -4,7 +4,8 @@ ShadowMap::ShadowMap(void) {}
 
 void ShadowMap::init(float z_near, float z_far) {
   cascade_splits[0] = z_near;
-  cascade_splits[1] = 1500.0f, cascade_splits[2] = 3000.0f;
+  cascade_splits[1] = 500.0f,
+  cascade_splits[2] = 1000.0f;
   cascade_splits[3] = z_far;
 
   // Layered texture
@@ -57,7 +58,7 @@ void ShadowMap::begin(uint tex_index, mat4 proj_matrix, mat4 light_view_matrix) 
     vec4 vView(0.0f, 0.0f, cascade_splits[i + 1], 1.0f);
     vec4 vClip = proj_matrix * vView;
 
-    mat4 light_proj_matrix = getLightProjMatrix(i);
+    mat4 light_proj_matrix = shadow_projections[i];
 
     gpu::setUniformSlow(shader_program, ("gCascadeEndClipSpace[" + std::to_string(i) + "]").c_str(),
                         -vClip.z);
@@ -129,25 +130,16 @@ void ShadowMap::calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_mat
     shadow_ortho_info[i].t = floor(maxY / stepY) * stepY;
     shadow_ortho_info[i].f = -(maxZ + this->bias);
     shadow_ortho_info[i].n = -(minZ - this->bias);
+    
+    shadow_projections[i] = getLightProjMatrix(i);
   }
 }
 
 void ShadowMap::gui(SDL_Window* window) {
   if (ImGui::CollapsingHeader("Cascading Shadow Map")) {
-    ImGui::Checkbox("Use polygon offset", &this->use_polygon_offset);
-    ImGui::DragFloat("Polygon offset factor", &this->polygon_offset_factor);
-    ImGui::DragFloat("Polygon offset units", &this->polygon_offset_units);
     ImGui::DragFloat("Bias", &this->bias);
 
     ImGui::Text("Debug");
-
-    // for (uint i = 0 ; i < NUM_CASCADES; i++) {
-    //   ImGui::Image((void*)(intptr_t) shadow_maps[i], ImVec2(128, 128), ImVec2(0, 1), ImVec2(1,
-    //   0));
-
-    //   float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
-    //   ImGui::SameLine(0.0f, spacing);
-    // }
 
     ImGui::NewLine();
   }
@@ -166,13 +158,11 @@ void ShadowMap::debugProjs(mat4 view_matrix, mat4 proj_matrix, mat4 light_view_m
   for (uint i = 0; i < NUM_CASCADES; i++) {
     mat4 proj = perspective(fovy, ar, cascade_splits[i], cascade_splits[i + 1]);
 
-    OrthoProjInfo info = shadow_ortho_info[i];
-
-    mat4 light_proj_matrix = ortho(info.l, info.r, info.b, info.t, info.n, info.f);
+    mat4 light_proj_matrix = shadow_projections[i];
 
     DebugDrawer::instance()->drawPerspectiveFrustum(view_matrix, proj, vec3(1, 0, 0));
-    DebugDrawer::instance()->drawOrthographicFrustum(light_view_matrix, light_proj_matrix,
-                                                     vec3(1, 1, 0));
+    DebugDrawer::instance()->drawOrthographicFrustum(light_view_matrix, shadow_ortho_info[i],
+                                                     vec3((float) i / NUM_CASCADES, 1, 0));
   }
 }
 

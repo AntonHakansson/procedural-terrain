@@ -10,6 +10,7 @@
 #include <glm/gtx/transform.hpp>
 
 #include "gpu.h"
+#include "camera.h"
 
 using namespace glm;
 
@@ -106,27 +107,20 @@ public:
     frustum_corners[7] = view_inverse * vec4(-xf, -yf, -far, 1.0);
   }
 
-  void calcOrthographicFrustumCorners(mat4 view_matrix, mat4 proj_matrix, vec4* frustum_corners) {
+  void calcOrthographicFrustumCorners(mat4 view_matrix, OrthoProjInfo ortho_info, vec4* frustum_corners) {
     mat4 view_inverse = inverse(view_matrix);
 
-    float near = (1 + proj_matrix[2][3]) / proj_matrix[2][2];
-    float far = -(1 - proj_matrix[2][3]) / proj_matrix[2][2];
-    float bottom = (1 - proj_matrix[1][3]) / proj_matrix[1][1];
-    float top = -(1 + proj_matrix[1][3]) / proj_matrix[1][1];
-    float left = -(1 + proj_matrix[0][3]) / proj_matrix[0][0];
-    float right = (1 - proj_matrix[0][3]) / proj_matrix[0][0];
-
     // near face
-    frustum_corners[0] = view_inverse * vec4(right, top, -near, 1.0);
-    frustum_corners[1] = view_inverse * vec4(left, top, -near, 1.0);
-    frustum_corners[2] = view_inverse * vec4(right, bottom, -near, 1.0);
-    frustum_corners[3] = view_inverse * vec4(left, bottom, -near, 1.0);
+    frustum_corners[0] = view_inverse * vec4(ortho_info.r, ortho_info.t, -ortho_info.n, 1.0);
+    frustum_corners[1] = view_inverse * vec4(ortho_info.l, ortho_info.t, -ortho_info.n, 1.0);
+    frustum_corners[2] = view_inverse * vec4(ortho_info.r, ortho_info.b, -ortho_info.n, 1.0);
+    frustum_corners[3] = view_inverse * vec4(ortho_info.l, ortho_info.b, -ortho_info.n, 1.0);
 
     // far face
-    frustum_corners[4] = view_inverse * vec4(right, top, -far, 1.0);
-    frustum_corners[5] = view_inverse * vec4(left, top, -far, 1.0);
-    frustum_corners[6] = view_inverse * vec4(right, bottom, -far, 1.0);
-    frustum_corners[7] = view_inverse * vec4(left, bottom, -far, 1.0);
+    frustum_corners[4] = view_inverse * vec4(ortho_info.r, ortho_info.t, -ortho_info.f, 1.0);
+    frustum_corners[5] = view_inverse * vec4(ortho_info.l, ortho_info.t, -ortho_info.f, 1.0);
+    frustum_corners[6] = view_inverse * vec4(ortho_info.r, ortho_info.b, -ortho_info.f, 1.0);
+    frustum_corners[7] = view_inverse * vec4(ortho_info.l, ortho_info.b, -ortho_info.f, 1.0);
   }
 
   void drawPerspectiveFrustum(const mat4& view_matrix, const mat4& proj_matrix, const vec3& color) {
@@ -151,12 +145,12 @@ public:
     DebugDrawer::instance()->drawLine(vec3(fcorners[6]), vec3(fcorners[4]), color);
   }
 
-  void drawOrthographicFrustum(const mat4& view_matrix, const mat4& proj_matrix,
+  void drawOrthographicFrustum(const mat4& view_matrix, const OrthoProjInfo& ortho_info,
                                const vec3& color) {
     glUseProgram(debug_program);
 
     vec4 fcorners[8];
-    calcOrthographicFrustumCorners(view_matrix, proj_matrix, fcorners);
+    calcOrthographicFrustumCorners(view_matrix, ortho_info, fcorners);
 
     DebugDrawer::instance()->drawLine(vec3(fcorners[0]), vec3(fcorners[4]), color);
     DebugDrawer::instance()->drawLine(vec3(fcorners[1]), vec3(fcorners[5]), color);

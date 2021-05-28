@@ -74,7 +74,8 @@ struct App {
   mat4 static_camera_proj;
   mat4 static_camera_view;
   vec3 static_camera_pos;
-  bool static_set = false;
+  bool static_camera_enabled;
+  bool static_camera_set = false;
 
   FboInfo postfx_fbo;
 
@@ -185,17 +186,14 @@ struct App {
       glClear(GL_DEPTH_BUFFER_BIT);
       glViewport(0, 0, shadow_map.resolution, shadow_map.resolution);
 
-      mat4 light_proj_matrix = shadow_map.getLightProjMatrix(i);
+      mat4 light_proj_matrix = shadow_map.shadow_projections[i];
 
       // Terrain
       terrain.begin(true);
-      terrain.setPolyOffset(shadow_map.polygon_offset_factor, shadow_map.polygon_offset_units);
 
       glDisable(GL_CULL_FACE);
-      terrain.render(light_proj_matrix, light_view_matrix, vec3(0), mat4(), water.height);
+      terrain.render(light_proj_matrix, light_view_matrix, static_camera_pos, mat4(), water.height);
       glEnable(GL_CULL_FACE);
-
-      terrain.setPolyOffset(0, 0);
 
       glUseProgram(current_program);
 
@@ -215,6 +213,8 @@ struct App {
                   const mat4& lightViewMatrix) {
     glUseProgram(current_program);
 
+    vec3 cam_pos = static_camera_enabled ? static_camera_pos : camera.position;
+
     // Environment
     gpu::setUniformSlow(current_program, "environment_multiplier", environment_map.multiplier);
 
@@ -229,8 +229,8 @@ struct App {
     // Bind shadow map textures
     shadow_map.begin(10, projMatrix, lightViewMatrix);
 
-    terrain.render(projMatrix, viewMatrix, camera.position, lightMatrix, water.height);
-    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, camera.position,
+    terrain.render(projMatrix, viewMatrix, cam_pos, lightMatrix, water.height);
+    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, cam_pos,
                  camera.projection.near, camera.projection.far);
 
     glUseProgram(current_program);
@@ -272,16 +272,30 @@ struct App {
                            ImGuizmo::LOCAL, &fighter_model_matrix[0][0], nullptr, nullptr);
     }
 
-    if (!static_set) {
-      static_camera_proj = projMatrix;
+    if (!static_camera_set && static_camera_enabled) {
+      static_camera_proj = camera.getProjMatrix(window.width, window.height);
       static_camera_view = viewMatrix;
       static_camera_pos = camera.position;
-      static_set = true;
+      static_camera_set = true;
     }
 
     // Draw from cascaded light sources
     mat4 lightViewMatrix = lookAt(vec3(0), -terrain.sun.direction, worldUp);
-    shadowPass(shader_program, viewMatrix, projMatrix, lightViewMatrix);
+
+    // vec3 look = -terrain.sun.direction;
+    // mat4 lightViewMatrix = inverse(
+    //     mat4(
+    //          1,       0,        0,      0,
+    //          0,       0,       -1,      0, 
+    //         -look.x, -look.y, look.z, 0,
+    //          0,       1000,     0,       1
+    //     )
+    // );
+
+    mat4 cam_proj_matrix = static_camera_enabled ? static_camera_proj : projMatrix;
+    mat4 cam_view_matrix = static_camera_enabled ? static_camera_view : viewMatrix;
+
+    shadowPass(shader_program, cam_view_matrix, projMatrix, lightViewMatrix);
 
     // Bind the environment map(s) to unused texture units
     glActiveTexture(GL_TEXTURE6);
@@ -298,8 +312,16 @@ struct App {
     glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
     drawBackground(viewMatrix, projMatrix);
     renderPass(shader_program, viewMatrix, projMatrix, lightViewMatrix);
+
+
+    if (static_camera_enabled) {
+      DebugDrawer::instance()->setCamera(viewMatrix, projMatrix);
+      DebugDrawer::instance()->drawLine(vec3(0), vec3(0, 500, 0), vec3(1, 0, 0));
+      shadow_map.debugProjs(cam_view_matrix, cam_proj_matrix, lightViewMatrix);
+    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -403,6 +425,7 @@ struct App {
 
       if (ImGui::CollapsingHeader("Camera")) {
         camera.gui();
+        ImGui::Checkbox("Static camera [C]", &static_camera_enabled);
         ImGui::DragFloat("Near Projection", &camera.projection.near, 0.02, 0.2);
         ImGui::DragFloat("Far Projection", &camera.projection.far, 200.0, 1000.0);
       }
