@@ -1,16 +1,15 @@
 #pragma once
 
-#include <imgui.h>
-#include <imgui_internal.h>
-
 #include <ImGuizmo.h>
 #include <glad/glad.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 
-#include "gpu.h"
 #include "camera.h"
+#include "gpu.h"
 
 using namespace glm;
 
@@ -107,7 +106,8 @@ public:
     frustum_corners[7] = view_inverse * vec4(-xf, -yf, -far, 1.0);
   }
 
-  void calcOrthographicFrustumCorners(mat4 view_matrix, OrthoProjInfo ortho_info, vec4* frustum_corners) {
+  void calcOrthographicFrustumCorners(mat4 view_matrix, OrthoProjInfo ortho_info,
+                                      vec4* frustum_corners) {
     mat4 view_inverse = inverse(view_matrix);
 
     // near face

@@ -12,9 +12,9 @@
 #include <string>
 #include <vector>
 
+#include "camera.h"
 #include "debug.h"
 #include "fbo.h"
-#include "camera.h"
 
 using namespace glm;
 using std::string;

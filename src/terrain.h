@@ -1,12 +1,9 @@
 #pragma once
 
-#include <SDL.h>
-
-#include <imgui.h>
-
 #include <ImGuizmo.h>
+#include <SDL.h>
 #include <glad/glad.h>
-
+#include <imgui.h>
 #include <stb_image.h>
 
 #include <array>
@@ -55,14 +52,13 @@ struct Sun {
   bool gui(Camera* camera) {
     auto did_change = false;
 
-
     if (ImGui::CollapsingHeader("Force orbit")) {
       mat4 cube_view, cube_proj;
 
       DebugDrawer::instance()->beginGizmo(camera->getViewMatrix(), vec2(256, 256), cube_view,
                                           cube_proj);
       ImGuizmo::Manipulate(&cube_view[0][0], &cube_proj[0][0], ImGuizmo::ROTATE, ImGuizmo::LOCAL,
-                          &matrix[0][0], nullptr, nullptr);
+                           &matrix[0][0], nullptr, nullptr);
       DebugDrawer::instance()->endGizmo();
 
       direction = vec3(matrix[2][0], matrix[2][1], matrix[2][2]);

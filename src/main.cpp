@@ -1,8 +1,7 @@
-#include <imgui.h>
-#include <imgui_internal.h>
-
 #include <ImGuizmo.h>
 #include <glad/glad.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 
 #include <algorithm>
 #include <chrono>
@@ -245,9 +244,7 @@ struct App {
     gpu::render(models.fighter);
   }
 
-  void update(void) {
-    terrain.update(delta_time, current_time);
-  }
+  void update(void) { terrain.update(delta_time, current_time); }
 
   void display(void) {
     SDL_GetWindowSize(window.handle, &window.width, &window.height);
@@ -286,7 +283,7 @@ struct App {
     // mat4 lightViewMatrix = inverse(
     //     mat4(
     //          1,       0,        0,      0,
-    //          0,       0,       -1,      0, 
+    //          0,       0,       -1,      0,
     //         -look.x, -look.y, look.z, 0,
     //          0,       1000,     0,       1
     //     )
@@ -312,10 +309,8 @@ struct App {
     glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
     drawBackground(viewMatrix, projMatrix);
     renderPass(shader_program, viewMatrix, projMatrix, lightViewMatrix);
-
 
     if (static_camera_enabled) {
       DebugDrawer::instance()->setCamera(viewMatrix, projMatrix);

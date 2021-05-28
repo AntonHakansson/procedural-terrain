@@ -154,8 +154,8 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
                  texture_blends.data());
     glUniform1fv(glGetUniformLocation(shader_program, "texture_sizes"), texture_sizes.size(),
                  texture_sizes.data());
-    glUniform1fv(glGetUniformLocation(shader_program, "texture_displacement_weights"), texture_displacement_weights.size(),
-                 texture_displacement_weights.data());
+    glUniform1fv(glGetUniformLocation(shader_program, "texture_displacement_weights"),
+                 texture_displacement_weights.size(), texture_displacement_weights.data());
 
     glUniform1fv(glGetUniformLocation(shader_program, "tessMultiplier"), 1, &this->tess_multiplier);
 

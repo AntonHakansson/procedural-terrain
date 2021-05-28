@@ -47,8 +47,9 @@ struct Water {
     GLint prev_fbo = 0;
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_fbo);
 
-    glBlitNamedFramebuffer(prev_fbo, screen_fbo.framebufferId, 0, 0, screen_fbo.width, screen_fbo.height, 0, 0, screen_fbo.width,
-                      screen_fbo.height, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    glBlitNamedFramebuffer(prev_fbo, screen_fbo.framebufferId, 0, 0, screen_fbo.width,
+                           screen_fbo.height, 0, 0, screen_fbo.width, screen_fbo.height,
+                           GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
     GLint prev_program = 0;
     glGetIntegerv(GL_CURRENT_PROGRAM, &prev_program);

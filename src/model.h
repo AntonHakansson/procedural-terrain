@@ -1,10 +1,11 @@
 #pragma once
 #include <glad/glad.h>
+
+#include <array>
 #include <glm/glm.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <array>
 
 namespace gpu {
   struct Texture {
@@ -16,8 +17,7 @@ namespace gpu {
     uint8_t* data = nullptr;
     bool load(const std::string& directory, const std::string& filename, int nof_components);
 
-    template<int N>
-    void load2DArray(const std::array<std::string, N>& filepaths, int miplevels) {
+    template <int N> void load2DArray(const std::array<std::string, N>& filepaths, int miplevels) {
       std::array<int, N> widths;
       std::array<int, N> heights;
       std::array<uint8_t*, N> tex_data;

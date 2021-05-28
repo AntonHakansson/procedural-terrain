@@ -4,14 +4,12 @@ ShadowMap::ShadowMap(void) {}
 
 void ShadowMap::init(float z_near, float z_far) {
   cascade_splits[0] = z_near;
-  cascade_splits[1] = 500.0f,
-  cascade_splits[2] = 1000.0f;
+  cascade_splits[1] = 500.0f, cascade_splits[2] = 1000.0f;
   cascade_splits[3] = z_far;
 
   // Layered texture
   glCreateTextures(GL_TEXTURE_2D_ARRAY, NUM_CASCADES, &shadow_tex);
-  glTextureStorage3D(shadow_tex, 1, GL_DEPTH_COMPONENT32F, resolution, resolution,
-                 NUM_CASCADES);
+  glTextureStorage3D(shadow_tex, 1, GL_DEPTH_COMPONENT32F, resolution, resolution, NUM_CASCADES);
 
   glTextureParameteri(shadow_tex, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTextureParameteri(shadow_tex, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -130,7 +128,7 @@ void ShadowMap::calculateLightProjMatrices(mat4 view_matrix, mat4 light_view_mat
     shadow_ortho_info[i].t = floor(maxY / stepY) * stepY;
     shadow_ortho_info[i].f = -(maxZ + this->bias);
     shadow_ortho_info[i].n = -(minZ - this->bias);
-    
+
     shadow_projections[i] = getLightProjMatrix(i);
   }
 }
@@ -162,7 +160,7 @@ void ShadowMap::debugProjs(mat4 view_matrix, mat4 proj_matrix, mat4 light_view_m
 
     DebugDrawer::instance()->drawPerspectiveFrustum(view_matrix, proj, vec3(1, 0, 0));
     DebugDrawer::instance()->drawOrthographicFrustum(light_view_matrix, shadow_ortho_info[i],
-                                                     vec3((float) i / NUM_CASCADES, 1, 0));
+                                                     vec3((float)i / NUM_CASCADES, 1, 0));
   }
 }
 
