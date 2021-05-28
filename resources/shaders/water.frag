@@ -22,7 +22,8 @@ in DATA {
   vec3 view_space_normal;
   vec3 view_space_position;
   vec3 world_pos;
-} In;
+}
+In;
 
 // Uniforms
 uniform float current_time;
@@ -447,7 +448,8 @@ void main() {
   foam_mask += max(1.0 - (diff_depth) / water.foam_distance, 0);
   foam_mask *= max(sin((diff_depth / 1.5 + current_time * 4 + dudv.y * 50) / 2), 0);
   foam_mask += max(1.0 - (diff_depth - water.foam_distance / 4.0) / (water.foam_distance * 0.5), 0);
-  if (diff_depth < water.foam_distance / 5.0) foam_mask += inverseLerp(water.foam_distance / 5.0, 0, diff_depth);
+  if (diff_depth < water.foam_distance / 5.0)
+    foam_mask += inverseLerp(water.foam_distance / 5.0, 0, diff_depth);
 
   ocean_mask = clamp((diff_depth - 100) / 1200.0, 0.0, 0.12) / 0.18;
 

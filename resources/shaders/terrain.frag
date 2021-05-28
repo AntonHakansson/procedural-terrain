@@ -82,7 +82,6 @@ vec3 triplanarSampling(sampler2D tex, vec3 worldpos, vec3 normal) {
   return texture(tex, scaled_worldpos.xz).xyz;
 }
 
-
 float inverseLerp(float a, float b, float x) { return (x - a) / (b - a); }
 float inverseLerpClamped(float a, float b, float x) { return clamp(inverseLerp(a, b, x), 0, 1); }
 
@@ -107,7 +106,8 @@ vec3 getWorldNormal(vec3 tex_coord) {
   return In.tangent_matrix * tangent_normal;
 }
 
-void blendTextures(vec3 t1, vec3 t2, vec3 t3, vec3 t4, float[4] w, out vec3 color, out vec3 normal) {
+void blendTextures(vec3 t1, vec3 t2, vec3 t3, vec3 t4, float[4] w, out vec3 color,
+                   out vec3 normal) {
   vec3 col1 = texture(albedos, t1).rgb;
   vec3 col2 = texture(albedos, t2).rgb;
   vec3 col3 = texture(albedos, t3).rgb;
@@ -156,16 +156,21 @@ float[4] terrainBlending(vec3 world_pos, vec3 normal) {
 
   float a, b, c, d;
   {
-      b = inverseLerpClamped(sand_grass_height - grass_falloff / 2, sand_grass_height + grass_falloff / 2, height);
+    b = inverseLerpClamped(sand_grass_height - grass_falloff / 2,
+                           sand_grass_height + grass_falloff / 2, height);
   }
   {
-      c = inverseLerpClamped(grass_rock_height - rock_falloff / 2, grass_rock_height + rock_falloff / 2, height);
+    c = inverseLerpClamped(grass_rock_height - rock_falloff / 2,
+                           grass_rock_height + rock_falloff / 2, height);
   }
 
   float b_in, c_in, d_in;
-  b_in = inverseLerpClamped(sand_grass_height - grass_falloff / 2, sand_grass_height + grass_falloff / 2, height);
-  c_in = inverseLerpClamped(grass_rock_height - rock_falloff / 2, grass_rock_height + rock_falloff / 2, height);
-  d_in = inverseLerpClamped(rock_snow_height - snow_falloff / 2, rock_snow_height + snow_falloff / 2, height);
+  b_in = inverseLerpClamped(sand_grass_height - grass_falloff / 2,
+                            sand_grass_height + grass_falloff / 2, height);
+  c_in = inverseLerpClamped(grass_rock_height - rock_falloff / 2,
+                            grass_rock_height + rock_falloff / 2, height);
+  d_in = inverseLerpClamped(rock_snow_height - snow_falloff / 2,
+                            rock_snow_height + snow_falloff / 2, height);
 
   a = 1 - b_in;
   b *= 1 - c_in;
@@ -190,7 +195,8 @@ vec3 getTextureCoordinate(vec3 world_pos, int texture_index) {
   vec2 tex_coord = scaled_worldpos * texture_sizes[texture_index];
 
   mat4 inv_view_matrix = inverse(viewMatrix);
-  vec3 view_direction = normalize(-vec3(inv_view_matrix[2][0], inv_view_matrix[2][1], inv_view_matrix[2][2]));
+  vec3 view_direction
+      = normalize(-vec3(inv_view_matrix[2][0], inv_view_matrix[2][1], inv_view_matrix[2][2]));
 
   return vec3(tex_coord, texture_index);
 }
@@ -230,7 +236,7 @@ float calcShadowFactor(int index, vec4 light_space_pos, vec3 normal) {
 
   float ndotl = dot(normal, -sun.direction);
 
-	float l = clamp(smoothstep(0.0, 0.2, ndotl), 0, 1);
+  float l = clamp(smoothstep(0.0, 0.2, ndotl), 0, 1);
 
   vec2 UVCoords;
   UVCoords.x = 0.5 * ProjCoords.x + 0.5;
@@ -238,7 +244,7 @@ float calcShadowFactor(int index, vec4 light_space_pos, vec3 normal) {
 
   float z = 0.5 * ProjCoords.z + 0.5;
 
-  float bias = 0.005; //0.0005 * (dot(normal, sun.direction) > 0 ? -1 : 1);
+  float bias = 0.005;  // 0.0005 * (dot(normal, sun.direction) > 0 ? -1 : 1);
 
   float percentLit = 0;
   float size = 5;
@@ -296,7 +302,11 @@ void main() {
     if (clip_space_depth <= end) {
       float sf = calcShadowFactor(i, light_space_pos[i], In.normal);
 
-      float f0 = i == 0 ? 0 : 1 - clamp(inverseLerp(prev_end, prev_end + blend_distance, clip_space_depth), 0, 1);
+      float f0
+          = i == 0 ? 0
+                   : 1
+                         - clamp(inverseLerp(prev_end, prev_end + blend_distance, clip_space_depth),
+                                 0, 1);
       float f1 = clamp(inverseLerp(end - blend_distance, end, clip_space_depth), 0, 1);
       float f = max(f0, f1);
 
@@ -314,12 +324,9 @@ void main() {
 
   vec3 terrain_color;
   vec3 terrain_normal;
-  blendTextures(getTextureCoordinate(In.world_pos, 0),
-                        getTextureCoordinate(In.world_pos, 1),
-                        getTextureCoordinate(In.world_pos, 2),
-                        getTextureCoordinate(In.world_pos, 3),
-                        draw_strengths,
-                        terrain_color, terrain_normal);
+  blendTextures(getTextureCoordinate(In.world_pos, 0), getTextureCoordinate(In.world_pos, 1),
+                getTextureCoordinate(In.world_pos, 2), getTextureCoordinate(In.world_pos, 3),
+                draw_strengths, terrain_color, terrain_normal);
 
   vec3 ambient = ambient();
   vec3 diffuse = diffuse(In.world_pos, terrain_normal);

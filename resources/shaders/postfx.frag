@@ -14,8 +14,8 @@ in DATA {
   vec3 view_pos;
   vec3 world_pos;
   vec3 world_dir;
-} In;
-
+}
+In;
 
 // Uniforms
 uniform float currentTime;
@@ -48,23 +48,21 @@ const vec3 ocean_blue_deep = vec3(0.05, 0.1, 0.25);
 // http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl.
 // Licensed under the WTFPL.
 // All components are in the range [0…1], including hue.
-vec3 rgb2hsv(vec3 c)
-{
-    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
-    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+vec3 rgb2hsv(vec3 c) {
+  vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+  vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+  vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
 
-    float d = q.x - min(q.w, q.y);
-    float e = 1.0e-10;
-    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+  float d = q.x - min(q.w, q.y);
+  float e = 1.0e-10;
+  return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
 
 // All components are in the range [0…1], including hue.
-vec3 hsv2rgb(vec3 c)
-{
-    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+vec3 hsv2rgb(vec3 c) {
+  vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+  vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+  return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
 vec3 shiftHSV(in vec3 in_col, float hue, float saturate, float value) {
@@ -84,7 +82,6 @@ float linearizeDepth(float depth) {
 
 float inverseLerp(float a, float b, float x) { return (x - a) / (b - a); }
 float inverseLerpClamped(float a, float b, float x) { return clamp(inverseLerp(a, b, x), 0, 1); }
-
 
 float calculateGodMask(float depth, float wdots, float sun_threshold) {
   float linear_depth = linearizeDepth(depth);
@@ -137,12 +134,12 @@ void main() {
 
   if (wdots > sun_threshold) {
     if (linear_depth == postfx.z_far) {
-      float f1 = smoothstep(0.0, 1.0, inverseLerpClamped(sun_threshold, (1 + sun_threshold) / 2.0, wdots));
+      float f1 = smoothstep(0.0, 1.0,
+                            inverseLerpClamped(sun_threshold, (1 + sun_threshold) / 2.0, wdots));
       float f2 = smoothstep(0.2, 1.0, inverseLerpClamped(sun_threshold, 1, wdots));
 
       fragmentColor += vec4(sun_color * f1 + vec3(1) * f2 * 1.5, 1.0);
-    }
-    else {
+    } else {
       // Sample some nearby pixels
 
       float size = 7;
@@ -171,18 +168,23 @@ void main() {
     }
   }
 
-  float horizon_mask = linear_depth == postfx.z_far ? clamp(inverseLerpClamped(0, 0.8, world_dir.y) + (inverseLerpClamped(sun_threshold, 1, wdots)), 0, 1) : 1;
+  float horizon_mask = linear_depth == postfx.z_far
+                           ? clamp(inverseLerpClamped(0, 0.8, world_dir.y)
+                                       + (inverseLerpClamped(sun_threshold, 1, wdots)),
+                                   0, 1)
+                           : 1;
   float horizon_sunset_mask = mix(horizon_mask, 1, sunset_trans);
 
   vec3 sunset_color = shiftHSV(sun_color, 0, -0.6, 0.0);
   vec3 night_color = shiftHSV(sun_color, -0.39, -0.2, -0.8);
-  fragmentColor = vec4(mix(fragmentColor.xyz * sunset_color, fragmentColor.xyz, horizon_sunset_mask), 1);
-  fragmentColor = vec4(mix(fragmentColor.xyz * night_color, fragmentColor.xyz, smoothstep(0, 1, night_trans)), 1);
+  fragmentColor
+      = vec4(mix(fragmentColor.xyz * sunset_color, fragmentColor.xyz, horizon_sunset_mask), 1);
+  fragmentColor = vec4(
+      mix(fragmentColor.xyz * night_color, fragmentColor.xyz, smoothstep(0, 1, night_trans)), 1);
 
   // float god_mask = calculateGodMask(depth, wdots, sun_threshold);
   // fragmentColor = vec4(vec3(horizon_sunset_mask), 1);
   // return;
-  
 
   // God rays
   vec2 screen_pos = vec2(In.tex_coord) * 2.0 - 1;
@@ -215,5 +217,7 @@ void main() {
   vec3 god_ray_color = mix(sunset_color, sunset_color, sunset_trans);
 
   visibility_factor /= float(NUM_RAY_STEPS);
-  fragmentColor += vec4(god_ray_color * visibility_factor * (1 - sunset_trans * 0.4) * clamp((1 - ray_dist / 1), 0.0, 1.0) * 0.6, 1);
+  fragmentColor += vec4(god_ray_color * visibility_factor * (1 - sunset_trans * 0.4)
+                            * clamp((1 - ray_dist / 1), 0.0, 1.0) * 0.6,
+                        1);
 }

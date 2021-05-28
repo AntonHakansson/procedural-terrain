@@ -10,7 +10,8 @@ out DATA {
   vec3 view_pos;
   vec3 world_pos;
   vec3 world_dir;
-} Out;
+}
+Out;
 
 void main() {
   gl_Position = vec4(position, 0.0, 1.0);
