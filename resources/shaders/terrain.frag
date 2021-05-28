@@ -134,7 +134,7 @@ void blendTextures(vec3 t1, vec3 t2, vec3 t3, vec3 t4, float[4] w, out vec3 colo
   float total_w = (w1 + w2 + w3 + w4);
 
   color = (col1 * w1 + col2 * w2 + col3 * w3 + col4 * w4) / total_w;
-  normal = (normal1 * w1 + normal2 * w2 + normal3 * w3 + normal4 * w4) / total_w;
+  normal = normalize((normal1 * w1 + normal2 * w2 + normal3 * w3 + normal4 * w4) / total_w);
 }
 
 float[4] terrainBlending(vec3 world_pos, vec3 normal) {
