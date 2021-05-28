@@ -109,8 +109,6 @@ struct Terrain {
 
   gpu::Texture albedos;
   gpu::Texture normals;
-  gpu::Texture displacements;
-  gpu::Texture roughness;
 
   std::array<float, 4> texture_start_heights{0, 0.760, 0.797, 0.840};
   std::array<float, 4> texture_blends{0.0, 0.021, 0.030, 0.011};

@@ -159,7 +159,7 @@ vec3 terrainNormal(vec3 world_pos, vec3 normal) {
 
   for (int i = 0; i < 4; i++) {
     float d = draw_strengths[i];
-    vec3 normal = 2.0 * texture(normals, getTextureCoordinate(world_pos, i)).xyz - 1.0;
+    vec3 normal = normalize(2.0 * texture(normals, getTextureCoordinate(world_pos, i)).xyz - 1.0);
     norm = norm * (1 - draw_strengths[i]) + (In.tangent_matrix * normal) * d;
   }
 

@@ -32,17 +32,13 @@ void Terrain::init() {
       "resources/textures/terrain/snow/roughness.jpg",
   };
 
-  albedos.load2DArray<4>(albedo_paths, 3);
-  normals.load2DArray<4>(normal_paths, 3);
-  displacements.load2DArray<4>(normal_paths, 3);
-  roughness.load2DArray<4>(normal_paths, 3);
+  albedos.load2DArray<4>(albedo_paths, 5);
+  normals.load2DArray<4>(normal_paths, 5);
 }
 
 void Terrain::deinit() {
   glDeleteTextures(1, &albedos.gl_id);
   glDeleteTextures(1, &normals.gl_id);
-  glDeleteTextures(1, &displacements.gl_id);
-  glDeleteTextures(1, &roughness.gl_id);
   glDeleteBuffers(1, &this->positions_bo);
   glDeleteBuffers(1, &this->indices_bo);
   glDeleteVertexArrays(1, &this->vao);
@@ -116,8 +112,6 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
   {
     glBindTextureUnit(0, albedos.gl_id);
     glBindTextureUnit(1, normals.gl_id);
-    glBindTextureUnit(2, displacements.gl_id);
-    glBindTextureUnit(3, roughness.gl_id);
 
     if (this->wireframe) {
       glGetIntegerv(GL_POLYGON_MODE, &prev_polygon_mode);
