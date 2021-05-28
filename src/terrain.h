@@ -43,7 +43,7 @@ struct TerrainNoise {
 };
 
 struct Sun {
-  glm::vec3 direction = glm::vec3(0.702, -0.713, 0.0);
+  glm::vec3 direction = glm::vec3(0.13, -0.228, 0.965);
   glm::vec3 color = glm::vec3(1.0, 0.4745, 0.062745);
   float intensity = 1;
 
@@ -58,6 +58,7 @@ struct Sun {
     if (ImGui::CollapsingHeader("Force orbit")) {
       mat4 cube_view, cube_proj;
 
+      ImGui::Text("Direction: %f, %f, %f", direction.x, direction.y, direction.z);
       DebugDrawer::instance()->beginGizmo(camera->getViewMatrix(), vec2(256, 256), cube_view,
                                           cube_proj);
       ImGuizmo::Manipulate(&cube_view[0][0], &cube_proj[0][0], ImGuizmo::ROTATE, ImGuizmo::LOCAL,
