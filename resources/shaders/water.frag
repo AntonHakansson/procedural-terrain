@@ -56,8 +56,6 @@ struct ScreenSpaceReflection {
 };
 uniform ScreenSpaceReflection ssr;
 
-uniform mat4 inv_view_matrix;
-uniform mat4 projection_matrix;
 uniform mat4 pixel_projection;  // `pixel_projection` projects from view space to pixel coordinate
 
 // Constants

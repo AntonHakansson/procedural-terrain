@@ -123,7 +123,6 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
         glm::vec3(glm::floor(center.x / s) * s, 0, glm::floor(center.z / s) * s)
         - glm::vec3(1, 0, 1) * this->terrain_size / 2.0f);
 
-    // this->model_matrix = glm::mat4(1.0f);
     gpu::setUniformSlow(shader_program, "lightMatrix", light_matrix);
     gpu::setUniformSlow(shader_program, "viewInverse", inverse(view_matrix));
     gpu::setUniformSlow(shader_program, "viewMatrix", view_matrix);

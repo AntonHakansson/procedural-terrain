@@ -48,7 +48,7 @@ struct ShadowMap {
   float cascade_clip_splits[NUM_CASCADES];
   mat4 light_wvp_matrix[NUM_CASCADES];
   bool debug_show_splits;
-  bool debug_show_blends;
+  bool debug_show_blend;
 };
 uniform ShadowMap shadow_map;
 
@@ -278,6 +278,11 @@ float calcShadowFactor(int index, vec4 shadow_light_pos, vec3 normal) {
 }
 
 void main() {
+  if (shadow_map.debug_show_splits) {
+    fragmentColor = vec4(1, 0, 0, 1);
+    return;
+  }
+
   float shadow_factor = 0.0;
   vec3 cascade_indicator = vec3(0.0, 0.0, 0);
   vec3 prev_color = cascade_indicator;

@@ -64,6 +64,9 @@ void ShadowMap::begin(uint tex_index, mat4 proj_matrix, mat4 light_view_matrix) 
                         light_proj_matrix * light_view_matrix);
   }
 
+  gpu::setUniformSlow(shader_program, "shadow_map.debug_show_splits", debug_show_splits);
+  gpu::setUniformSlow(shader_program, "shadow_map.debug_show_blend", debug_show_blend);
+
   glBindTextureUnit(tex_index, shadow_tex);
 }
 
