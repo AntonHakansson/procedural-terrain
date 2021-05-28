@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <imgui.h>
 
 #include <glm/detail/type_vec3.hpp>
@@ -25,11 +26,13 @@ struct OrthoProjInfo {
 
 struct Projection {
   float fovy = 70.0f;
-  float far = 5000.0f;
+  float far = 10000.0f;
   float near = 1.0f;
 };
 
 struct Camera {
+  static constexpr std::array<const char*, 2> CameraModes{{"Fly", "Orbit"}};
+
   Projection projection;
 
   vec3 world_up = vec3(0.0, 1.0, 0.0);
@@ -39,7 +42,7 @@ struct Camera {
   float speed = 10;
   float rotation_speed = 0.12f;
 
-  CameraMode mode = CameraMode::Fly;
+  int mode = CameraMode::Fly;
 
   vec3 orbit_target = vec3(0);
   float orbit_distance = 5000.F;
@@ -67,6 +70,9 @@ struct Camera {
       if (key_state[SDL_SCANCODE_D]) {
         movement_dir += camera_right;
       }
+
+      movement_dir = normalize(movement_dir);
+
       if (key_state[SDL_SCANCODE_Q]) {
         movement_dir -= world_up;
       }
@@ -75,7 +81,6 @@ struct Camera {
       }
 
       if (length(movement_dir) > 0.01) {
-        movement_dir = normalize(movement_dir);
         position += speed * speed_multiplier * delta_time * movement_dir;
       }
     } else if (mode == CameraMode::Orbit) {
@@ -127,15 +132,17 @@ struct Camera {
   }
 
   void gui() {
+    ImGui::Combo("Camera mode", &mode, &CameraModes[0], CameraModes.size());
+
+    ImGui::Spacing();
+
     ImGui::SliderFloat("Movement Speed", &this->speed, 80.0, 350.0);
     ImGui::SliderFloat("Rotate Speed", &this->rotation_speed, 0.05, 2.0);
-  }
 
-  void toggleMode() {
-    if (mode == CameraMode::Fly) {
-      mode = CameraMode::Orbit;
-    } else {
-      mode = CameraMode::Fly;
-    }
+    ImGui::Spacing();
+
+    ImGui::DragFloat("Vertical FOV", &this->projection.fovy, 0.1, 45, 100);
+    ImGui::DragFloat("Near Projection", &this->projection.near, 0.02, 0.2);
+    ImGui::DragFloat("Far Projection", &this->projection.far, 200.0, 1000.0);
   }
 };

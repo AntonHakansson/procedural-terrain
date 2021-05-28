@@ -47,9 +47,11 @@ struct Water {
     }
   }
 
-  void render(int width, int height, float current_time, glm::mat4 projection_matrix,
-              glm::mat4 view_matrix, glm::vec3 camera_position, float z_near, float z_far, float environment_multiplier) {
-    screen_fbo.resize(width, height);
+  void render(Terrain* terrain, int width, int height, float current_time, glm::mat4 projection_matrix,
+              glm::mat4 view_matrix, glm::vec3 center, Projection projection, float environment_multiplier) {
+    if (screen_fbo.width != width || screen_fbo.height != height) {
+      screen_fbo.resize(width, height);
+    }
 
     GLint prev_fbo = 0;
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_fbo);
@@ -61,9 +63,12 @@ struct Water {
     GLint prev_program = 0;
     glGetIntegerv(GL_CURRENT_PROGRAM, &prev_program);
 
-    auto model_matrix = glm::translate(glm::vec3(camera_position.x - (size / 2.0), this->height,
-                                                 camera_position.z - (size / 2.0)))
+    float s = (terrain->terrain_size / (terrain->terrain_subdivision + 1));
+    auto model_matrix = glm::translate(glm::vec3(glm::floor((center.x) / s) * s, this->height,
+                                                 glm::floor((center.z) / s) * s)
+                                       - glm::vec3(1, 0, 1) * size / 2.0f)
                         * glm::scale(vec3(size, 0, size));
+
     glm::mat4 pixel_projection;
     {
       float sx = float(screen_fbo.width) / 2.0;
@@ -96,7 +101,7 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "water.wave_strength", wave_strength);
     gpu::setUniformSlow(this->shader_program, "water.wave_scale", wave_scale);
     gpu::setUniformSlow(this->shader_program, "water.size", this->size);
-    ssr.upload(this->shader_program, screen_fbo.width, screen_fbo.height, z_near, z_far);
+    ssr.upload(this->shader_program, screen_fbo.width, screen_fbo.height, projection);
 
     gpu::setUniformSlow(this->shader_program, "environment_multiplier", environment_multiplier);
 
@@ -132,8 +137,7 @@ struct Water {
   struct ScreenSpaceReflection {
     // REVIEW: maybe remove these
     glm::ivec2 depth_buffer_size;
-    float z_near;
-    float z_far;
+    Projection projection;
 
     float z_thickness = 0.01;
     float stride = 15.00;
@@ -141,14 +145,13 @@ struct Water {
     float max_steps = 50.0;
     float max_distance = 500.0;
 
-    void upload(GLuint program, int width, int height, float z_near, float z_far) {
+    void upload(GLuint program, int width, int height, Projection projection) {
       this->depth_buffer_size = glm::ivec2(width, height);
-      this->z_near = z_near;
-      this->z_far = z_far;
+      this->projection = projection;
 
       gpu::setUniformSlow(program, "ssr.depth_buffer_size", depth_buffer_size);
-      gpu::setUniformSlow(program, "ssr.z_near", z_near);
-      gpu::setUniformSlow(program, "ssr.z_far", z_far);
+      gpu::setUniformSlow(program, "ssr.z_near", projection.near);
+      gpu::setUniformSlow(program, "ssr.z_far", projection.far);
       gpu::setUniformSlow(program, "ssr.z_thickness", z_thickness);
       gpu::setUniformSlow(program, "ssr.stride", stride);
       gpu::setUniformSlow(program, "ssr.jitter", jitter);
@@ -158,7 +161,7 @@ struct Water {
 
     void gui() {
       ImGui::Text("Buffer size: %dx%d", depth_buffer_size.x, depth_buffer_size.y);
-      ImGui::Text("Near: %f, Far: %d", z_near, z_far);
+      ImGui::Text("Near: %f, Far: %d", projection.near, projection.far);
       ImGui::DragFloat("z thickness", &z_thickness, 0.0001);
       ImGui::DragFloat("stride", &stride, 0.0001);
       ImGui::SliderFloat("jitter", &jitter, 0.0, 1.0);

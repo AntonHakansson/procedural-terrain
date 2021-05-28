@@ -39,6 +39,7 @@ public:
   // Debug
   bool debug_show_splits = false;
   bool debug_show_blend = false;
+  bool debug_show_projections = false;
 
   ShadowMap(void);
 

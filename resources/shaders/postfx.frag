@@ -37,12 +37,17 @@ uniform Sun sun;
 struct PostFX {
   float z_near;
   float z_far;
+  int debug_mask;
 };
 uniform PostFX postfx;
 
+#define DEBUG_MASK_OFF 0
+#define DEBUG_MASK_HORIZON 1
+#define DEBUG_MASK_GOD_RAY 2
+
 // Constants
 const float Epsilon = 1e-10;
-const vec3 ocean_blue_deep = vec3(0.05, 0.1, 0.25);
+const vec3 ocean_blue_deep = vec3(24.0 / 255.0, 43.0 / 255.0, 78.0 / 255.0);
 
 // HSV RGB conversion
 // http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl.
@@ -177,16 +182,16 @@ void main() {
 
   float horizon_sunset_mask = mix(horizon_mask, 1, sunset_trans);
 
+  if (postfx.debug_mask == DEBUG_MASK_HORIZON) {
+    fragmentColor = vec4(vec3(horizon_sunset_mask), 1);
+    return;
+  }
+
   // Apply sunset and night colors
   vec3 sunset_color = shiftHSV(sun_color, 0, -0.6, 0.0);
   vec3 night_color = shiftHSV(sun_color, -0.42, -0.3, -0.5);
   out_color = mix(out_color * sunset_color, out_color, horizon_sunset_mask);
   out_color = mix(out_color * night_color, out_color, smoothstep(0, 1, night_trans));
-
-
-  // float god_mask = calculateGodMask(depth, wdots, sun_threshold);
-  // fragmentColor = vec4(vec3(horizon_sunset_mask), 1);
-  // return;
 
   /**
    * God rays
@@ -221,6 +226,11 @@ void main() {
 
   vec3 god_ray_color = mix(sunset_color, sunset_color, sunset_trans);
   out_color += god_ray_color * visibility_factor * (1 - sunset_trans * 0.4) * clamp((1 - ray_dist / 1), 0.0, 1.0) * 0.6;
+
+  if (postfx.debug_mask == DEBUG_MASK_GOD_RAY) {
+    fragmentColor = vec4(vec3(visibility_factor), 1);
+    return;
+  }
 
   // Finally, update
   fragmentColor = vec4(out_color, 1.0);

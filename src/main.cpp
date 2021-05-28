@@ -25,6 +25,7 @@ using namespace glm;
 #include "shadowmap.h"
 #include "terrain.h"
 #include "water.h"
+#include "postfx.h"
 
 constexpr vec3 worldUp(0.0f, 1.0f, 0.0f);
 
@@ -57,6 +58,7 @@ struct App {
   Terrain terrain;
   ShadowMap shadow_map;
   Water water;
+  PostFX postfx;
 
   float current_time = 0.0f;
   float previous_time = 0.0f;
@@ -68,7 +70,6 @@ struct App {
   GLuint simple_shader_program;  // Shader used to draw the shadow map
   GLuint background_program;
   GLuint debug_program;
-  GLuint postfx_program;
 
   bool fighter_draggable = false;
   mat4 fighter_model_matrix = translate(vec3(0, 500, 0));
@@ -76,10 +77,9 @@ struct App {
   mat4 static_camera_proj;
   mat4 static_camera_view;
   vec3 static_camera_pos;
+  vec3 static_camera_world_pos;
   bool static_camera_enabled;
   bool static_camera_set = false;
-
-  FboInfo postfx_fbo;
 
   struct DrawScene {};
 
@@ -100,12 +100,9 @@ struct App {
                                     is_reload);
     if (shader != 0) debug_program = shader;
 
-    shader = gpu::loadShaderProgram("resources/shaders/postfx.vert",
-                                    "resources/shaders/postfx.frag", is_reload);
-    if (shader != 0) postfx_program = shader;
-
     this->terrain.loadShader(is_reload);
     this->water.loadShader(is_reload);
+    this->postfx.loadShader(is_reload);
 
     DebugDrawer::instance()->loadShaders(is_reload);
   }
@@ -142,17 +139,18 @@ struct App {
     shadow_map.init(camera.projection);
     terrain.init();
     water.init();
+    postfx.init();
   }
 
   void deinit() {
     terrain.deinit();
     water.deinit();
     shadow_map.deinit();
+    postfx.deinit();
+
     gpu::freeModel(models.fighter);
     gpu::freeModel(models.landingpad);
     gpu::freeModel(models.sphere);
-
-    glDeleteFramebuffers(1, &postfx_fbo.framebufferId);
   }
 
   void debugDrawLight(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix,
@@ -180,7 +178,7 @@ struct App {
     shadow_map.calculateLightProjMatrices(view_matrix, light_view_matrix, window.width,
                                           window.height, camera.projection.fovy);
 
-    vec3 cam_pos = static_camera_enabled ? static_camera_pos : camera.getWorldPos();
+    vec3 cam_pos = static_camera_enabled ? static_camera_world_pos : camera.getWorldPos();
     vec3 center = static_camera_enabled ? static_camera_pos : camera.position;
 
     glUseProgram(current_program);
@@ -218,7 +216,7 @@ struct App {
                   const mat4& lightViewMatrix) {
     glUseProgram(current_program);
 
-    vec3 cam_pos = static_camera_enabled ? static_camera_pos : camera.getWorldPos();
+    vec3 cam_pos = static_camera_enabled ? static_camera_world_pos : camera.getWorldPos();
     vec3 center = static_camera_enabled ? static_camera_pos : camera.position;
 
     // Environment
@@ -236,8 +234,8 @@ struct App {
     shadow_map.begin(10, camera.projection, projMatrix, lightViewMatrix);
 
     terrain.render(projMatrix, viewMatrix, center, cam_pos, lightMatrix, water.height);
-    water.render(window.width, window.height, current_time, projMatrix, viewMatrix, cam_pos,
-                 camera.projection.near, camera.projection.far, environment_map.multiplier);
+    water.render(&terrain, window.width, window.height, current_time, projMatrix, viewMatrix, center,
+                 camera.projection, environment_map.multiplier);
 
     glUseProgram(current_program);
 
@@ -255,10 +253,6 @@ struct App {
 
   void display(void) {
     SDL_GetWindowSize(window.handle, &window.width, &window.height);
-
-    if (postfx_fbo.width != window.width || postfx_fbo.height != window.height) {
-      postfx_fbo.resize(window.width, window.height);
-    }
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame(window.handle);
@@ -279,6 +273,7 @@ struct App {
     if (!static_camera_set && static_camera_enabled) {
       static_camera_proj = camera.getProjMatrix(window.width, window.height);
       static_camera_view = viewMatrix;
+      static_camera_world_pos = camera.getWorldPos();
       static_camera_pos = camera.position;
       static_camera_set = true;
     }
@@ -310,40 +305,29 @@ struct App {
     glBindTexture(GL_TEXTURE_2D, environment_map.reflectionMap);
     glActiveTexture(GL_TEXTURE0);
 
-    // Draw from camera
-    glBindFramebuffer(GL_FRAMEBUFFER, postfx_fbo.framebufferId);
-    glViewport(0, 0, postfx_fbo.width, postfx_fbo.height);
+    // Draw into postfx FBO
+    postfx.bind(window.width, window.height);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, postfx.screen_fbo.framebufferId);
+    glViewport(0, 0, postfx.screen_fbo.width, postfx.screen_fbo.height);
     glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     drawBackground(viewMatrix, projMatrix);
     renderPass(shader_program, viewMatrix, projMatrix, lightViewMatrix);
 
-    if (static_camera_enabled) {
+    if (shadow_map.debug_show_projections) {
       DebugDrawer::instance()->setCamera(viewMatrix, projMatrix);
       DebugDrawer::instance()->drawLine(vec3(0), vec3(0, 500, 0), vec3(1, 0, 0));
       shadow_map.debugProjs(cam_view_matrix, cam_proj_matrix, lightViewMatrix);
     }
+    else if (static_camera_enabled) {
+      DebugDrawer::instance()->setCamera(viewMatrix, projMatrix);
+      DebugDrawer::instance()->drawPerspectiveFrustum(static_camera_view, static_camera_proj, vec3(1, 0, 0));
+    }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    glUseProgram(postfx_program);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, postfx_fbo.colorTextureTargets[0]);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, postfx_fbo.depthBuffer);
-
-    gpu::setUniformSlow(postfx_program, "viewMatrix", viewMatrix);
-    gpu::setUniformSlow(postfx_program, "projMatrix", projMatrix);
-    gpu::setUniformSlow(postfx_program, "currentTime", current_time);
-    gpu::setUniformSlow(postfx_program, "water.height", water.height);
-    gpu::setUniformSlow(postfx_program, "sun.direction", terrain.sun.direction);
-    gpu::setUniformSlow(postfx_program, "sun.color", terrain.sun.color);
-    gpu::setUniformSlow(postfx_program, "sun.intensity", terrain.sun.intensity);
-    gpu::setUniformSlow(postfx_program, "postfx.z_near", camera.projection.near);
-    gpu::setUniformSlow(postfx_program, "postfx.z_far", camera.projection.far);
-
-    gpu::drawFullScreenQuad();
+    postfx.unbind();
+    postfx.render(camera.projection, viewMatrix, projMatrix, current_time, &water, &terrain.sun);
   }
 
   bool handleEvents(void) {
@@ -366,9 +350,6 @@ struct App {
       }
       if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_r) {
         loadShaders(true);
-      }
-      if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_o) {
-        camera.toggleMode();
       }
       if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT
           && !io.WantCaptureMouse) {
@@ -403,6 +384,7 @@ struct App {
                         camera.projection.near, camera.projection.far);
 
       static_camera_view = camera.getViewMatrix();
+      static_camera_world_pos = camera.getWorldPos();
       static_camera_pos = camera.position;
     }
 
@@ -429,10 +411,9 @@ struct App {
       ImGui::Checkbox("Fighter Draggable", &fighter_draggable);
 
       if (ImGui::CollapsingHeader("Camera")) {
-        camera.gui();
         ImGui::Checkbox("Static camera [C]", &static_camera_enabled);
-        ImGui::DragFloat("Near Projection", &camera.projection.near, 0.02, 0.2);
-        ImGui::DragFloat("Far Projection", &camera.projection.far, 200.0, 1000.0);
+
+        camera.gui();
       }
 
       // Light and environment map
@@ -446,11 +427,7 @@ struct App {
       terrain.gui(&camera);
       shadow_map.gui(window.handle);
       water.gui();
-
-      if (ImGui::CollapsingHeader("Post FX")) {
-        ImGui::Image((void*)(intptr_t)postfx_fbo.colorTextureTargets[0], ImVec2(252, 252),
-                     ImVec2(0, 1), ImVec2(1, 0));
-      }
+      postfx.gui();
     }
 
     // Render the GUI.
