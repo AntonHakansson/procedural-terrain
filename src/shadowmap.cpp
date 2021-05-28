@@ -156,6 +156,7 @@ void ShadowMap::gui(SDL_Window* window) {
     ImGui::Text("Debug");
     ImGui::Checkbox("Show cascade splits", &debug_show_splits);
     ImGui::Checkbox("Show cascade blending", &debug_show_blend);
+    ImGui::Checkbox("Show projections", &debug_show_projections);
 
     ImGui::NewLine();
   }
