@@ -27,13 +27,17 @@ enum ShadowClampMode { Edge = 1, Border = 2 };
 class ShadowMap {
 public:
   int resolution = 1024 * 4;
-  float bias = 2000;
+  float bias = 4098;
 
   GLuint fbo;
   GLuint shadow_tex;
   OrthoProjInfo shadow_ortho_info[NUM_CASCADES];
   mat4 shadow_projections[NUM_CASCADES];
   float cascade_splits[NUM_CASCADES + 1];
+
+  // Debug
+  bool debug_show_splits = false;
+  bool debug_show_blend = false;
 
   ShadowMap(void);
 

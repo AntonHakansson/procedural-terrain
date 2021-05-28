@@ -10,18 +10,21 @@ In[];
 
 uniform mat4 viewProjectionMatrix;
 uniform mat4 lightMatrix;
-uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
-uniform mat4 modelViewMatrix;
-uniform vec3 eyeWorldPos;
 
 // Cascading shadow maps
 const int NUM_CASCADES = 3;
 
-uniform mat4 gLightWVP[NUM_CASCADES];
+struct ShadowMap {
+  float cascade_clip_splits[NUM_CASCADES];
+  mat4 light_wvp_matrix[NUM_CASCADES];
+  bool debug_show_splits;
+  bool debug_show_blends;
+};
+uniform ShadowMap shadow_map;
 
-out vec4 light_space_pos[NUM_CASCADES];
-out float clip_space_depth;
+out vec4 shadow_light_pos[NUM_CASCADES];
+out float shadow_clip_depth;
 
 // Noise
 struct Noise {
@@ -199,8 +202,8 @@ void main() {
 
   // Cascading shadow map
   for (int i = 0; i < NUM_CASCADES; i++) {
-    light_space_pos[i] = gLightWVP[i] * vec4(Out.world_pos, 1.0);
+    shadow_light_pos[i] = shadow_map.light_wvp_matrix[i] * vec4(Out.world_pos, 1.0);
   }
 
-  clip_space_depth = gl_Position.z;
+  shadow_clip_depth = gl_Position.z;
 }

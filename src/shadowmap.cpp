@@ -58,9 +58,9 @@ void ShadowMap::begin(uint tex_index, mat4 proj_matrix, mat4 light_view_matrix) 
 
     mat4 light_proj_matrix = shadow_projections[i];
 
-    gpu::setUniformSlow(shader_program, ("gCascadeEndClipSpace[" + std::to_string(i) + "]").c_str(),
+    gpu::setUniformSlow(shader_program, ("shadow_map.cascade_clip_splits[" + std::to_string(i) + "]").c_str(),
                         -vClip.z);
-    gpu::setUniformSlow(shader_program, ("gLightWVP[" + std::to_string(i) + "]").c_str(),
+    gpu::setUniformSlow(shader_program, ("shadow_map.light_wvp_matrix[" + std::to_string(i) + "]").c_str(),
                         light_proj_matrix * light_view_matrix);
   }
 
@@ -138,6 +138,8 @@ void ShadowMap::gui(SDL_Window* window) {
     ImGui::DragFloat("Bias", &this->bias);
 
     ImGui::Text("Debug");
+    ImGui::Checkbox("Show cascade splits", &debug_show_splits);
+    ImGui::Checkbox("Show cascade blending", &debug_show_blend);
 
     ImGui::NewLine();
   }

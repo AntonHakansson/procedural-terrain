@@ -125,14 +125,10 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
 
     // this->model_matrix = glm::mat4(1.0f);
     gpu::setUniformSlow(shader_program, "lightMatrix", light_matrix);
+    gpu::setUniformSlow(shader_program, "viewInverse", inverse(view_matrix));
     gpu::setUniformSlow(shader_program, "viewMatrix", view_matrix);
     gpu::setUniformSlow(shader_program, "viewProjectionMatrix", projection_matrix * view_matrix);
     gpu::setUniformSlow(shader_program, "modelMatrix", this->model_matrix);
-    gpu::setUniformSlow(shader_program, "modelViewProjectionMatrix",
-                        projection_matrix * view_matrix * this->model_matrix);
-    gpu::setUniformSlow(shader_program, "modelViewMatrix", view_matrix * this->model_matrix);
-    gpu::setUniformSlow(shader_program, "normalMatrix",
-                        inverse(transpose(view_matrix * this->model_matrix)));
     gpu::setUniformSlow(shader_program, "eyeWorldPos", camera_position);
 
     gpu::setUniformSlow(shader_program, "noise.num_octaves", (GLint)noise.num_octaves);

@@ -20,18 +20,11 @@ layout(binding = 1) uniform sampler2DArray normals;
 layout(binding = 2) uniform sampler2DArray displacement;
 layout(binding = 3) uniform sampler2DArray roughness;
 
-uniform mat4 normalMatrix;
-uniform mat4 viewMatrix;
-uniform mat4 modelMatrix;
-uniform mat4 modelViewMatrix;
-uniform mat4 modelViewProjectionMatrix;
-uniform mat4 viewProjectionMatrix;
-uniform vec3 eyeWorldPos;
-uniform vec3 viewSpaceLightPosition;
+uniform mat4 viewInverse;
 
-uniform float waterHeight;
-uniform bool simple;
-
+/**
+ * Noise
+ */
 struct Noise {
   int num_octaves;
   float amplitude;
@@ -46,7 +39,28 @@ uniform float texture_blends[4];
 uniform float texture_sizes[4];
 uniform float texture_displacement_weights[4];
 
-// Cascading shadow map
+/**
+ * Cascading shadow map
+ */
+const int NUM_CASCADES = 3;
+
+struct ShadowMap {
+  float cascade_clip_splits[NUM_CASCADES];
+  mat4 light_wvp_matrix[NUM_CASCADES];
+  bool debug_show_splits;
+  bool debug_show_blends;
+};
+uniform ShadowMap shadow_map;
+
+in vec4 shadow_light_pos[NUM_CASCADES];
+in float shadow_clip_depth;
+
+layout(binding = 10) uniform sampler2DArrayShadow shadow_tex;
+
+
+/**
+ * Sun
+ */
 struct Sun {
   vec3 direction;
   vec3 color;
@@ -54,16 +68,16 @@ struct Sun {
 };
 uniform Sun sun;
 
-const int NUM_CASCADES = 3;
 
-in vec4 light_space_pos[NUM_CASCADES];
-in float clip_space_depth;
-
-layout(binding = 10) uniform sampler2DArrayShadow gShadowMap;
-uniform float gCascadeEndClipSpace[NUM_CASCADES];
-
-// Output color
+/**
+ * Output
+ */
 layout(location = 0) out vec4 fragmentColor;
+
+
+/**
+ * Functions
+ */
 
 // Triplanar mapping of texture as naively projecting the texture on to the xz
 // plane will result in texture-stretching at steep angles
@@ -194,7 +208,7 @@ vec3 getTextureCoordinate(vec3 world_pos, int texture_index) {
   vec2 scaled_worldpos = (world_pos / (2048.0)).xz;
   vec2 tex_coord = scaled_worldpos * texture_sizes[texture_index];
 
-  mat4 inv_view_matrix = inverse(viewMatrix);
+  mat4 inv_view_matrix = viewInverse;
   vec3 view_direction
       = normalize(-vec3(inv_view_matrix[2][0], inv_view_matrix[2][1], inv_view_matrix[2][2]));
 
@@ -213,10 +227,6 @@ vec3 terrainNormal(vec3 world_pos, vec3 normal) {
   }
 
   return norm;
-
-  // return In.tangent_matrix * rock_normal;
-  // return normalize(
-  //     mix(In.tangent_matrix * rock_normal, In.tangent_matrix * grass_normal, blending));
 }
 
 vec3 ambient() {
@@ -231,8 +241,8 @@ vec3 diffuse(vec3 world_pos, vec3 normal) {
   return diffuse;
 }
 
-float calcShadowFactor(int index, vec4 light_space_pos, vec3 normal) {
-  vec3 ProjCoords = light_space_pos.xyz / light_space_pos.w;
+float calcShadowFactor(int index, vec4 shadow_light_pos, vec3 normal) {
+  vec3 ProjCoords = shadow_light_pos.xyz / shadow_light_pos.w;
 
   float ndotl = dot(normal, -sun.direction);
 
@@ -244,31 +254,27 @@ float calcShadowFactor(int index, vec4 light_space_pos, vec3 normal) {
 
   float z = 0.5 * ProjCoords.z + 0.5;
 
-  float bias = 0.005;  // 0.0005 * (dot(normal, sun.direction) > 0 ? -1 : 1);
+  float bias = 0.005;
 
   float percentLit = 0;
   float size = 5;
   int maxBound = int(floor(size / 2));
   int minBound = -int(floor((size - 0.01) / 2));
 
+  // PCF sampling
   for (int k = minBound; k <= maxBound; k++) {
     for (int l = minBound; l <= maxBound; l++) {
       vec2 texel = vec2(1 / 2048.0, 1 / 2048.0);
       vec2 offset = vec2(texel * vec2(l, k));
 
       // x, y, level, depth
-      float visibility = texture(gShadowMap, vec4(UVCoords + offset, index, (z - bias)));
+      float visibility = texture(shadow_tex, vec4(UVCoords + offset, index, (z - bias)));
 
       percentLit += visibility;
     }
   }
 
   return mix(0.5, 1.0, percentLit / (size * size) * l);
-
-  // // Finish the average of all samples, and gamma correct the shadow factor.
-  // return pow(percentLit /= 25.0f, 2.2);
-
-  // return visibility;
 }
 
 void main() {
@@ -280,8 +286,8 @@ void main() {
   float prev_shadow_factor = 0;
 
   for (int i = 0; i < NUM_CASCADES; i++) {
-    float end = gCascadeEndClipSpace[i];
-    float prev_end = i == 0 ? 0 : gCascadeEndClipSpace[i - 1];
+    float end = shadow_map.cascade_clip_splits[i];
+    float prev_end = i == 0 ? 0 : shadow_map.cascade_clip_splits[i - 1];
 
     vec3 indicator_color = vec3(1, 0, 0);
     if (i == 1)
@@ -289,8 +295,8 @@ void main() {
     else if (i == 2)
       indicator_color = vec3(0, 0, 1);
 
-    if (i > 0 && clip_space_depth > prev_end && clip_space_depth < prev_end + blend_distance) {
-      prev_shadow_factor = calcShadowFactor(i - 1, light_space_pos[i - 1], In.normal);
+    if (i > 0 && shadow_clip_depth > prev_end && shadow_clip_depth < prev_end + blend_distance) {
+      prev_shadow_factor = calcShadowFactor(i - 1, shadow_light_pos[i - 1], In.normal);
 
       prev_color = vec3(0, 0, 0);
       if (i == 1)
@@ -299,15 +305,15 @@ void main() {
         prev_color = vec3(0, 1, 0);
     }
 
-    if (clip_space_depth <= end) {
-      float sf = calcShadowFactor(i, light_space_pos[i], In.normal);
+    if (shadow_clip_depth <= end) {
+      float sf = calcShadowFactor(i, shadow_light_pos[i], In.normal);
 
       float f0
           = i == 0 ? 0
                    : 1
-                         - clamp(inverseLerp(prev_end, prev_end + blend_distance, clip_space_depth),
+                         - clamp(inverseLerp(prev_end, prev_end + blend_distance, shadow_clip_depth),
                                  0, 1);
-      float f1 = clamp(inverseLerp(end - blend_distance, end, clip_space_depth), 0, 1);
+      float f1 = clamp(inverseLerp(end - blend_distance, end, shadow_clip_depth), 0, 1);
       float f = max(f0, f1);
 
       shadow_factor = mix(sf, prev_shadow_factor, f0);
@@ -315,10 +321,8 @@ void main() {
       cascade_indicator = mix(indicator_color, prev_color, f0);
     }
 
-    if (clip_space_depth <= end) break;
+    if (shadow_clip_depth <= end) break;
   }
-
-  // shadow_factor = clip_space_depth > 1000 ? 1 : 0;
 
   float[4] draw_strengths = terrainBlending(In.world_pos, In.normal);
 
@@ -332,9 +336,6 @@ void main() {
   vec3 diffuse = diffuse(In.world_pos, terrain_normal);
 
   fragmentColor = vec4(terrain_color * shadow_factor * (ambient + diffuse), 1.0);
-
-  // fragmentColor = vec4(cascade_indicator, 1.0);
-  // fragmentColor = vec4(vec3(shadow_factor), 1.0);
 
   // Debug normals
 #if 0
@@ -355,17 +356,5 @@ void main() {
       return;
   }
   return;
-#endif
-
-// fog
-#if 0
-		float dist = distance(In.world_pos, eyeWorldPos);
-
-		float density = 0.0005;
-		float fog_factor = exp(-pow(density * dist, 2.0));
-		fog_factor = 1.0 - clamp(fog_factor, 0.0, 1.0);
-
-		vec3 fog_color = vec3(109.0 / 255.0, 116.0 / 255.0, 109.0 / 255.0);
-		fragmentColor = vec4(mix(fragmentColor.xyz, fog_color, fog_factor), 1.0f);
 #endif
 }
