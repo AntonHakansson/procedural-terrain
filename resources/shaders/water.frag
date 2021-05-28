@@ -58,7 +58,8 @@ struct ScreenSpaceReflection {
   // Maximum camera-space distance to trace before returning a miss
   float max_distance;
 };
-uniform ScreenSpaceReflection ssr;
+uniform ScreenSpaceReflection ssr_reflection;
+uniform ScreenSpaceReflection ssr_refraction;
 
 uniform mat4 inv_view_matrix;
 uniform mat4 pixel_projection;  // `pixel_projection` projects from view space to pixel coordinate
@@ -67,6 +68,7 @@ uniform float environment_multiplier;
 #define DEBUG_OFF 0
 #define DEBUG_SSR_REFLECTION 1
 #define DEBUG_SSR_REFRACTION 2
+#define DEBUG_SSR_REFRACTION_MISSES 3
 uniform int debug_flag; // 0 = off; 1 = screen space reflection; 2 = screen space refraction;
 
 // Constants
@@ -93,8 +95,8 @@ float distanceSquared(vec3 a, vec3 b) {
 }
 
 float linearizeDepth(float depth) {
-  return 2.0 * ssr.z_near * ssr.z_far
-         / (ssr.z_far + ssr.z_near - (2.0 * depth - 1.0) * (ssr.z_far - ssr.z_near));
+  return 2.0 * ssr_reflection.z_near * ssr_reflection.z_far
+         / (ssr_reflection.z_far + ssr_reflection.z_near - (2.0 * depth - 1.0) * (ssr_reflection.z_far - ssr_reflection.z_near));
 }
 
 #define uint1 uint
@@ -431,7 +433,6 @@ vec3 getDuDv(vec2 tex_coord) {
 float inverseLerp(float a, float b, float x) { return (x - a) / (b - a); }
 
 void main() {
-  // REVIEW: Does `texture` filter the result? maybe opt for `texelFetch` to get unfiltered value
   vec3 color = texelFetch(pixel_buffer, ivec2(gl_FragCoord.xy), 0).xyz;
 
   vec3 point_on_water = In.view_space_position;
@@ -473,7 +474,7 @@ void main() {
   {
     vec2 hit_pixel;
     vec3 view_hit_point;
-    bool reflection_hit = trace(point_on_water, reflection_dir, ssr, pixel_projection, hit_pixel, view_hit_point);
+    bool reflection_hit = trace(point_on_water, reflection_dir, ssr_reflection, pixel_projection, hit_pixel, view_hit_point);
     vec4 reflection_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0);
   }
 #endif
@@ -487,9 +488,9 @@ void main() {
     int which;
     vec3 view_hit_point;
     bool reflection_hit = traceScreenSpaceRay1(
-        point_on_water, reflection_dir, pixel_projection, depth_buffer, vec2(ssr.depth_buffer_size),
-        ssr.z_thickness, true, vec3(0), -ssr.z_near, ssr.stride, ssr.jitter, ssr.max_steps,
-        ssr.max_distance, hit_pixel, which, view_hit_point);
+        point_on_water, reflection_dir, pixel_projection, depth_buffer, vec2(ssr_reflection.depth_buffer_size),
+        ssr_reflection.z_thickness, true, vec3(0), -ssr_reflection.z_near, ssr_reflection.stride, ssr_reflection.jitter, ssr_reflection.max_steps,
+        ssr_reflection.max_distance, hit_pixel, which, view_hit_point);
 
     if (reflection_hit) {
       reflection_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0).rgb;
@@ -518,17 +519,22 @@ void main() {
     int which;
     vec3 view_hit_point;
     bool reflection_hit = traceScreenSpaceRay1(
-        point_on_water, refraction_dir, pixel_projection, depth_buffer, vec2(ssr.depth_buffer_size),
-        ssr.z_thickness, true, vec3(0), -ssr.z_near, ssr.stride, ssr.jitter, ssr.max_steps,
-        ssr.max_distance, hit_pixel, which, view_hit_point);
+        point_on_water, refraction_dir, pixel_projection, depth_buffer, vec2(ssr_refraction.depth_buffer_size),
+        ssr_refraction.z_thickness, true, vec3(0), -ssr_refraction.z_near, ssr_refraction.stride, ssr_refraction.jitter, ssr_refraction.max_steps,
+        ssr_refraction.max_distance, hit_pixel, which, view_hit_point);
 
     if (reflection_hit) {
       refraction_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0).rgb;
     } else {
-      // REVIEW: is there some hack here?
-      refraction_color = color;
+      // REVIEW: is there some other hack here?
+      ivec2 offset_tex_coord = ivec2(gl_FragCoord.xy) + ivec2(vec2(dudv) * textureSize(pixel_buffer, 0));
+      // vec3 ss_refraction_dir = normalize(pixel_projection * vec4(refraction_dir, 0.0)).xyz;
+      // offset_tex_coord = ivec2(gl_FragCoord.xy) + ivec2(ss_refraction_dir.xy)*5;
+      // offset_tex_coord = ivec2(gl_FragCoord.xy);
+      vec3 offset_color = texelFetch(pixel_buffer, offset_tex_coord, 0).xyz;
+      refraction_color = debug_flag == DEBUG_SSR_REFRACTION_MISSES ? vec3(0) : offset_color;
     }
-    if (debug_flag == DEBUG_SSR_REFRACTION) {
+    if (debug_flag == DEBUG_SSR_REFRACTION || debug_flag == DEBUG_SSR_REFRACTION_MISSES) {
         fragmentColor = vec4(refraction_color, 1.0);
         return;
     }
