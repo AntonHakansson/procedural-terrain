@@ -103,6 +103,7 @@ struct Camera {
         return lookAt(orbit_target - direction * orbit_distance, orbit_target, world_up);
       }
     }
+    assert(0);
   }
 
   mat4 getProjMatrix(int window_width, int window_height) {
@@ -120,6 +121,7 @@ struct Camera {
         return orbit_target - direction * orbit_distance;
       }
     }
+    assert(0);
   }
 
   void gui() {
