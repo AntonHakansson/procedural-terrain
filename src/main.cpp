@@ -237,7 +237,7 @@ struct App {
 
     terrain.render(projMatrix, viewMatrix, center, cam_pos, lightMatrix, water.height);
     water.render(window.width, window.height, current_time, projMatrix, viewMatrix, cam_pos,
-                 camera.projection.near, camera.projection.far);
+                 camera.projection.near, camera.projection.far, environment_map.multiplier);
 
     glUseProgram(current_program);
 

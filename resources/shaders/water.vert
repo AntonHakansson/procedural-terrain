@@ -6,6 +6,7 @@ layout(location = 0) in vec3 position;
 
 uniform mat4 model_matrix;
 uniform mat4 view_matrix;
+uniform mat4 inv_view_matrix;
 uniform mat4 projection_matrix;
 
 struct Water {

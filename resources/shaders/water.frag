@@ -1,5 +1,7 @@
 #version 420
 
+#define PI 3.14159265359
+
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
 
@@ -12,6 +14,8 @@ precision highp float;
 layout(binding = 0) uniform sampler2D pixel_buffer;
 layout(binding = 1) uniform sampler2D depth_buffer;
 layout(binding = 2) uniform sampler2D dudv_map;
+
+layout(binding = 6) uniform sampler2D environment_map;
 
 // Output
 layout(location = 0) out vec4 fragmentColor;
@@ -56,7 +60,9 @@ struct ScreenSpaceReflection {
 };
 uniform ScreenSpaceReflection ssr;
 
+uniform mat4 inv_view_matrix;
 uniform mat4 pixel_projection;  // `pixel_projection` projects from view space to pixel coordinate
+uniform float environment_multiplier;
 
 // Constants
 const vec3 ocean_blue = vec3(0.1, 0.3, 0.6);
@@ -475,10 +481,21 @@ void main() {
         ssr.z_thickness, true, vec3(0), -ssr.z_near, ssr.stride, ssr.jitter, ssr.max_steps,
         ssr.max_distance, hit_pixel, which, view_hit_point);
 
+    reflection_hit = false;
     if (reflection_hit) {
       reflection_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0).rgb;
     } else {
-      // TODO: sample environment map?
+      vec3 world_reflection_dir = normalize((inv_view_matrix * vec4(reflection_dir, 0.0)).xyz);
+
+      // Calculate the spherical coordinates of the direction
+      float theta = acos(max(-1.0f, min(1.0f, world_reflection_dir.y)));
+      float phi = atan(world_reflection_dir.z, world_reflection_dir.x);
+
+      if (phi < 0.0f) phi = phi + 2.0f * PI;
+
+      // Use these to lookup the color in the environment map
+      vec2 lookup = vec2(phi / (2.0 * PI), theta / PI);
+      reflection_color = texture(environment_map, lookup).xyz * environment_multiplier;
     }
   }
 

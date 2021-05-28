@@ -41,7 +41,7 @@ struct Water {
   }
 
   void render(int width, int height, float current_time, glm::mat4 projection_matrix,
-              glm::mat4 view_matrix, glm::vec3 camera_position, float z_near, float z_far) {
+              glm::mat4 view_matrix, glm::vec3 camera_position, float z_near, float z_far, float environment_multiplier) {
     screen_fbo.resize(width, height);
 
     GLint prev_fbo = 0;
@@ -78,6 +78,7 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "current_time", current_time);
     gpu::setUniformSlow(this->shader_program, "model_matrix", model_matrix);
     gpu::setUniformSlow(this->shader_program, "view_matrix", view_matrix);
+    gpu::setUniformSlow(this->shader_program, "inv_view_matrix", glm::inverse(view_matrix));
     gpu::setUniformSlow(this->shader_program, "projection_matrix", projection_matrix);
     gpu::setUniformSlow(this->shader_program, "pixel_projection", pixel_projection);
 
@@ -89,7 +90,7 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "water.size", this->size);
     ssr.upload(this->shader_program, screen_fbo.width, screen_fbo.height, z_near, z_far);
 
-    /* gpu::drawFullScreenQuad(); */
+    gpu::setUniformSlow(this->shader_program, "environment_multiplier", environment_multiplier);
 
     glBindVertexArray(vao);
     glDrawElements(GL_TRIANGLES, indices_count, GL_UNSIGNED_SHORT, 0);
