@@ -30,48 +30,59 @@ struct Camera {
     float near = 1.0f;
   } projection;
 
-  vec3 position = vec3(-70.0, 500.0, 70.0);
-  vec3 direction = normalize(vec3(0.0) - position);
   vec3 world_up = vec3(0.0, 1.0, 0.0);
+
+  vec3 position = vec3(-70.0, 500.0, 70.0);
+  vec3 direction = cross(normalize(position), world_up);
   float speed = 10;
   float rotation_speed = 0.12f;
 
   CameraMode mode = CameraMode::Fly;
 
+  vec3 orbit_target = vec3(0);
+  float orbit_distance = 5000.F;
+
   void key_event(const uint8_t *key_state, float delta_time) {
-    auto camera_right = cross(direction, world_up);
-
-    auto movement_dir = vec3(0.0);
     auto speed_multiplier = 1.0f;
-    if (key_state[SDL_SCANCODE_W]) {
-      movement_dir += direction;
-    }
-    if (key_state[SDL_SCANCODE_S]) {
-      movement_dir -= direction;
-    }
-    if (key_state[SDL_SCANCODE_A]) {
-      movement_dir -= camera_right;
-    }
-    if (key_state[SDL_SCANCODE_D]) {
-      movement_dir += camera_right;
-    }
-    if (key_state[SDL_SCANCODE_Q]) {
-      movement_dir -= world_up;
-    }
-    if (key_state[SDL_SCANCODE_E]) {
-      movement_dir += world_up;
-    }
-
     if (key_state[SDL_SCANCODE_LCTRL]) {
       speed_multiplier = 50.0;
-    }
-    else if (key_state[SDL_SCANCODE_LSHIFT]) {
+    } else if (key_state[SDL_SCANCODE_LSHIFT]) {
       speed_multiplier = 15.0;
     }
 
-    if (length(movement_dir) > 0.01) {
-      movement_dir = normalize(movement_dir);
-      position += speed * speed_multiplier * delta_time * movement_dir;
+    if (mode == CameraMode::Fly) {
+      auto camera_right = cross(direction, world_up);
+      auto movement_dir = vec3(0.0);
+      if (key_state[SDL_SCANCODE_W]) {
+        movement_dir += direction;
+      }
+      if (key_state[SDL_SCANCODE_S]) {
+        movement_dir -= direction;
+      }
+      if (key_state[SDL_SCANCODE_A]) {
+        movement_dir -= camera_right;
+      }
+      if (key_state[SDL_SCANCODE_D]) {
+        movement_dir += camera_right;
+      }
+      if (key_state[SDL_SCANCODE_Q]) {
+        movement_dir -= world_up;
+      }
+      if (key_state[SDL_SCANCODE_E]) {
+        movement_dir += world_up;
+      }
+
+      if (length(movement_dir) > 0.01) {
+        movement_dir = normalize(movement_dir);
+        position += speed * speed_multiplier * delta_time * movement_dir;
+      }
+    } else if (mode == CameraMode::Orbit) {
+      if (key_state[SDL_SCANCODE_W]) {
+        orbit_distance -= speed * speed_multiplier;
+      }
+      if (key_state[SDL_SCANCODE_S]) {
+        orbit_distance += speed * speed_multiplier;
+      }
     }
   }
 
@@ -82,7 +93,14 @@ struct Camera {
     direction = vec3(pitch * yaw * vec4(direction, 0.0f));
   }
 
-  mat4 getViewMatrix() { return lookAt(position, position + direction, world_up); }
+  mat4 getViewMatrix() {
+    if (mode == CameraMode::Fly) {
+      return lookAt(position, position + direction, world_up);
+    }
+    if (mode == CameraMode::Orbit) {
+      return lookAt(orbit_target - direction * orbit_distance, orbit_target, world_up);
+    }
+  }
 
   mat4 getProjMatrix(int window_width, int window_height) {
     return perspective(radians(projection.fovy), float(window_width) / float(window_height),
@@ -92,5 +110,13 @@ struct Camera {
   void gui() {
     ImGui::SliderFloat("Movement Speed", &this->speed, 80.0, 350.0);
     ImGui::SliderFloat("Rotate Speed", &this->rotation_speed, 0.05, 2.0);
+  }
+
+  void toggleMode() {
+    if (mode == CameraMode::Fly) {
+      mode = CameraMode::Orbit;
+    } else {
+      mode = CameraMode::Fly;
+    }
   }
 };

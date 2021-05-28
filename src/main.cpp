@@ -365,6 +365,9 @@ struct App {
       if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_r) {
         loadShaders(true);
       }
+      if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_o) {
+        camera.toggleMode();
+      }
       if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT
           && !io.WantCaptureMouse) {
         input.is_mouse_dragging = true;
