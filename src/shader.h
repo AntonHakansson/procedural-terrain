@@ -24,7 +24,7 @@ struct ShaderInput {
 static bool readShaderSource(const std::filesystem::path& filepath, std::ifstream& in,
                              std::stringstream& out, int level) {
   std::string line;
-  std::string include_keyword = "#include ";
+  std::string include_keyword = "#include \"";
   auto line_number = 0;
   while (std::getline(in, line)) {
     if (line.find(include_keyword, 0) == 0) {
@@ -34,7 +34,7 @@ static bool readShaderSource(const std::filesystem::path& filepath, std::ifstrea
                   << "\n";
         return false;
       }
-      auto include_file = line.substr(include_keyword.size() + 1, end - include_keyword.size() - 1);
+      auto include_file = line.substr(include_keyword.size(), end - include_keyword.size());
 
       std::filesystem::path include_filepath = filepath.parent_path() / include_file;
       std::ifstream s_file(include_filepath);
