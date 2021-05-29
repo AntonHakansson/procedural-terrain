@@ -321,11 +321,12 @@ void main() {
       refraction_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0).rgb;
     } else {
       // REVIEW: is there some other hack here?
-      ivec2 offset_tex_coord = ivec2(gl_FragCoord.xy) + ivec2(vec2(dudv) * textureSize(pixel_buffer, 0));
-      // vec3 ss_refraction_dir = normalize(pixel_projection * vec4(refraction_dir, 0.0)).xyz;
-      // offset_tex_coord = ivec2(gl_FragCoord.xy) + ivec2(ss_refraction_dir.xy)*5;
-      // offset_tex_coord = ivec2(gl_FragCoord.xy);
+      ivec2 screen_size = textureSize(pixel_buffer, 0);
+      ivec2 offset_tex_coord = ivec2(gl_FragCoord.xy) + ivec2(vec2(dudv) * screen_size);
       vec3 offset_color = texelFetch(pixel_buffer, offset_tex_coord, 0).xyz;
+      if ((offset_tex_coord.x < 0) || (offset_tex_coord.x > screen_size.x) || (offset_tex_coord.y < 0) || (offset_tex_coord.y > screen_size.y)) {
+          offset_color = color;
+      }
       refraction_color = debug_flag == DEBUG_SSR_REFRACTION_MISSES ? vec3(0) : offset_color;
     }
     if (debug_flag == DEBUG_SSR_REFRACTION || debug_flag == DEBUG_SSR_REFRACTION_MISSES) {
