@@ -159,6 +159,9 @@ struct Water {
     float max_steps = 50.0;
     float max_distance = 500.0;
 
+    ScreenSpaceReflection() = default;
+    ScreenSpaceReflection(float z_thickness, float stride, float max_steps) : z_thickness(z_thickness), stride(stride), max_steps(max_steps) {}
+
     void upload(GLuint program, std::string uniform_name, int width, int height,
                 Projection projection) {
       this->depth_buffer_size = glm::ivec2(width, height);
@@ -198,11 +201,7 @@ struct Water {
   float wave_strength = 0.053f;
   float wave_scale = 406;
   ScreenSpaceReflection ssr_reflection;
-  ScreenSpaceReflection ssr_refraction = ScreenSpaceReflection{
-      .z_thickness = 20,
-      .stride = 10,
-      .max_steps = 20,
-  };
+  ScreenSpaceReflection ssr_refraction = ScreenSpaceReflection(20, 10, 20);
   gpu::Texture dudv_map;
 
   GLuint shader_program;
