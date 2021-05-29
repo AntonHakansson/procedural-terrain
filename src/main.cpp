@@ -22,10 +22,10 @@ using namespace glm;
 #include "fbo.h"
 #include "hdr.h"
 #include "model.h"
+#include "postfx.h"
 #include "shadowmap.h"
 #include "terrain.h"
 #include "water.h"
-#include "postfx.h"
 
 constexpr vec3 worldUp(0.0f, 1.0f, 0.0f);
 
@@ -246,8 +246,8 @@ struct App {
 
     gpu::render(models.fighter);
 
-    water.render(&terrain, window.width, window.height, current_time, projMatrix, viewMatrix, center,
-                 camera.projection, environment_map.multiplier);
+    water.render(&terrain, window.width, window.height, current_time, projMatrix, viewMatrix,
+                 center, camera.projection, environment_map.multiplier);
   }
 
   void update(void) { terrain.update(delta_time, current_time); }
@@ -321,10 +321,10 @@ struct App {
       DebugDrawer::instance()->setCamera(viewMatrix, projMatrix);
       DebugDrawer::instance()->drawLine(vec3(0), vec3(0, 500, 0), vec3(1, 0, 0));
       shadow_map.debugProjs(cam_view_matrix, cam_proj_matrix, lightViewMatrix);
-    }
-    else if (static_camera_enabled) {
+    } else if (static_camera_enabled) {
       DebugDrawer::instance()->setCamera(viewMatrix, projMatrix);
-      DebugDrawer::instance()->drawPerspectiveFrustum(static_camera_view, static_camera_proj, vec3(1, 0, 0));
+      DebugDrawer::instance()->drawPerspectiveFrustum(static_camera_view, static_camera_proj,
+                                                      vec3(1, 0, 0));
     }
 
     postfx.unbind();

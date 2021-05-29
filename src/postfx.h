@@ -3,21 +3,18 @@
 #include <glad/glad.h>
 #include <imgui.h>
 
+#include "camera.h"
 #include "fbo.h"
 #include "glm/ext/matrix_transform.hpp"
 #include "gpu.h"
 #include "shader.h"
-#include "water.h"
 #include "terrain.h"
-#include "camera.h"
+#include "water.h"
 
 struct PostFX {
-  void init() {
-  }
+  void init() {}
 
-  void deinit() {
-    glDeleteFramebuffers(1, &this->screen_fbo.framebufferId);
-  }
+  void deinit() { glDeleteFramebuffers(1, &this->screen_fbo.framebufferId); }
 
   void loadShader(bool is_reload) {
     std::array<ShaderInput, 2> program_shaders({
@@ -43,11 +40,10 @@ struct PostFX {
     glBindFramebuffer(GL_FRAMEBUFFER, screen_fbo.framebufferId);
   }
 
-  void unbind() {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  }
+  void unbind() { glBindFramebuffer(GL_FRAMEBUFFER, 0); }
 
-  void render(Projection projection, mat4 view_matrix, mat4 proj_matrix, float current_time, Water* water, Sun* sun) {
+  void render(Projection projection, mat4 view_matrix, mat4 proj_matrix, float current_time,
+              Water* water, Sun* sun) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     glUseProgram(shader_program);
@@ -94,4 +90,3 @@ struct PostFX {
 
   int debug_mask = 0;
 };
-

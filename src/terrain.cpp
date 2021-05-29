@@ -100,7 +100,7 @@ void Terrain::begin(bool simple) {
   this->simple = simple;
 }
 
-void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 center, 
+void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 center,
                      glm::vec3 camera_position, glm::mat4 light_matrix, float water_height) {
   GLint prev_polygon_mode;
 
@@ -119,9 +119,9 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
 
     float s = (this->terrain_size / (this->terrain_subdivision + 1));
 
-    this->model_matrix = glm::translate(
-        glm::vec3(glm::floor(center.x / s) * s, 0, glm::floor(center.z / s) * s)
-        - glm::vec3(1, 0, 1) * this->terrain_size / 2.0f);
+    this->model_matrix
+        = glm::translate(glm::vec3(glm::floor(center.x / s) * s, 0, glm::floor(center.z / s) * s)
+                         - glm::vec3(1, 0, 1) * this->terrain_size / 2.0f);
 
     gpu::setUniformSlow(shader_program, "lightMatrix", light_matrix);
     gpu::setUniformSlow(shader_program, "viewInverse", inverse(view_matrix));

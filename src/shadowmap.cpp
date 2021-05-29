@@ -29,8 +29,7 @@ void ShadowMap::init(Projection projection) {
 
 void ShadowMap::calculateSplits(Projection projection) {
   // Only update if we need to
-  if (projection.near == cascade_splits[0] && projection.far == cascade_splits[3]) 
-    return;
+  if (projection.near == cascade_splits[0] && projection.far == cascade_splits[3]) return;
 
   cascade_splits[0] = projection.near;
   cascade_splits[1] = (projection.near + projection.far) / 4;
@@ -57,7 +56,8 @@ void ShadowMap::bindWrite(uint cascade_index) {
   glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_tex, 0, cascade_index);
 }
 
-void ShadowMap::begin(uint tex_index, Projection projection, mat4 proj_matrix, mat4 light_view_matrix) {
+void ShadowMap::begin(uint tex_index, Projection projection, mat4 proj_matrix,
+                      mat4 light_view_matrix) {
   calculateSplits(projection);
 
   GLint shader_program = 0;
@@ -69,9 +69,11 @@ void ShadowMap::begin(uint tex_index, Projection projection, mat4 proj_matrix, m
 
     mat4 light_proj_matrix = shadow_projections[i];
 
-    gpu::setUniformSlow(shader_program, ("shadow_map.cascade_clip_splits[" + std::to_string(i) + "]").c_str(),
+    gpu::setUniformSlow(shader_program,
+                        ("shadow_map.cascade_clip_splits[" + std::to_string(i) + "]").c_str(),
                         -vClip.z);
-    gpu::setUniformSlow(shader_program, ("shadow_map.light_wvp_matrix[" + std::to_string(i) + "]").c_str(),
+    gpu::setUniformSlow(shader_program,
+                        ("shadow_map.light_wvp_matrix[" + std::to_string(i) + "]").c_str(),
                         light_proj_matrix * light_view_matrix);
   }
 

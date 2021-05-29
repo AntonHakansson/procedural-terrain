@@ -46,7 +46,6 @@ void main() {
   Out[gl_InvocationID].tex_coord = In[gl_InvocationID].tex_coord;
   Out[gl_InvocationID].normal = In[gl_InvocationID].normal;
 
-
   // Calculate the distance from the camera to the three control points
   float eyeToVertexDistance0 = distance(eyeWorldPos, In[0].world_pos);
   float eyeToVertexDistance1 = distance(eyeWorldPos, In[1].world_pos);

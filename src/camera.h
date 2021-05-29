@@ -1,8 +1,8 @@
 #pragma once
 
-#include <array>
 #include <imgui.h>
 
+#include <array>
 #include <glm/detail/type_vec3.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
@@ -31,7 +31,7 @@ struct Projection {
 };
 
 struct Camera {
-  static constexpr std::array<const char*, 2> CameraModes{{"Fly", "Orbit"}};
+  static constexpr std::array<const char *, 2> CameraModes{{"Fly", "Orbit"}};
 
   Projection projection;
 
@@ -71,9 +71,7 @@ struct Camera {
         movement_dir += camera_right;
       }
 
-      if (length(movement_dir) > 0)
-        movement_dir = normalize(movement_dir);
-
+      if (length(movement_dir) > 0) movement_dir = normalize(movement_dir);
 
       if (key_state[SDL_SCANCODE_Q]) {
         movement_dir.y -= 1;

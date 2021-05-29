@@ -58,7 +58,6 @@ in float shadow_clip_depth;
 
 layout(binding = 10) uniform sampler2DArrayShadow shadow_tex;
 
-
 /**
  * Sun
  */
@@ -69,12 +68,10 @@ struct Sun {
 };
 uniform Sun sun;
 
-
 /**
  * Output
  */
 layout(location = 0) out vec4 fragmentColor;
-
 
 /**
  * Functions
@@ -262,8 +259,6 @@ float calcShadowFactor(int index, vec4 shadow_light_pos, vec3 normal) {
   int maxBound = int(floor(size / 2));
   int minBound = -int(floor((size - 0.01) / 2));
 
-  
-
   // PCF sampling
   for (int k = minBound; k <= maxBound; k++) {
     for (int l = minBound; l <= maxBound; l++) {
@@ -300,7 +295,8 @@ void main() {
       else if (i == 2)
         indicator_color = vec3(0, 0, 1);
 
-      if (i > 0 && shadow_clip_depth > prev_end && shadow_clip_depth < prev_end + shadow_map.blend_distance) {
+      if (i > 0 && shadow_clip_depth > prev_end
+          && shadow_clip_depth < prev_end + shadow_map.blend_distance) {
         prev_shadow_factor = calcShadowFactor(i - 1, shadow_light_pos[i - 1], In.normal);
 
         prev_cascade_color = vec3(0, 0, 0);
@@ -313,14 +309,17 @@ void main() {
       if (shadow_clip_depth <= end) {
         float sf = calcShadowFactor(i, shadow_light_pos[i], In.normal);
 
-        float f = i == 0 ? 0 : 1 - clamp(inverseLerp(prev_end, prev_end + shadow_map.blend_distance, shadow_clip_depth), 0, 1);
+        float f = i == 0 ? 0
+                         : 1
+                               - clamp(inverseLerp(prev_end, prev_end + shadow_map.blend_distance,
+                                                   shadow_clip_depth),
+                                       0, 1);
 
         shadow_factor = mix(sf, prev_shadow_factor, f);
 
         if (shadow_map.debug_show_blend) {
           cascade_indicator = mix(indicator_color, prev_cascade_color, f);
-        }
-        else {
+        } else {
           cascade_indicator = indicator_color;
         }
       }

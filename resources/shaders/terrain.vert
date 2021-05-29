@@ -15,7 +15,7 @@ out DATA {
 Out;
 
 void main() {
-  // NOTE: We transform the point into local space and _not_ clip space 
+  // NOTE: We transform the point into local space and _not_ clip space
   // for the Tesselation Control Shader
   Out.world_pos = (modelMatrix * vec4(world_pos_in, 1.0)).xyz;
   Out.tex_coord = tex_coord_in;

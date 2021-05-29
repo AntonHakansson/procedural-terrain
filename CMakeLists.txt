@@ -148,4 +148,3 @@ if(FALSE)
                          $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
   )
 endif()
-

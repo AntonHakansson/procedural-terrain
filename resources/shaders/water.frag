@@ -75,7 +75,7 @@ uniform float environment_multiplier;
 #define DEBUG_SSR_REFLECTION 1
 #define DEBUG_SSR_REFRACTION 2
 #define DEBUG_SSR_REFRACTION_MISSES 3
-uniform int debug_flag; // 0 = off; 1 = screen space reflection; 2 = screen space refraction;
+uniform int debug_flag;  // 0 = off; 1 = screen space reflection; 2 = screen space refraction;
 
 // Constants
 const vec3 ocean_blue = vec3(0.1, 0.3, 0.6);
@@ -119,8 +119,9 @@ float linearizeDepth(float depth, float near, float far) {
 
     \param hit_point Camera space location of the ray hit
  */
-bool traceScreenSpaceRay(vec3 ray_origin, vec3 ray_dir, mat4 pixel_projection, sampler2D depth_buffer, ScreenSpaceReflection ssr,
-           out vec2 hit_pixel, out vec3 hit_point) {
+bool traceScreenSpaceRay(vec3 ray_origin, vec3 ray_dir, mat4 pixel_projection,
+                         sampler2D depth_buffer, ScreenSpaceReflection ssr, out vec2 hit_pixel,
+                         out vec3 hit_point) {
   // Flip z near in camera direction
   float z_near = -ssr.z_near;
 
@@ -206,7 +207,8 @@ bool traceScreenSpaceRay(vec3 ray_origin, vec3 ray_dir, mat4 pixel_projection, s
 
     hit_pixel = permute ? P.yx : P;
 
-    scene_z_max = -linearizeDepth(texelFetch(depth_buffer, ivec2(hit_pixel), 0).r, ssr.z_near, ssr.z_far);
+    scene_z_max
+        = -linearizeDepth(texelFetch(depth_buffer, ivec2(hit_pixel), 0).r, ssr.z_near, ssr.z_far);
 
     // Step
     P += dP;
@@ -223,7 +225,7 @@ bool traceScreenSpaceRay(vec3 ray_origin, vec3 ray_dir, mat4 pixel_projection, s
 
 vec3 getDuDv(vec2 tex_coord) {
   if (debug_flag == DEBUG_SSR_REFLECTION) {
-      return vec3(0);
+    return vec3(0);
   }
 
   vec3 dudv_x
@@ -269,9 +271,10 @@ void main() {
 
   float foam_mask;
   foam_mask += max(1.0 - diff_depth / water.foam_distance, 0);
-  foam_mask *= max(sin((diff_depth / 1.5 + current_time * 8 + dudv.y * water.wave_scale / 8) / 2) * 1.5, 0);
+  foam_mask *= max(
+      sin((diff_depth / 1.5 + current_time * 8 + dudv.y * water.wave_scale / 8) / 2) * 1.5, 0);
   foam_mask += max(1.0 - (diff_depth - water.foam_distance / 4.0) / (water.foam_distance * 0.6), 0);
-  
+
   if (diff_depth < water.foam_distance / 3.0) {
     foam_mask += inverseLerp(water.foam_distance / 3.0, 0.4, diff_depth) * 1.5;
   }
@@ -281,7 +284,9 @@ void main() {
     vec2 hit_pixel;
     int which;
     vec3 view_hit_point;
-    bool reflection_hit = traceScreenSpaceRay(point_on_water, reflection_dir, pixel_projection, depth_buffer, ssr_reflection, hit_pixel, view_hit_point);
+    bool reflection_hit
+        = traceScreenSpaceRay(point_on_water, reflection_dir, pixel_projection, depth_buffer,
+                              ssr_reflection, hit_pixel, view_hit_point);
 
     if (reflection_hit) {
       reflection_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0).rgb;
@@ -298,7 +303,6 @@ void main() {
       vec2 lookup = vec2(phi / (2.0 * PI), theta / PI);
       reflection_color = texture(environment_map, lookup).xyz * environment_multiplier;
 
-
       float sun_threshold = 0.998;
       float wdots = max(dot(world_reflection_dir, -sun.direction), 0.0);
 
@@ -310,8 +314,8 @@ void main() {
       reflection_color += vec3(sun.color * f1 * 2 + vec3(1) * f2 * 4.5) * 2;
     }
     if (debug_flag == DEBUG_SSR_REFLECTION) {
-        fragmentColor = vec4(reflection_color, 1.0);
-        return;
+      fragmentColor = vec4(reflection_color, 1.0);
+      return;
     }
   }
 
@@ -320,23 +324,27 @@ void main() {
     vec2 hit_pixel;
     int which;
     vec3 view_hit_point;
-    bool refraction_hit = traceScreenSpaceRay(point_on_water, refraction_dir, pixel_projection, depth_buffer, ssr_refraction, hit_pixel, view_hit_point);
+    bool refraction_hit
+        = traceScreenSpaceRay(point_on_water, refraction_dir, pixel_projection, depth_buffer,
+                              ssr_refraction, hit_pixel, view_hit_point);
 
     if (refraction_hit) {
       refraction_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0).rgb;
     } else {
-      // REVIEW: is there some other hack here? Maybe project refraction_dir to screen space and sample in that direction?
+      // REVIEW: is there some other hack here? Maybe project refraction_dir to screen space and
+      // sample in that direction?
       ivec2 screen_size = textureSize(pixel_buffer, 0);
       ivec2 offset_pixel_coord = ivec2(gl_FragCoord.xy) + ivec2(vec2(dudv * 0.2) * screen_size);
       vec3 offset_color = texelFetch(pixel_buffer, offset_pixel_coord, 0).xyz;
-      if ((offset_pixel_coord.x < 0) || (offset_pixel_coord.x > screen_size.x) || (offset_pixel_coord.y < 0) || (offset_pixel_coord.y > screen_size.y)) {
-          offset_color = color;
+      if ((offset_pixel_coord.x < 0) || (offset_pixel_coord.x > screen_size.x)
+          || (offset_pixel_coord.y < 0) || (offset_pixel_coord.y > screen_size.y)) {
+        offset_color = color;
       }
       refraction_color = debug_flag == DEBUG_SSR_REFRACTION_MISSES ? vec3(0) : offset_color;
     }
     if (debug_flag == DEBUG_SSR_REFRACTION || debug_flag == DEBUG_SSR_REFRACTION_MISSES) {
-        fragmentColor = vec4(refraction_color, 1.0);
-        return;
+      fragmentColor = vec4(refraction_color, 1.0);
+      return;
     }
   }
 

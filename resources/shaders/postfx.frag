@@ -177,7 +177,9 @@ void main() {
   // Calculate horizon mask
   float horizon_mask = 1;
   if (linear_depth == postfx.z_far) {
-    horizon_mask = clamp(inverseLerpClamped(0, 0.8, world_dir.y) + (inverseLerpClamped(sun_threshold, 1, wdots)), 0, 1);
+    horizon_mask = clamp(
+        inverseLerpClamped(0, 0.8, world_dir.y) + (inverseLerpClamped(sun_threshold, 1, wdots)), 0,
+        1);
   }
 
   float horizon_sunset_mask = mix(horizon_mask, 1, sunset_trans);
@@ -225,7 +227,8 @@ void main() {
   visibility_factor /= float(NUM_RAY_STEPS);
 
   vec3 god_ray_color = mix(sunset_color, sunset_color, sunset_trans);
-  out_color += god_ray_color * visibility_factor * (1 - sunset_trans * 0.4) * clamp((1 - ray_dist / 1), 0.0, 1.0) * 0.6;
+  out_color += god_ray_color * visibility_factor * (1 - sunset_trans * 0.4)
+               * clamp((1 - ray_dist / 1), 0.0, 1.0) * 0.6;
 
   if (postfx.debug_mask == DEBUG_MASK_GOD_RAY) {
     fragmentColor = vec4(vec3(visibility_factor), 1);
