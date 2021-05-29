@@ -160,7 +160,8 @@ struct Water {
     float max_distance = 500.0;
 
     ScreenSpaceReflection() = default;
-    ScreenSpaceReflection(float z_thickness, float stride, float max_steps) : z_thickness(z_thickness), stride(stride), max_steps(max_steps) {}
+    ScreenSpaceReflection(float z_thickness, float stride, float max_steps)
+        : z_thickness(z_thickness), stride(stride), max_steps(max_steps) {}
 
     void upload(GLuint program, std::string uniform_name, int width, int height,
                 Projection projection) {

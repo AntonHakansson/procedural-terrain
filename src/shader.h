@@ -3,8 +3,8 @@
 #include <glad/glad.h>
 
 #include <array>
-#include <fstream>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 
 #include "gpu.h"
@@ -21,7 +21,8 @@ struct ShaderInput {
   GLenum type;
 };
 
-static bool readShaderSource(const std::filesystem::path& filepath, std::ifstream& in, std::stringstream& out, int level) {
+static bool readShaderSource(const std::filesystem::path& filepath, std::ifstream& in,
+                             std::stringstream& out, int level) {
   std::string line;
   std::string include_keyword = "#include ";
   auto line_number = 0;
@@ -29,7 +30,8 @@ static bool readShaderSource(const std::filesystem::path& filepath, std::ifstrea
     if (line.find(include_keyword, 0) == 0) {
       auto end = line.find_last_of('\"');
       if (end == std::string::npos) {
-        std::cout << filepath << ":" << line_number << ": GLSL: Invalid include format: " << line << "\n";
+        std::cout << filepath << ":" << line_number << ": GLSL: Invalid include format: " << line
+                  << "\n";
         return false;
       }
       auto include_file = line.substr(include_keyword.size() + 1, end - include_keyword.size() - 1);
@@ -44,7 +46,9 @@ static bool readShaderSource(const std::filesystem::path& filepath, std::ifstrea
       {
         out << "#line 0 " << level + 1 << "\n";
         auto success = readShaderSource(include_filepath, s_file, out, level + 1);
-        if (!success) { return false; }
+        if (!success) {
+          return false;
+        }
       }
 
       line_number += 2;
@@ -70,15 +74,15 @@ GLuint loadShaderProgram(const std::array<ShaderInput, N>& shaders, bool allow_e
     auto success = readShaderSource(s.filepath, s_file, shader_source, 0);
     if (!success) {
       if (!allow_errors) {
-          gpu::fatal_error("Preprocessor error", s.filepath);
+        gpu::fatal_error("Preprocessor error", s.filepath);
       }
       return 0;
     }
 
-    std::string full_source{std::istreambuf_iterator<char>(shader_source), std::istreambuf_iterator<char>()};
-    const char *c_str = full_source.c_str();
+    std::string full_source{std::istreambuf_iterator<char>(shader_source),
+                            std::istreambuf_iterator<char>()};
+    const char* c_str = full_source.c_str();
     glShaderSource(gl_shader, 1, &c_str, nullptr);
-
 
     glCompileShader(gl_shader);
 
