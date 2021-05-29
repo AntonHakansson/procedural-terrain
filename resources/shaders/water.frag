@@ -105,17 +105,19 @@ float linearizeDepth(float depth, float near, float far) {
 }
 
 /**
-    \param csOrigin Camera-space ray origin, which must be
+    \param ray_origin Camera-space ray origin, which must be
     within the view volume and must have z < -0.01 and project within the valid screen rectangle
 
-    \param csDirection Unit length camera-space ray direction
+    \param ray_dir Unit length camera-space ray direction
 
     \param pixel_projection A projection matrix that maps to pixel coordinates (not [-1, +1]
    normalized device coordinates)
 
-    \param hitPixel Pixel coordinates of the first intersection with the scene
+    \param depth_buffer hyperbolic depth_buffer to sample from
 
-    \param csHitPoint Camera space location of the ray hit
+    \param hit_pixel Screen space pixel location of the ray hit
+
+    \param hit_point Camera space location of the ray hit
  */
 bool traceScreenSpaceRay(vec3 ray_origin, vec3 ray_dir, mat4 pixel_projection, sampler2D depth_buffer, ScreenSpaceReflection ssr,
            out vec2 hit_pixel, out vec3 hit_point) {
@@ -274,21 +276,6 @@ void main() {
     foam_mask += inverseLerp(water.foam_distance / 3.0, 0.4, diff_depth) * 1.5;
   }
 
-
-// reflection based on paper
-// -----------
-#if 0
-  {
-    vec2 hit_pixel;
-    vec3 view_hit_point;
-    bool reflection_hit = traceScreenSpaceRay(point_on_water, reflection_dir, ssr_reflection, pixel_projection, hit_pixel, view_hit_point);
-    vec4 reflection_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0);
-  }
-#endif
-
-// reflection with paper impl
-// -----------
-#if 1
   vec3 reflection_color = vec3(0);
   {
     vec2 hit_pixel;
@@ -338,11 +325,11 @@ void main() {
     if (refraction_hit) {
       refraction_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0).rgb;
     } else {
-      // REVIEW: is there some other hack here?
+      // REVIEW: is there some other hack here? Maybe project refraction_dir to screen space and sample in that direction?
       ivec2 screen_size = textureSize(pixel_buffer, 0);
-      ivec2 offset_tex_coord = ivec2(gl_FragCoord.xy) + ivec2(vec2(dudv) * screen_size);
-      vec3 offset_color = texelFetch(pixel_buffer, offset_tex_coord, 0).xyz;
-      if ((offset_tex_coord.x < 0) || (offset_tex_coord.x > screen_size.x) || (offset_tex_coord.y < 0) || (offset_tex_coord.y > screen_size.y)) {
+      ivec2 offset_pixel_coord = ivec2(gl_FragCoord.xy) + ivec2(vec2(dudv * 0.2) * screen_size);
+      vec3 offset_color = texelFetch(pixel_buffer, offset_pixel_coord, 0).xyz;
+      if ((offset_pixel_coord.x < 0) || (offset_pixel_coord.x > screen_size.x) || (offset_pixel_coord.y < 0) || (offset_pixel_coord.y > screen_size.y)) {
           offset_color = color;
       }
       refraction_color = debug_flag == DEBUG_SSR_REFRACTION_MISSES ? vec3(0) : offset_color;
@@ -360,7 +347,6 @@ void main() {
   out_color = out_color + (foam_mask * 0.3);
 
   out_color = mix(out_color.xyz, ocean_blue_deep, ocean_mask);
-#endif
 
   fragmentColor = vec4(out_color, 1.0);
 }
