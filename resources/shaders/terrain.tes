@@ -13,6 +13,7 @@ In[];
 uniform mat4 viewProjectionMatrix;
 uniform mat4 lightMatrix;
 uniform mat4 viewMatrix;
+uniform mat4 viewInverse;
 
 // Cascading shadow maps
 const int NUM_CASCADES = 3;
@@ -46,6 +47,7 @@ out DATA {
   vec4 shadow_coord;
   vec2 tex_coord;
   vec3 normal;
+  vec3 view_normal;
   vec3 tangent;
   vec3 bitangent;
   mat3 tangent_matrix;
@@ -107,6 +109,7 @@ void main() {
   Out.view_pos = (viewMatrix * vec4(Out.world_pos, 1.0)).xyz;
 
   Out.normal = computeNormals(Out.world_pos);
+  Out.view_normal = (viewInverse * vec4(Out.normal, 0.0)).xyz;
   Out.tangent = computeTangent(Out.world_pos, Out.normal);
   Out.bitangent = normalize(cross(Out.tangent, Out.normal));
 

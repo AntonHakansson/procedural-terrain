@@ -31,16 +31,27 @@ void Terrain::init() {
       "resources/textures/terrain/rock_beach/roughness.jpg",
       "resources/textures/terrain/snow/roughness.jpg",
   };
+  std::array<std::string, 4> ao_paths = {
+      "resources/textures/terrain/beach/ao.jpg",
+      "resources/textures/terrain/grass/ao.jpg",
+      "resources/textures/terrain/rock_beach/ao.jpg",
+      "resources/textures/terrain/snow/ao.jpg",
+  };
 
-  albedos.load2DArray<4>(albedo_paths, 5);
-  normals.load2DArray<4>(normal_paths, 5);
-  displacements.load2DArray<4>(displacement_paths, 5);
+  int mipmaps = 5;
+  albedos.load2DArray<4>(albedo_paths, mipmaps);
+  normals.load2DArray<4>(normal_paths, mipmaps);
+  displacements.load2DArray<4>(displacement_paths, mipmaps);
+  roughness.load2DArray<4>(roughness_paths, mipmaps);
+  ambient_occlusions.load2DArray<4>(ao_paths, mipmaps);
 }
 
 void Terrain::deinit() {
   glDeleteTextures(1, &albedos.gl_id);
   glDeleteTextures(1, &normals.gl_id);
   glDeleteTextures(1, &displacements.gl_id);
+  glDeleteTextures(1, &roughness.gl_id);
+  glDeleteTextures(1, &ambient_occlusions.gl_id);
   glDeleteBuffers(1, &this->positions_bo);
   glDeleteBuffers(1, &this->indices_bo);
   glDeleteVertexArrays(1, &this->vao);
@@ -101,7 +112,7 @@ void Terrain::begin(bool simple) {
 }
 
 void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 center,
-                     glm::vec3 camera_position, glm::mat4 light_matrix, float water_height) {
+                     glm::vec3 camera_position, glm::mat4 light_matrix, float water_height, float environment_multiplier) {
   GLint prev_polygon_mode;
 
   GLuint shader_program = this->simple ? this->shader_program_simple : this->shader_program;
@@ -110,6 +121,8 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
     glBindTextureUnit(0, albedos.gl_id);
     glBindTextureUnit(1, normals.gl_id);
     glBindTextureUnit(2, displacements.gl_id);
+    glBindTextureUnit(3, roughness.gl_id);
+    glBindTextureUnit(4, ambient_occlusions.gl_id);
 
     if (this->wireframe) {
       glGetIntegerv(GL_POLYGON_MODE, &prev_polygon_mode);
@@ -139,6 +152,7 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
     gpu::setUniformSlow(shader_program, "sun.direction", sun.direction);
     gpu::setUniformSlow(shader_program, "sun.color", sun.color);
     gpu::setUniformSlow(shader_program, "sun.intensity", sun.intensity);
+    gpu::setUniformSlow(shader_program, "environment_multiplier", environment_multiplier);
 
     gpu::setUniformSlow(shader_program, "noise.num_octaves", (GLint)noise.num_octaves);
 

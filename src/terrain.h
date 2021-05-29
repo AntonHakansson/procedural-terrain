@@ -110,6 +110,8 @@ struct Terrain {
   gpu::Texture albedos;
   gpu::Texture normals;
   gpu::Texture displacements;
+  gpu::Texture roughness;
+  gpu::Texture ambient_occlusions;
 
   std::array<float, 4> texture_start_heights{155, 270, 520, 866};
   std::array<float, 4> texture_blends{0.0, 80, 415, 610};
@@ -133,6 +135,6 @@ struct Terrain {
 
   void begin(bool simple);
   void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 center,
-              glm::vec3 camera_position, glm::mat4 light_matrix, float water_height);
+              glm::vec3 camera_position, glm::mat4 light_matrix, float water_height, float environment_multiplier);
   void gui(Camera* camera);
 };

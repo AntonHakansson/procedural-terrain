@@ -52,6 +52,7 @@ struct App {
   struct Models {
     gpu::Model* fighter = nullptr;
     gpu::Model* landingpad = nullptr;
+    gpu::Model* material_test = nullptr;
     gpu::Model* sphere = nullptr;
   } models;
 
@@ -73,6 +74,9 @@ struct App {
 
   bool fighter_draggable = false;
   mat4 fighter_model_matrix = translate(vec3(0, 500, 0));
+  mat4 material_test_matrix = translate(vec3(50, 500, 0));
+
+  mat4 debug_light_matrix = glm::translate(vec3(50.0, 505, 0.0)) * glm::scale(vec3(2));
 
   mat4 static_camera_proj;
   mat4 static_camera_view;
@@ -92,8 +96,12 @@ struct App {
                                     "resources/shaders/background.frag", is_reload);
     if (shader != 0) background_program = shader;
 
-    shader = gpu::loadShaderProgram("resources/shaders/shading.vert",
-                                    "resources/shaders/shading.frag", is_reload);
+
+    std::array<ShaderInput, 2> program_shading({
+        ShaderInput{"resources/shaders/shading.vert", GL_VERTEX_SHADER},
+        ShaderInput{"resources/shaders/shading.frag", GL_FRAGMENT_SHADER},
+    });
+    shader = loadShaderProgram(program_shading, is_reload);
     if (shader != 0) shader_program = shader;
 
     shader = gpu::loadShaderProgram("resources/shaders/debug.vert", "resources/shaders/debug.frag",
@@ -118,6 +126,7 @@ struct App {
     // Load models and set up model matrices
     models.fighter = gpu::loadModelFromOBJ("resources/models/NewShip.obj");
     models.landingpad = gpu::loadModelFromOBJ("resources/models/landingpad.obj");
+    models.material_test = gpu::loadModelFromOBJ("resources/models/materialtest.obj");
     models.sphere = gpu::loadModelFromOBJ("resources/models/sphere.obj");
 
     // Load environment map
@@ -150,25 +159,26 @@ struct App {
 
     gpu::freeModel(models.fighter);
     gpu::freeModel(models.landingpad);
+    gpu::freeModel(models.material_test);
     gpu::freeModel(models.sphere);
   }
 
-  void debugDrawLight(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix,
-                      const glm::vec3& worldSpaceLightPos) {
-    mat4 modelMatrix = glm::translate(worldSpaceLightPos);
+  void debugDrawLight(const glm::mat4& view_matrix, const glm::mat4& proj_matrix,
+                      const glm::vec3& world_space_light_pos) {
+    mat4 modelMatrix = glm::translate(world_space_light_pos);
     glUseProgram(shader_program);
     gpu::setUniformSlow(shader_program, "modelViewProjectionMatrix",
-                        projectionMatrix * viewMatrix * modelMatrix);
-    gpu::setUniformSlow(shader_program, "modelViewMatrix", viewMatrix * modelMatrix);
+                        proj_matrix * view_matrix * modelMatrix);
+    gpu::setUniformSlow(shader_program, "modelViewMatrix", view_matrix * modelMatrix);
     gpu::setUniformSlow(shader_program, "normalMatrix",
-                        inverse(transpose(viewMatrix * modelMatrix)));
+                        inverse(transpose(view_matrix * modelMatrix)));
     gpu::render(models.sphere);
   }
 
-  void drawBackground(const mat4& viewMatrix, const mat4& projectionMatrix) {
+  void drawBackground(const mat4& view_matrix, const mat4& proj_matrix) {
     glUseProgram(background_program);
     gpu::setUniformSlow(background_program, "environment_multiplier", environment_map.multiplier);
-    gpu::setUniformSlow(background_program, "inv_PV", inverse(projectionMatrix * viewMatrix));
+    gpu::setUniformSlow(background_program, "inv_PV", inverse(proj_matrix * view_matrix));
     gpu::setUniformSlow(background_program, "camera_pos", camera.getWorldPos());
     gpu::drawFullScreenQuad();
   }
@@ -195,10 +205,20 @@ struct App {
       terrain.begin(true);
 
       glDisable(GL_CULL_FACE);
-      terrain.render(light_proj_matrix, light_view_matrix, center, cam_pos, mat4(), water.height);
+      terrain.render(light_proj_matrix, light_view_matrix, center, cam_pos, mat4(), water.height, environment_map.multiplier);
       glEnable(GL_CULL_FACE);
 
       glUseProgram(current_program);
+
+      // vec3 light_pos = -terrain.sun.direction * 500.F;
+      vec4 view_light_pos = view_matrix * vec4(vec3(debug_light_matrix[3]), 1);
+
+      ImGuizmo::Manipulate(&view_matrix[0][0], &proj_matrix[0][0], ImGuizmo::TRANSLATE,
+                           ImGuizmo::WORLD, &debug_light_matrix[0][0], nullptr, nullptr);
+      ImGuizmo::DrawCubes(&view_matrix[0][0], &proj_matrix[0][0], &debug_light_matrix[0][0], 1);
+      ImGuizmo::DrawCubes(&view_matrix[0][0], &proj_matrix[0][0], &(glm::translate(vec3(0, 500, 0)) * glm::scale(terrain.sun.direction * 20.F))[0][0], 1);
+
+      gpu::setUniformSlow(current_program, "viewSpaceLightPosition", vec3(view_light_pos));
 
       // Fighter
       gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
@@ -209,11 +229,20 @@ struct App {
                           inverse(transpose(light_view_matrix * fighter_model_matrix)));
 
       gpu::render(models.fighter);
+
+      // Material test
+      gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
+                          light_proj_matrix * light_view_matrix * material_test_matrix);
+      gpu::setUniformSlow(current_program, "modelViewMatrix",
+                          light_view_matrix * material_test_matrix);
+      gpu::setUniformSlow(current_program, "normalMatrix",
+                          inverse(transpose(light_view_matrix * material_test_matrix)));
+      gpu::render(models.material_test);
     }
   }
 
-  void renderPass(GLuint current_program, const mat4& viewMatrix, const mat4& projMatrix,
-                  const mat4& lightViewMatrix) {
+  void renderPass(GLuint current_program, const mat4& view_matrix, const mat4& proj_matrix,
+                  const mat4& light_view_matrix) {
     glUseProgram(current_program);
 
     vec3 cam_pos = static_camera_enabled ? static_camera_world_pos : camera.getWorldPos();
@@ -223,7 +252,7 @@ struct App {
     gpu::setUniformSlow(current_program, "environment_multiplier", environment_map.multiplier);
 
     // camera
-    gpu::setUniformSlow(current_program, "viewInverse", inverse(viewMatrix));
+    gpu::setUniformSlow(current_program, "viewInverse", inverse(view_matrix));
 
     // Terrain
     mat4 lightMatrix = mat4(1);
@@ -231,22 +260,32 @@ struct App {
     terrain.begin(false);
 
     // Bind shadow map textures
-    shadow_map.begin(10, camera.projection, projMatrix, lightViewMatrix);
+    shadow_map.begin(10, camera.projection, proj_matrix, light_view_matrix);
 
-    terrain.render(projMatrix, viewMatrix, center, cam_pos, lightMatrix, water.height);
+    terrain.render(proj_matrix, view_matrix, center, cam_pos, lightMatrix, water.height, environment_map.multiplier);
 
     glUseProgram(current_program);
 
     // Fighter
     gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
-                        projMatrix * viewMatrix * fighter_model_matrix);
-    gpu::setUniformSlow(current_program, "modelViewMatrix", viewMatrix * fighter_model_matrix);
+                        proj_matrix * view_matrix * fighter_model_matrix);
+    gpu::setUniformSlow(current_program, "modelViewMatrix", view_matrix * fighter_model_matrix);
     gpu::setUniformSlow(current_program, "normalMatrix",
-                        inverse(transpose(viewMatrix * fighter_model_matrix)));
+                        inverse(transpose(view_matrix * fighter_model_matrix)));
 
     gpu::render(models.fighter);
 
-    water.render(&terrain, window.width, window.height, current_time, projMatrix, viewMatrix,
+    // Material test
+    gpu::setUniformSlow(current_program, "environment_multiplier", environment_map.multiplier);
+    gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
+                        proj_matrix * view_matrix * material_test_matrix);
+    gpu::setUniformSlow(current_program, "modelViewMatrix",
+                        view_matrix * material_test_matrix);
+    gpu::setUniformSlow(current_program, "normalMatrix",
+                        inverse(transpose(view_matrix * material_test_matrix)));
+    gpu::render(models.material_test);
+
+    water.render(&terrain, window.width, window.height, current_time, proj_matrix, view_matrix,
                  center, camera.projection, environment_map.multiplier);
   }
 
@@ -263,17 +302,17 @@ struct App {
     ImGuizmo::SetRect(0, 0, window.width, window.height);
 
     // setup matrices
-    mat4 projMatrix = camera.getProjMatrix(window.width, window.height);
-    mat4 viewMatrix = camera.getViewMatrix();
+    mat4 proj_matrix = camera.getProjMatrix(window.width, window.height);
+    mat4 view_matrix = camera.getViewMatrix();
 
     if (fighter_draggable) {
-      ImGuizmo::Manipulate(&viewMatrix[0][0], &projMatrix[0][0], ImGuizmo::TRANSLATE,
+      ImGuizmo::Manipulate(&view_matrix[0][0], &proj_matrix[0][0], ImGuizmo::TRANSLATE,
                            ImGuizmo::LOCAL, &fighter_model_matrix[0][0], nullptr, nullptr);
     }
 
     if (!static_camera_set && static_camera_enabled) {
       static_camera_proj = camera.getProjMatrix(window.width, window.height);
-      static_camera_view = viewMatrix;
+      static_camera_view = view_matrix;
       static_camera_world_pos = camera.getWorldPos();
       static_camera_pos = camera.position;
       static_camera_set = true;
@@ -292,10 +331,10 @@ struct App {
     //     )
     // );
 
-    mat4 cam_proj_matrix = static_camera_enabled ? static_camera_proj : projMatrix;
-    mat4 cam_view_matrix = static_camera_enabled ? static_camera_view : viewMatrix;
+    mat4 cam_proj_matrix = static_camera_enabled ? static_camera_proj : proj_matrix;
+    mat4 cam_view_matrix = static_camera_enabled ? static_camera_view : view_matrix;
 
-    shadowPass(shader_program, cam_view_matrix, projMatrix, lightViewMatrix);
+    shadowPass(shader_program, cam_view_matrix, proj_matrix, lightViewMatrix);
 
     // Bind the environment map(s) to unused texture units
     glActiveTexture(GL_TEXTURE6);
@@ -314,21 +353,21 @@ struct App {
     glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    drawBackground(viewMatrix, projMatrix);
-    renderPass(shader_program, viewMatrix, projMatrix, lightViewMatrix);
+    drawBackground(view_matrix, proj_matrix);
+    renderPass(shader_program, view_matrix, proj_matrix, lightViewMatrix);
 
     if (shadow_map.debug_show_projections) {
-      DebugDrawer::instance()->setCamera(viewMatrix, projMatrix);
+      DebugDrawer::instance()->setCamera(view_matrix, proj_matrix);
       DebugDrawer::instance()->drawLine(vec3(0), vec3(0, 500, 0), vec3(1, 0, 0));
       shadow_map.debugProjs(cam_view_matrix, cam_proj_matrix, lightViewMatrix);
     } else if (static_camera_enabled) {
-      DebugDrawer::instance()->setCamera(viewMatrix, projMatrix);
+      DebugDrawer::instance()->setCamera(view_matrix, proj_matrix);
       DebugDrawer::instance()->drawPerspectiveFrustum(static_camera_view, static_camera_proj,
                                                       vec3(1, 0, 0));
     }
 
     postfx.unbind();
-    postfx.render(camera.projection, viewMatrix, projMatrix, current_time, &water, &terrain.sun);
+    postfx.render(camera.projection, view_matrix, proj_matrix, current_time, &water, &terrain.sun);
   }
 
   bool handleEvents(void) {

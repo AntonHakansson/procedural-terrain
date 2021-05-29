@@ -3,6 +3,8 @@
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
 
+#include "pbr.glsl"
+
 ///////////////////////////////////////////////////////////////////////////////
 // Material
 ///////////////////////////////////////////////////////////////////////////////
@@ -30,7 +32,7 @@ uniform float environment_multiplier;
 // Light source
 ///////////////////////////////////////////////////////////////////////////////
 uniform vec3 point_light_color = vec3(1.0, 1.0, 1.0);
-uniform float point_light_intensity_multiplier = 50.0;
+uniform float point_light_intensity_multiplier = 30.0;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Constants
@@ -56,12 +58,12 @@ uniform vec3 viewSpaceLightPosition;
 ///////////////////////////////////////////////////////////////////////////////
 layout(location = 0) out vec4 fragmentColor;
 
-vec3 calculateDirectIllumiunation(vec3 wo, vec3 n) {
+vec3 calculateDirectIllumiunation(vec3 wo, vec3 n, vec3 wi) {
   vec3 direct_illum = material_color;
-  vec3 wi = normalize(viewSpaceLightPosition - viewSpacePosition);
 
-  float dist_to_light = length(viewSpaceLightPosition - viewSpacePosition);
-  float attenuation = 1.0 / (dist_to_light * dist_to_light);
+  // float dist_to_light = length(viewSpaceLightPosition - viewSpacePosition);
+  // float attenuation = 1.0 / (dist_to_light * dist_to_light);
+  float attenuation = 1;
 
   vec3 L_i = point_light_intensity_multiplier * point_light_color * attenuation;
 
@@ -192,13 +194,29 @@ void main() {
   float attenuation = 1.0;
 
   vec3 wo = -normalize(viewSpacePosition);
+  vec3 wi = normalize(viewSpaceLightPosition - viewSpacePosition);
   vec3 n = normalize(viewSpaceNormal);
 
-  // Direct illumination
-  vec3 direct_illumination_term = visibility * calculateDirectIllumiunation(wo, n);
+#if 1
+  Material m;
+  m.albedo = material_color;
+  m.metallic = material_metalness;
+  m.roughness = sqrt(sqrt(2.0 / (material_shininess + 2.0)));
+  m.reflective = material_reflectivity;
+  m.fresnel = material_fresnel;
+  m.ao = 1.0;
 
-  // Indirect illumination
+  Light light;
+  light.pos = viewSpaceLightPosition;
+  light.color = point_light_color;
+  light.intensity = point_light_intensity_multiplier;
+
+  vec3 direct_illumination_term = pbrDirectLightning(viewSpacePosition, n, wo, wi, m, light, true);
+  vec3 indirect_illumination_term = pbrIndirectLightning(n, wo, m, viewInverse, environment_multiplier, irradianceMap, reflectionMap);
+#else
+  vec3 direct_illumination_term = visibility * calculateDirectIllumiunation(wo, n, wi);
   vec3 indirect_illumination_term = calculateIndirectIllumination(wo, n);
+#endif
 
   ///////////////////////////////////////////////////////////////////////////
   // Add emissive term. If emissive texture exists, sample this term.
@@ -209,8 +227,5 @@ void main() {
   }
 
   vec3 shading = direct_illumination_term + indirect_illumination_term + emission_term;
-  fragmentColor = vec4(vec3(shading), 1.0);
-
-  // float slope = dot(vec3(0, 1, 0), n);
-  // fragmentColor = vec4(vec3(slope), 1.0);
+  fragmentColor = vec4(shading * visibility, 1.0);
 }

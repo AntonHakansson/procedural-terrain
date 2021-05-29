@@ -3,12 +3,15 @@
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
 
+#include "pbr.glsl"
+
 in DATA {
   vec3 world_pos;
   vec3 view_pos;
   vec4 shadow_coord;
   vec2 tex_coord;
   vec3 normal;
+  vec3 view_normal;
   vec3 tangent;
   vec3 bitangent;
   mat3 tangent_matrix;
@@ -19,6 +22,11 @@ layout(binding = 0) uniform sampler2DArray albedos;
 layout(binding = 1) uniform sampler2DArray normals;
 layout(binding = 2) uniform sampler2DArray displacement;
 layout(binding = 3) uniform sampler2DArray roughness;
+layout(binding = 4) uniform sampler2DArray ambient_occlusion;
+
+layout(binding = 7) uniform sampler2D irradiance_map;
+layout(binding = 8) uniform sampler2D reflection_map;
+uniform float environment_multiplier;
 
 uniform mat4 viewInverse;
 
@@ -119,7 +127,7 @@ vec3 getWorldNormal(vec3 tex_coord) {
 }
 
 void blendTextures(vec3 t1, vec3 t2, vec3 t3, vec3 t4, float[4] w, out vec3 color,
-                   out vec3 normal) {
+                   out vec3 normal, out float r, out float ao) {
   vec3 col1 = texture(albedos, t1).rgb;
   vec3 col2 = texture(albedos, t2).rgb;
   vec3 col3 = texture(albedos, t3).rgb;
@@ -129,6 +137,16 @@ void blendTextures(vec3 t1, vec3 t2, vec3 t3, vec3 t4, float[4] w, out vec3 colo
   vec3 normal2 = getWorldNormal(t2);
   vec3 normal3 = getWorldNormal(t3);
   vec3 normal4 = getWorldNormal(t4);
+
+  float r1 = texture(roughness, t1).r;
+  float r2 = texture(roughness, t2).r;
+  float r3 = texture(roughness, t3).r;
+  float r4 = texture(roughness, t4).r;
+
+  float a1 = texture(ambient_occlusion, t1).r;
+  float a2 = texture(ambient_occlusion, t2).r;
+  float a3 = texture(ambient_occlusion, t3).r;
+  float a4 = texture(ambient_occlusion, t4).r;
 
   float disp1 = texture(displacement, t1).r * texture_displacement_weights[0];
   float disp2 = texture(displacement, t2).r * texture_displacement_weights[1];
@@ -147,6 +165,8 @@ void blendTextures(vec3 t1, vec3 t2, vec3 t3, vec3 t4, float[4] w, out vec3 colo
 
   color = (col1 * w1 + col2 * w2 + col3 * w3 + col4 * w4) / total_w;
   normal = normalize((normal1 * w1 + normal2 * w2 + normal3 * w3 + normal4 * w4) / total_w);
+  r = (r1 * w1 + r2 * w2 + r3 * w3 + r4 * w4) / total_w;
+  ao = (a1 * w1 + a2 * w2 + a3 * w3 + a4 * w4) / total_w;
 }
 
 float[4] terrainBlending(vec3 world_pos, vec3 normal) {
@@ -205,10 +225,6 @@ float[4] terrainBlending(vec3 world_pos, vec3 normal) {
 vec3 getTextureCoordinate(vec3 world_pos, int texture_index) {
   vec2 scaled_worldpos = (world_pos / (2048.0)).xz;
   vec2 tex_coord = scaled_worldpos * texture_sizes[texture_index];
-
-  mat4 inv_view_matrix = viewInverse;
-  vec3 view_direction
-      = normalize(-vec3(inv_view_matrix[2][0], inv_view_matrix[2][1], inv_view_matrix[2][2]));
 
   return vec3(tex_coord, texture_index);
 }
@@ -332,14 +348,37 @@ void main() {
 
   vec3 terrain_color;
   vec3 terrain_normal;
+  float terrain_roughness;
+  float ao;
   blendTextures(getTextureCoordinate(In.world_pos, 0), getTextureCoordinate(In.world_pos, 1),
                 getTextureCoordinate(In.world_pos, 2), getTextureCoordinate(In.world_pos, 3),
-                draw_strengths, terrain_color, terrain_normal);
+                draw_strengths, terrain_color, terrain_normal, terrain_roughness, ao);
 
+#if 1
+  Material m;
+  m.albedo = terrain_color;
+  m.metallic = 0.0;
+  m.roughness = terrain_roughness;
+  m.ao = ao;
+  // m.ao = 1;
+  m.reflective = 0.8;
+  m.fresnel = 0.04;
+
+  Light light;
+  light.color = vec3(1);
+  light.intensity = sun.intensity;
+
+  vec3 wo = -normalize(In.view_pos);
+  vec3 wi = normalize((viewInverse * vec4(-sun.direction, 0.0)).xyz);
+  vec3 n = (viewInverse * vec4(terrain_normal, 0.0)).xyz;
+  out_color = pbrDirectLightning(In.view_pos, n, wo, wi, m, light, true);
+  out_color += pbrIndirectLightning(n, wo, m, viewInverse, environment_multiplier, irradiance_map, reflection_map);
+  out_color *= shadow_factor;
+#else
   vec3 ambient = ambient();
   vec3 diffuse = diffuse(In.world_pos, terrain_normal);
-
   out_color = vec3(terrain_color * shadow_factor * (ambient + diffuse));
+#endif
 
   // Debug normals
 #if 0
