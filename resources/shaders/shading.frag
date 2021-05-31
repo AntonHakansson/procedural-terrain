@@ -213,7 +213,7 @@ void main() {
   light.attenuation = vec3(0, 0, 1);
 
   vec3 direct_illumination_term
-      = pbrDirectLightning(viewSpacePosition, n, wo, wi, viewInverse, m, light, false,
+      = pbrDirectLightning(viewSpacePosition, n, wo, wi, viewInverse, m, light,
                            environment_multiplier, irradianceMap, reflectionMap);
   // vec3 indirect_illumination_term = pbrIndirectLightning(n, wo, m, viewInverse,
   // environment_multiplier, irradianceMap, reflectionMap);

@@ -3,8 +3,9 @@
 #endif
 
 const vec3 PBR_DIELECTRIC_F0 = vec3(0.04);
+const int MAX_LIGHTS 32
 
-struct Light {
+    struct Light {
   vec3 pos;
   vec3 color;
   float intensity;
@@ -80,8 +81,8 @@ float geometrySmith(vec3 n, vec3 wo, vec3 wi, float roughness) {
 // wo is the direction from the fragment to the camera
 // wi is the direction form the fragment to the light
 vec3 pbrDirectLightning(vec3 p, vec3 n, vec3 wo, vec3 wi, mat4 view_inverse, Material m,
-                        Light light, bool is_directional, float environment_multiplier,
-                        sampler2D irradiance_map, sampler2D reflection_map) {
+                        Light light, float environment_multiplier, sampler2D irradiance_map,
+                        sampler2D reflection_map) {
   float cos_theta = max(dot(n, wi), 0.0);
   vec3 f0 = mix(m.fresnel, m.albedo, m.metallic);
 
@@ -89,12 +90,9 @@ vec3 pbrDirectLightning(vec3 p, vec3 n, vec3 wo, vec3 wi, mat4 view_inverse, Mat
 
   // Per light
   {
-    float attenuation = 1.0;
-    if (!is_directional) {
-      float d = length(light.pos - p);
-      attenuation
-          = 1.0 / (light.attenuation.x + light.attenuation.y * d + light.attenuation.z * d * d);
-    }
+    float ld = length(light.pos - p);
+    float attenuation
+        = 1.0 / (light.attenuation.x + light.attenuation.y * ld + light.attenuation.z * ld * ld);
     vec3 radiance = light.intensity * light.color * attenuation;
     vec3 wh = normalize(wi + wo);
 

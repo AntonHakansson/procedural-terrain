@@ -123,24 +123,23 @@ void main() {
 
   vec3 out_color;
   if (postfx.enable_fxaa) {
-      ivec2 screen_size = textureSize(tex, 0);
+    ivec2 screen_size = textureSize(tex, 0);
 
-      mediump vec2 v_rgbNW;
-      mediump vec2 v_rgbNE;
-      mediump vec2 v_rgbSW;
-      mediump vec2 v_rgbSE;
-      mediump vec2 v_rgbM;
+    mediump vec2 v_rgbNW;
+    mediump vec2 v_rgbNE;
+    mediump vec2 v_rgbSW;
+    mediump vec2 v_rgbSE;
+    mediump vec2 v_rgbM;
 
-      //compute the texture coords
-      texcoords(gl_FragCoord.xy, screen_size, v_rgbNW, v_rgbNE, v_rgbSW, v_rgbSE, v_rgbM);
+    // compute the texture coords
+    texcoords(gl_FragCoord.xy, screen_size, v_rgbNW, v_rgbNE, v_rgbSW, v_rgbSE, v_rgbM);
 
-      //compute FXAA
-      out_color = fxaa(tex, gl_FragCoord.xy, screen_size, v_rgbNW, v_rgbNE, v_rgbSW, v_rgbSE, v_rgbM).rgb;
-  }
-  else {
+    // compute FXAA
+    out_color
+        = fxaa(tex, gl_FragCoord.xy, screen_size, v_rgbNW, v_rgbNE, v_rgbSW, v_rgbSE, v_rgbM).rgb;
+  } else {
     out_color = texture(tex, In.tex_coord).xyz;
   }
-
 
   if (postfx.debug_mask == DEBUG_MASK_PASSTHROUGH) {
     fragmentColor = vec4(out_color, 1);

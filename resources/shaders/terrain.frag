@@ -349,14 +349,15 @@ void main() {
   m.fresnel = PBR_DIELECTRIC_F0;
 
   Light light;
-  light.color = light.color = mix(sun.color, vec3(1), pow(max(dot(-sun.direction, vec3(0, 1, 0)), 0.0), 1.5));
+  light.color = light.color
+      = mix(sun.color, vec3(1), pow(max(dot(-sun.direction, vec3(0, 1, 0)), 0.0), 1.5));
   light.intensity = sun.intensity;
   light.attenuation = vec3(0.35, 0, 0);
 
   vec3 wo = -normalize(In.view_pos);
   vec3 n = (viewMatrix * vec4(terrain_normal, 0.0)).xyz;
   vec3 wi = (viewMatrix * vec4(-sun.direction, 0.0)).xyz;
-  out_color = pbrDirectLightning(In.view_pos, n, wo, wi, viewInverse, m, light, false,
+  out_color = pbrDirectLightning(In.view_pos, n, wo, wi, viewInverse, m, light,
                                  environment_multiplier, irradiance_map, reflection_map);
   out_color *= shadow_factor;
 
@@ -376,6 +377,31 @@ void main() {
       out_color = vec3(0.0, 0.0, 1.0);
   }
   fragmentColor = vec4(out_color, 1.0);
+  return;
+#endif
+
+  // Parallax mapping playground
+#if 0
+  vec3 world_pos = In.world_pos;
+  int texture_index = 2;
+
+  vec3 world_view_dir = normalize(world_pos - eyeWorldPos);
+
+  vec2 tex_coord = In.tex_coord * texture_sizes[texture_index];
+
+  mat3 TBN = transpose(mat3(vec3(1, 0, 0), vec3(0, 0, -1), vec3(0, 1, 0)));
+  vec3 tangent_view_pos = TBN * eyeWorldPos;
+  vec3 tangent_frag_pos = TBN * world_pos;
+
+  vec3 tangent_view_dir = normalize(tangent_view_pos - tangent_frag_pos);
+
+  float height = 1.0 - texture(displacement, vec3(tex_coord, texture_index)).r;
+  vec3 tc = vec3(tex_coord - world_view_dir.xy * height * 0.09, texture_index);
+  vec3 parallaxed_albedo = texture(albedos, tc).rgb;
+
+  fragmentColor = vec4(tangent_view_dir.xy, 0.0, 1.0);
+  fragmentColor = vec4(parallaxed_albedo, 1.0);
+
   return;
 #endif
 
