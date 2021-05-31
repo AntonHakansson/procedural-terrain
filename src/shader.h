@@ -30,8 +30,8 @@ static bool readShaderSource(const std::filesystem::path& filepath, std::ifstrea
     if (line.find(include_keyword, 0) == 0) {
       auto end = line.find_last_of('\"');
       if (end == std::string::npos) {
-        std::cout << filepath.u8string() << ":" << line_number << ": GLSL: Invalid include format: " << line
-                  << "\n";
+        std::cout << filepath.u8string() << ":" << line_number
+                  << ": GLSL: Invalid include format: " << line << "\n";
         return false;
       }
       auto include_file = line.substr(include_keyword.size(), end - include_keyword.size());
@@ -39,7 +39,8 @@ static bool readShaderSource(const std::filesystem::path& filepath, std::ifstrea
       std::filesystem::path include_filepath = filepath.parent_path() / include_file;
       std::ifstream s_file(include_filepath);
       if (!s_file.is_open()) {
-        std::cout << filepath.u8string() << ": GLSL: Could not find include file " << include_filepath.u8string() << "\n";
+        std::cout << filepath.u8string() << ": GLSL: Could not find include file "
+                  << include_filepath.u8string() << "\n";
         return false;
       }
 

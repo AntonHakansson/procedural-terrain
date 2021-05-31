@@ -606,8 +606,8 @@ namespace gpu {
 
     if (out_texcoord_bo != nullptr) {
       size_t index = 0;
-      for(int v = 0; v < vertices_x_count; v++) {
-        for(int u = 0; u < vertices_x_count; u++) {
+      for (int v = 0; v < vertices_x_count; v++) {
+        for (int u = 0; u < vertices_x_count; u++) {
           auto& texcoord = texcoords[index];
           texcoord.x = u / (float)(vertices_x_count - 1);
           texcoord.y = v / (float)(vertices_x_count - 1);
@@ -655,7 +655,8 @@ namespace gpu {
     // texcoords
     if (out_texcoord_bo != nullptr) {
       glCreateBuffers(1, out_texcoord_bo);
-      glNamedBufferData(*out_texcoord_bo, vertices_count * sizeof(texcoords[0]), texcoords, GL_STATIC_DRAW);
+      glNamedBufferData(*out_texcoord_bo, vertices_count * sizeof(texcoords[0]), texcoords,
+                        GL_STATIC_DRAW);
       glVertexArrayVertexBuffer(*out_vao, 2, *out_texcoord_bo, 0, sizeof(glm::vec2));
       glEnableVertexArrayAttrib(*out_vao, 2);
       glVertexArrayAttribFormat(*out_vao, 2, 2, GL_FLOAT, GL_FALSE, 0);
