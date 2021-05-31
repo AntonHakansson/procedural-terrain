@@ -76,7 +76,7 @@ GLuint loadShaderProgram(const std::array<ShaderInput, N>& shaders, bool allow_e
     auto success = readShaderSource(s.filepath, s_file, shader_source, 0);
     if (!success) {
       if (!allow_errors) {
-        gpu::fatal_error("Preprocessor error", s.filepath);
+        gpu::fatal_error("Preprocessor error", s.filepath.u8string());
       }
       return 0;
     }
@@ -93,9 +93,9 @@ GLuint loadShaderProgram(const std::array<ShaderInput, N>& shaders, bool allow_e
     if (!compileOk) {
       std::string err = gpu::GetShaderInfoLog(gl_shader);
       if (allow_errors) {
-        gpu::non_fatal_error(err, s.filepath);
+        gpu::non_fatal_error(err, s.filepath.u8string());
       } else {
-        gpu::fatal_error(err, s.filepath);
+        gpu::fatal_error(err, s.filepath.u8string());
       }
       return 0;
     }
