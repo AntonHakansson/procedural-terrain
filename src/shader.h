@@ -5,6 +5,7 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <iostream>
 
 #include "gpu.h"
@@ -45,7 +46,7 @@ static bool readShaderSource(const std::filesystem::path& filepath, std::ifstrea
       }
 
       {
-        out << "#line 0 " << level + 1 << "\n";
+        out << "#line 0 " << (level + 1) << "\n";
         auto success = readShaderSource(include_filepath, s_file, out, level + 1);
         if (!success) {
           return false;
