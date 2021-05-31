@@ -53,12 +53,12 @@ struct PostFX {
     glBindTexture(GL_TEXTURE_2D, screen_fbo.depthBuffer);
 
     gpu::setUniformSlow(shader_program, "viewMatrix", view_matrix);
+    gpu::setUniformSlow(shader_program, "view_inverse", inverse(view_matrix));
     gpu::setUniformSlow(shader_program, "projMatrix", proj_matrix);
+    gpu::setUniformSlow(shader_program, "proj_inverse", inverse(proj_matrix));
     gpu::setUniformSlow(shader_program, "currentTime", current_time);
     gpu::setUniformSlow(shader_program, "water.height", water->height);
-    gpu::setUniformSlow(shader_program, "sun.direction", sun->direction);
-    gpu::setUniformSlow(shader_program, "sun.color", sun->color);
-    gpu::setUniformSlow(shader_program, "sun.intensity", sun->intensity);
+    sun->upload(shader_program, "sun", view_matrix);
     gpu::setUniformSlow(shader_program, "postfx.z_near", projection.near);
     gpu::setUniformSlow(shader_program, "postfx.z_far", projection.far);
     gpu::setUniformSlow(shader_program, "postfx.debug_mask", debug_mask);

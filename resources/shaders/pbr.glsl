@@ -1,10 +1,11 @@
-#ifndef PI
-#  define PI 3.14159265359
-#endif
+#ifndef _PBR_H_
+#define _PBR_H_
+
+#include "utils.glsl"
 
 const vec3 PBR_DIELECTRIC_F0 = vec3(0.04);
 
-    struct Light {
+struct Light {
   vec3 pos;
   vec3 color;
   float intensity;
@@ -20,17 +21,6 @@ struct Material {
   float ao;
   float reflective;
 };
-
-// Calculate the spherical coordinates of the direction in world space
-vec2 sphericalCoordinate(vec3 world_dir) {
-  float theta = acos(max(-1.0f, min(1.0, world_dir.y)));
-  float phi = atan(world_dir.z, world_dir.x);
-  if (phi < 0.0) {
-    phi = phi + 2.0 * PI;
-  }
-
-  return vec2(phi / (2.0 * PI), theta / PI);
-}
 
 // f0 is the surface reflection at zero incidence or how much the surface
 // reflects if looking directly at the surface.
@@ -148,7 +138,7 @@ vec3 pbrDirectLightning(vec3 p, vec3 n, vec3 wo, vec3 wi, mat4 view_inverse, Mat
                         * textureLod(reflection_map, lookup, m.roughness * MAX_REFLECTION_LOD).rgb;
   }
   // TODO: brdfLUT
-  vec3 specular = prefiltered_color * (F * 1.0);
+  vec3 specular = prefiltered_color * (F * m.reflective);
 
   vec3 ambient = (kD * diffuse + specular) * m.ao;
   vec3 color = ambient + out_radiance;
@@ -161,3 +151,5 @@ vec3 pbrDirectLightning(vec3 p, vec3 n, vec3 wo, vec3 wi, mat4 view_inverse, Mat
 
   return color;
 }
+
+#endif // _PBR_H_

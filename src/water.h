@@ -89,8 +89,7 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "projection_matrix", projection_matrix);
     gpu::setUniformSlow(this->shader_program, "pixel_projection", pixel_projection);
 
-    gpu::setUniformSlow(this->shader_program, "sun.direction", terrain->sun.direction);
-    gpu::setUniformSlow(this->shader_program, "sun.color", terrain->sun.color);
+    terrain->sun.upload(shader_program, "sun", view_matrix);
 
     gpu::setUniformSlow(this->shader_program, "water.height", this->height);
     gpu::setUniformSlow(this->shader_program, "water.foam_distance", foam_distance);

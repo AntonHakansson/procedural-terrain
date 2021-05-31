@@ -1,6 +1,7 @@
 #version 420
 
-#define PI 3.14159265359
+#include "utils.glsl"
+#include "sun.glsl"
 
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
@@ -32,10 +33,6 @@ In;
 // Uniforms
 uniform float current_time;
 
-struct Sun {
-  vec3 direction;
-  vec3 color;
-};
 uniform Sun sun;
 
 struct Water {
@@ -98,10 +95,6 @@ float distanceSquared(vec2 a, vec2 b) {
 float distanceSquared(vec3 a, vec3 b) {
   a -= b;
   return dot(a, a);
-}
-
-float linearizeDepth(float depth, float near, float far) {
-  return 2.0 * near * far / (far + near - (2.0 * depth - 1.0) * (far - near));
 }
 
 /**
@@ -236,9 +229,6 @@ vec3 getDuDv(vec2 tex_coord) {
   return dudv;
 }
 
-float inverseLerp(float a, float b, float x) { return (x - a) / (b - a); }
-float inverseLerpClamped(float a, float b, float x) { return clamp(inverseLerp(a, b, x), 0, 1); }
-
 void main() {
   vec3 color = texelFetch(pixel_buffer, ivec2(gl_FragCoord.xy), 0).xyz;
 
@@ -286,18 +276,12 @@ void main() {
     if (reflection_hit) {
       reflection_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0).rgb;
     } else {
+      // reflection from environment map
       vec3 world_reflection_dir = normalize((inv_view_matrix * vec4(reflection_dir, 0.0)).xyz);
-
-      // Calculate the spherical coordinates of the direction
-      float theta = acos(max(-1.0f, min(1.0f, world_reflection_dir.y)));
-      float phi = atan(world_reflection_dir.z, world_reflection_dir.x);
-
-      if (phi < 0.0f) phi = phi + 2.0f * PI;
-
-      // Use these to lookup the color in the environment map
-      vec2 lookup = vec2(phi / (2.0 * PI), theta / PI);
+      vec2 lookup = sphericalCoordinate(world_reflection_dir);
       reflection_color = texture(environment_map, lookup).xyz * environment_multiplier * 0.9;
 
+      // sun influence
       float sun_threshold = 0.998;
       float wdots = max(dot(world_reflection_dir, -sun.direction), 0.0);
 
@@ -327,13 +311,25 @@ void main() {
     } else {
       // REVIEW: is there some other hack here? Maybe project refraction_dir to screen space and
       // sample in that direction?
+
       ivec2 screen_size = textureSize(pixel_buffer, 0);
       ivec2 offset_pixel_coord = ivec2(gl_FragCoord.xy) + ivec2(vec2(dudv * 0.2) * screen_size);
-      vec3 offset_color = texelFetch(pixel_buffer, offset_pixel_coord, 0).xyz;
-      if ((offset_pixel_coord.x < 0) || (offset_pixel_coord.x > screen_size.x)
-          || (offset_pixel_coord.y < 0) || (offset_pixel_coord.y > screen_size.y)) {
-        offset_color = color;
+
+      float offset_depth = texelFetch(depth_buffer, offset_pixel_coord, 0).r;
+      offset_depth = -linearizeDepth(offset_depth, ssr_reflection.z_near, ssr_reflection.z_far);
+
+      vec3 offset_color;
+      if (offset_depth < plane_depth) {
+          offset_color = color;
       }
+      else {
+        vec3 offset_color = texelFetch(pixel_buffer, offset_pixel_coord, 0).xyz;
+        if ((offset_pixel_coord.x < 0) || (offset_pixel_coord.x > screen_size.x)
+            || (offset_pixel_coord.y < 0) || (offset_pixel_coord.y > screen_size.y)) {
+          offset_color = color;
+        }
+      }
+
       refraction_color = debug_flag == DEBUG_SSR_REFRACTION_MISSES ? vec3(0) : offset_color;
     }
     if (debug_flag == DEBUG_SSR_REFRACTION || debug_flag == DEBUG_SSR_REFRACTION_MISSES) {

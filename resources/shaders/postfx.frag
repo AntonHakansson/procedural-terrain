@@ -3,7 +3,9 @@
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
 
+#include "utils.glsl"
 #include "fxaa.glsl"
+#include "sun.glsl"
 
 // Inputs
 layout(location = 0) out vec4 fragmentColor;
@@ -29,11 +31,6 @@ struct Water {
 };
 uniform Water water;
 
-struct Sun {
-  vec3 direction;
-  vec3 color;
-  float intensity;
-};
 uniform Sun sun;
 
 struct PostFX {
@@ -89,11 +86,8 @@ float linearizeDepth(float depth) {
          / (postfx.z_far + postfx.z_near - (2.0 * depth - 1.0) * (postfx.z_far - postfx.z_near));
 }
 
-float inverseLerp(float a, float b, float x) { return (x - a) / (b - a); }
-float inverseLerpClamped(float a, float b, float x) { return clamp(inverseLerp(a, b, x), 0, 1); }
-
 float calculateGodMask(float depth, float wdots, float sun_threshold) {
-  float linear_depth = linearizeDepth(depth);
+  float linear_depth = linearizeDepth(depth, postfx.z_near, postfx.z_far);
   if (linear_depth == postfx.z_far) {
     if (wdots > sun_threshold) return 1.0;
 
@@ -146,7 +140,7 @@ void main() {
     return;
   }
   float depth = texture(depth_tex, In.tex_coord).x;
-  float linear_depth = linearizeDepth(depth);
+  float linear_depth = linearizeDepth(depth, postfx.z_near, postfx.z_far);
 
   // Increase saturation for more vididness
   out_color = shiftHSV(out_color, 0.0, 0.1, 0.0);
@@ -185,7 +179,7 @@ void main() {
           vec2 offset = vec2(texel * vec2(l, k));
 
           float depth = texture(depth_tex, In.tex_coord + offset).x;
-          float linear_depth = linearizeDepth(depth);
+          float linear_depth = linearizeDepth(depth, postfx.z_near, postfx.z_far);
 
           if (wdots > sun_threshold && linear_depth == postfx.z_far) {
             percentage_lit++;

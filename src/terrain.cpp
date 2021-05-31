@@ -150,9 +150,7 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
     gpu::setUniformSlow(shader_program, "noise.persistence", noise.persistence);
     gpu::setUniformSlow(shader_program, "noise.lacunarity", noise.lacunarity);
 
-    gpu::setUniformSlow(shader_program, "sun.direction", sun.direction);
-    gpu::setUniformSlow(shader_program, "sun.color", sun.color);
-    gpu::setUniformSlow(shader_program, "sun.intensity", sun.intensity);
+    sun.upload(shader_program, "sun", view_matrix);
     gpu::setUniformSlow(shader_program, "environment_multiplier", environment_multiplier);
 
     gpu::setUniformSlow(shader_program, "noise.num_octaves", (GLint)noise.num_octaves);

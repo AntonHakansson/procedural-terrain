@@ -3,15 +3,17 @@
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
 
+#include "utils.glsl"
 #include "pbr.glsl"
+#include "sun.glsl"
 
 in DATA {
   vec3 world_pos;
-  vec3 view_pos;
+  vec3 view_space_pos;
+  vec3 view_space_normal;
   vec4 shadow_coord;
   vec2 tex_coord;
   vec3 normal;
-  vec3 view_normal;
   vec3 tangent;
   vec3 bitangent;
   mat3 tangent_matrix;
@@ -71,11 +73,6 @@ layout(binding = 10) uniform sampler2DArrayShadow shadow_tex;
 /**
  * Sun
  */
-struct Sun {
-  vec3 direction;
-  vec3 color;
-  float intensity;
-};
 uniform Sun sun;
 
 /**
@@ -103,9 +100,6 @@ vec3 triplanarSampling(sampler2D tex, vec3 worldpos, vec3 normal) {
   // return x_projection + y_projection + z_projection;
   return texture(tex, scaled_worldpos.xz).xyz;
 }
-
-float inverseLerp(float a, float b, float x) { return (x - a) / (b - a); }
-float inverseLerpClamped(float a, float b, float x) { return clamp(inverseLerp(a, b, x), 0, 1); }
 
 vec3 getWorldNormal(vec3 tex_coord) {
   vec3 tangent_normal = normalize(2.0 * texture(normals, tex_coord).xyz - 1.0);
@@ -349,15 +343,14 @@ void main() {
   m.fresnel = PBR_DIELECTRIC_F0;
 
   Light light;
-  light.color = light.color
-      = mix(sun.color, vec3(1), pow(max(dot(-sun.direction, vec3(0, 1, 0)), 0.0), 1.5));
+  light.color = mix(sun.color, vec3(0.9), pow(max(dot(-sun.direction, vec3(0, 1, 0)), 0.0), 1.5));
   light.intensity = sun.intensity;
-  light.attenuation = vec3(0.35, 0, 0);
+  light.attenuation = vec3(0.30, 0, 0);
 
-  vec3 wo = -normalize(In.view_pos);
-  vec3 n = (viewMatrix * vec4(terrain_normal, 0.0)).xyz;
-  vec3 wi = (viewMatrix * vec4(-sun.direction, 0.0)).xyz;
-  out_color = pbrDirectLightning(In.view_pos, n, wo, wi, viewInverse, m, light,
+  vec3 wo = -normalize(In.view_space_pos);
+  vec3 n = In.view_space_normal;
+  vec3 wi = -sun.view_space_direction;
+  out_color = pbrDirectLightning(In.view_space_pos, n, wo, wi, viewInverse, m, light,
                                  environment_multiplier, irradiance_map, reflection_map);
   out_color *= shadow_factor;
 

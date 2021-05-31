@@ -52,6 +52,15 @@ struct Sun {
 
   glm::mat4 matrix = inverse(glm::lookAt(vec3(0), -direction, vec3(0, 1, 0)));
 
+  void upload(GLuint program, std::string uniform_name, const glm::mat4 view_matrix) {
+    vec3 view_space_direction = vec3(view_matrix * vec4(direction, 0.0));
+
+    gpu::setUniformSlow(program, (uniform_name + ".direction").c_str(), direction);
+    gpu::setUniformSlow(program, (uniform_name + ".view_space_direction").c_str(), view_space_direction);
+    gpu::setUniformSlow(program, (uniform_name + ".color").c_str(), color);
+    gpu::setUniformSlow(program, (uniform_name + ".intensity").c_str(), intensity);
+  }
+
   bool gui(Camera* camera) {
     auto did_change = false;
 
