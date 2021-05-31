@@ -97,7 +97,7 @@ void Terrain::buildMesh(bool is_reload) {
   }
   this->indices_count
       = gpu::createSubdividedPlane(this->terrain_size, this->terrain_subdivision, &this->vao,
-                                   &this->positions_bo, &this->indices_bo);
+                                   &this->positions_bo, nullptr, &this->indices_bo);
 }
 
 void Terrain::update(float delta_time, float current_time) {
@@ -112,7 +112,8 @@ void Terrain::begin(bool simple) {
 }
 
 void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 center,
-                     glm::vec3 camera_position, glm::mat4 light_matrix, float water_height, float environment_multiplier) {
+                     glm::vec3 camera_position, glm::mat4 light_matrix, float water_height,
+                     float environment_multiplier) {
   GLint prev_polygon_mode;
 
   GLuint shader_program = this->simple ? this->shader_program_simple : this->shader_program;

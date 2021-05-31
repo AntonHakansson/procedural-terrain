@@ -112,6 +112,8 @@ void main() {
   Out.view_normal = (viewInverse * vec4(Out.normal, 0.0)).xyz;
   Out.tangent = computeTangent(Out.world_pos, Out.normal);
   Out.bitangent = normalize(cross(Out.tangent, Out.normal));
+  // Out.bitangent = computeTangent(Out.world_pos, Out.normal);
+  // Out.tangent = normalize(cross(Out.tangent, Out.normal));
 
   Out.tangent_matrix = mat3(Out.tangent, Out.bitangent, Out.normal);
 

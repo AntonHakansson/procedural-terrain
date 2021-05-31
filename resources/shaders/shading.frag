@@ -203,16 +203,21 @@ void main() {
   m.metallic = material_metalness;
   m.roughness = sqrt(sqrt(2.0 / (material_shininess + 2.0)));
   m.reflective = material_reflectivity;
-  m.fresnel = material_fresnel;
+  m.fresnel = vec3(material_fresnel);
   m.ao = 1.0;
 
   Light light;
   light.pos = viewSpaceLightPosition;
   light.color = point_light_color;
-  light.intensity = point_light_intensity_multiplier;
+  light.intensity = point_light_intensity_multiplier * (1);
+  light.attenuation = vec3(0, 0, 1);
 
-  vec3 direct_illumination_term = pbrDirectLightning(viewSpacePosition, n, wo, wi, m, light, true);
-  vec3 indirect_illumination_term = pbrIndirectLightning(n, wo, m, viewInverse, environment_multiplier, irradianceMap, reflectionMap);
+  vec3 direct_illumination_term
+      = pbrDirectLightning(viewSpacePosition, n, wo, wi, viewInverse, m, light, false,
+                           environment_multiplier, irradianceMap, reflectionMap);
+  // vec3 indirect_illumination_term = pbrIndirectLightning(n, wo, m, viewInverse,
+  // environment_multiplier, irradianceMap, reflectionMap);
+  vec3 indirect_illumination_term = vec3(0);
 #else
   vec3 direct_illumination_term = visibility * calculateDirectIllumiunation(wo, n, wi);
   vec3 indirect_illumination_term = calculateIndirectIllumination(wo, n);

@@ -10,17 +10,8 @@
 #include "shader.h"
 
 struct Water {
-  static constexpr std::array<const char*, 4> DebugNames{
-      {"Off", "SSR Reflection", "SSR Refraction", "SSR Refraction Misses"}};
-  enum WaterDebugFlags {
-    Off,
-    SSR_Reflection,
-    SSR_Refraction,
-    SSR_Refraction_Misses,
-  };
-
   void init() {
-    indices_count = gpu::createSubdividedPlane(1, 0, &vao, &positions_bo, &indices_bo);
+    indices_count = gpu::createSubdividedPlane(1, 0, &vao, &positions_bo, nullptr, &indices_bo);
     loadShader(false);
     dudv_map.load("resources/textures/", "water_dudv_tile.jpg", 3);
   }
@@ -157,11 +148,11 @@ struct Water {
     float stride = 15.00;
     float jitter = 0.5;
     float max_steps = 50.0;
-    float max_distance = 500.0;
+    float max_distance = 3000.0;
 
     ScreenSpaceReflection() = default;
-    ScreenSpaceReflection(float z_thickness, float stride, float max_steps)
-        : z_thickness(z_thickness), stride(stride), max_steps(max_steps) {}
+    ScreenSpaceReflection(float z_thickness, float stride, float max_steps, float max_distance)
+        : z_thickness(z_thickness), stride(stride), max_steps(max_steps), max_distance(max_distance) {}
 
     void upload(GLuint program, std::string uniform_name, int width, int height,
                 Projection projection) {
@@ -190,7 +181,9 @@ struct Water {
     }
   };
 
-  int debug_flag = WaterDebugFlags::Off;
+  static constexpr std::array<const char*, 4> DebugNames{
+      {"None", "SSR Reflection", "SSR Refraction", "SSR Refraction Misses"}};
+  int debug_flag = 0;
 
   int indices_count;
 
@@ -202,7 +195,7 @@ struct Water {
   float wave_strength = 0.053f;
   float wave_scale = 406;
   ScreenSpaceReflection ssr_reflection;
-  ScreenSpaceReflection ssr_refraction = ScreenSpaceReflection(20, 10, 20);
+  ScreenSpaceReflection ssr_refraction = ScreenSpaceReflection(20, 10, 20, 500);
   gpu::Texture dudv_map;
 
   GLuint shader_program;

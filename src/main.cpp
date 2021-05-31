@@ -76,7 +76,11 @@ struct App {
   mat4 fighter_model_matrix = translate(vec3(0, 500, 0));
   mat4 material_test_matrix = translate(vec3(50, 500, 0));
 
-  mat4 debug_light_matrix = glm::translate(vec3(50.0, 505, 0.0)) * glm::scale(vec3(2));
+  struct DebugLight {
+    mat4 model_matrix = glm::translate(vec3(50.0, 505, 0.0));
+    vec3 color = vec3(1.0);
+    float intensity = 30.0;
+  } debug_light;
 
   mat4 static_camera_proj;
   mat4 static_camera_view;
@@ -95,7 +99,6 @@ struct App {
     shader = gpu::loadShaderProgram("resources/shaders/background.vert",
                                     "resources/shaders/background.frag", is_reload);
     if (shader != 0) background_program = shader;
-
 
     std::array<ShaderInput, 2> program_shading({
         ShaderInput{"resources/shaders/shading.vert", GL_VERTEX_SHADER},
@@ -205,18 +208,20 @@ struct App {
       terrain.begin(true);
 
       glDisable(GL_CULL_FACE);
-      terrain.render(light_proj_matrix, light_view_matrix, center, cam_pos, mat4(), water.height, environment_map.multiplier);
+      terrain.render(light_proj_matrix, light_view_matrix, center, cam_pos, mat4(), water.height,
+                     environment_map.multiplier);
       glEnable(GL_CULL_FACE);
 
       glUseProgram(current_program);
 
       // vec3 light_pos = -terrain.sun.direction * 500.F;
-      vec4 view_light_pos = view_matrix * vec4(vec3(debug_light_matrix[3]), 1);
+      vec4 view_light_pos = view_matrix * vec4(vec3(debug_light.model_matrix[3]), 1);
 
       ImGuizmo::Manipulate(&view_matrix[0][0], &proj_matrix[0][0], ImGuizmo::TRANSLATE,
-                           ImGuizmo::WORLD, &debug_light_matrix[0][0], nullptr, nullptr);
-      ImGuizmo::DrawCubes(&view_matrix[0][0], &proj_matrix[0][0], &debug_light_matrix[0][0], 1);
-      ImGuizmo::DrawCubes(&view_matrix[0][0], &proj_matrix[0][0], &(glm::translate(vec3(0, 500, 0)) * glm::scale(terrain.sun.direction * 20.F))[0][0], 1);
+                           ImGuizmo::WORLD, &debug_light.model_matrix[0][0], nullptr, nullptr);
+      // ImGuizmo::DrawCubes(&view_matrix[0][0], &proj_matrix[0][0], &debug_light_matrix[0][0], 1);
+      // ImGuizmo::DrawCubes(&view_matrix[0][0], &proj_matrix[0][0], &(glm::translate(vec3(0, 500,
+      // 0)) * glm::scale(terrain.sun.direction * 20.F))[0][0], 1);
 
       gpu::setUniformSlow(current_program, "viewSpaceLightPosition", vec3(view_light_pos));
 
@@ -262,7 +267,8 @@ struct App {
     // Bind shadow map textures
     shadow_map.begin(10, camera.projection, proj_matrix, light_view_matrix);
 
-    terrain.render(proj_matrix, view_matrix, center, cam_pos, lightMatrix, water.height, environment_map.multiplier);
+    terrain.render(proj_matrix, view_matrix, center, cam_pos, lightMatrix, water.height,
+                   environment_map.multiplier);
 
     glUseProgram(current_program);
 
@@ -277,10 +283,11 @@ struct App {
 
     // Material test
     gpu::setUniformSlow(current_program, "environment_multiplier", environment_map.multiplier);
+    gpu::setUniformSlow(current_program, "point_light_color", debug_light.color);
+    gpu::setUniformSlow(current_program, "point_light_intensity_multiplier", debug_light.intensity);
     gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
                         proj_matrix * view_matrix * material_test_matrix);
-    gpu::setUniformSlow(current_program, "modelViewMatrix",
-                        view_matrix * material_test_matrix);
+    gpu::setUniformSlow(current_program, "modelViewMatrix", view_matrix * material_test_matrix);
     gpu::setUniformSlow(current_program, "normalMatrix",
                         inverse(transpose(view_matrix * material_test_matrix)));
     gpu::render(models.material_test);
@@ -457,12 +464,12 @@ struct App {
       }
 
       // Light and environment map
-      // if (ImGui::CollapsingHeader("Light sources")) {
-      //   ImGui::SliderFloat("Environment multiplier", &environment_map.multiplier, 0.0f, 10.0f);
-      //   ImGui::ColorEdit3("Point light color", &light.color.x);
-      //   ImGui::SliderFloat("Point light intensity multiplier", &light.intensity, 0.0f, 10000.0f,
-      //                      "%.3f", ImGuiSliderFlags_Logarithmic);
-      // }
+      if (ImGui::CollapsingHeader("Light sources")) {
+        ImGui::SliderFloat("Environment multiplier", &environment_map.multiplier, 0.0f, 10.0f);
+        ImGui::ColorEdit3("Point light color", &debug_light.color.x);
+        ImGui::SliderFloat("Point light intensity multiplier", &debug_light.intensity, 0.0f,
+                           10000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+      }
 
       terrain.gui(&camera);
       shadow_map.gui(window.handle);

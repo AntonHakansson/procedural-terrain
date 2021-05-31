@@ -37,8 +37,8 @@ struct Camera {
 
   vec3 world_up = vec3(0.0, 1.0, 0.0);
 
-  vec3 position = vec3(-70.0, 500.0, 70.0);
-  vec3 direction = cross(normalize(position), world_up);
+  vec3 position = vec3(0, 500.0, 70.0);
+  vec3 direction = vec3(0, 0, -1);
   float speed = 40;
   float rotation_speed = 0.12f;
 

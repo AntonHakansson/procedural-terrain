@@ -71,11 +71,11 @@ uniform mat4 inv_view_matrix;
 uniform mat4 pixel_projection;  // `pixel_projection` projects from view space to pixel coordinate
 uniform float environment_multiplier;
 
-#define DEBUG_OFF 0
+#define DEBUG_NONE 0
 #define DEBUG_SSR_REFLECTION 1
 #define DEBUG_SSR_REFRACTION 2
 #define DEBUG_SSR_REFRACTION_MISSES 3
-uniform int debug_flag;  // 0 = off; 1 = screen space reflection; 2 = screen space refraction;
+uniform int debug_flag;  // 0 = none; 1 = screen space reflection; 2 = screen space refraction;
 
 // Constants
 const vec3 ocean_blue = vec3(0.1, 0.3, 0.6);

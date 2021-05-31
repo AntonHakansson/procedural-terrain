@@ -571,7 +571,7 @@ namespace gpu {
   }
 
   size_t createSubdividedPlane(float _size, unsigned int subdivisions, GLuint* out_vao,
-                               GLuint* out_vbo, GLuint* out_ebo) {
+                               GLuint* out_vbo, GLuint* out_texcoord_bo, GLuint* out_ebo) {
     assert(out_vao != nullptr);
     assert(out_vbo != nullptr);
     assert(out_ebo != nullptr);
@@ -582,8 +582,10 @@ namespace gpu {
     auto step_size = _size / (subdivisions + 1);
 
     auto* positions = new glm::vec3[vertices_count];
+    auto* texcoords = new glm::vec2[vertices_count];
     auto* indices = new uint16_t[indices_count];
     defer(delete[] positions);
+    defer(delete[] texcoords);
     defer(delete[] indices);
 
     // init heightmap
@@ -596,6 +598,19 @@ namespace gpu {
           pos.x = x * step_size;
           pos.z = z * step_size;
           pos.y = 0;
+
+          index += 1;
+        }
+      }
+    }
+
+    if (out_texcoord_bo != nullptr) {
+      size_t index = 0;
+      for(int v = 0; v < vertices_x_count; v++) {
+        for(int u = 0; u < vertices_x_count; u++) {
+          auto& texcoord = texcoords[index];
+          texcoord.x = u / (float)(vertices_x_count - 1);
+          texcoord.y = v / (float)(vertices_x_count - 1);
 
           index += 1;
         }
@@ -625,23 +640,34 @@ namespace gpu {
       }
     }
 
-    glGenVertexArrays(1, out_vao);
-    glBindVertexArray(*out_vao);
+    glCreateVertexArrays(1, out_vao);
 
-    glGenBuffers(1, out_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, *out_vbo);
-    glBufferData(GL_ARRAY_BUFFER, vertices_count * sizeof(glm::vec3), positions, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
-    glEnableVertexAttribArray(0);
+    // positions
+    {
+      glCreateBuffers(1, out_vbo);
+      glNamedBufferData(*out_vbo, vertices_count * sizeof(positions[0]), positions, GL_STATIC_DRAW);
+      glVertexArrayVertexBuffer(*out_vao, 0, *out_vbo, 0, sizeof(glm::vec3));
+      glEnableVertexArrayAttrib(*out_vao, 0);
+      glVertexArrayAttribFormat(*out_vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
+      glVertexArrayAttribBinding(*out_vao, 0, 0);
+    }
 
-    glGenBuffers(1, out_ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *out_ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_count * sizeof(uint16_t), indices,
-                 GL_STATIC_DRAW);
+    // texcoords
+    if (out_texcoord_bo != nullptr) {
+      glCreateBuffers(1, out_texcoord_bo);
+      glNamedBufferData(*out_texcoord_bo, vertices_count * sizeof(texcoords[0]), texcoords, GL_STATIC_DRAW);
+      glVertexArrayVertexBuffer(*out_vao, 2, *out_texcoord_bo, 0, sizeof(glm::vec2));
+      glEnableVertexArrayAttrib(*out_vao, 2);
+      glVertexArrayAttribFormat(*out_vao, 2, 2, GL_FLOAT, GL_FALSE, 0);
+      glVertexArrayAttribBinding(*out_vao, 2, 2);
+    }
 
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    // indices
+    {
+      glCreateBuffers(1, out_ebo);
+      glNamedBufferData(*out_ebo, indices_count * sizeof(uint16_t), indices, GL_STATIC_DRAW);
+      glVertexArrayElementBuffer(*out_vao, *out_ebo);
+    }
 
     CHECK_GL_ERROR();
 

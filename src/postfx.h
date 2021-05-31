@@ -62,12 +62,15 @@ struct PostFX {
     gpu::setUniformSlow(shader_program, "postfx.z_near", projection.near);
     gpu::setUniformSlow(shader_program, "postfx.z_far", projection.far);
     gpu::setUniformSlow(shader_program, "postfx.debug_mask", debug_mask);
+    gpu::setUniformSlow(shader_program, "postfx.enable_fxaa", enable_fxaa);
 
     gpu::drawFullScreenQuad();
   }
 
   void gui() {
     if (ImGui::CollapsingHeader("Post FX")) {
+      ImGui::Checkbox("Enable FXAA", &enable_fxaa);
+
       ImGui::Image((void*)(intptr_t)screen_fbo.colorTextureTargets[0], ImVec2(252, 252),
                    ImVec2(0, 1), ImVec2(1, 0));
 
@@ -86,7 +89,10 @@ struct PostFX {
   GLuint shader_program;
   FboInfo screen_fbo;
 
-  static constexpr std::array<const char*, 3> DebugMasks{{"Off", "Horizon mask", "God ray mask"}};
+  bool enable_fxaa = true;
+
+  static constexpr std::array<const char*, 4> DebugMasks{
+      {"None", "Horizon mask", "God ray mask", "Off"}};
 
   int debug_mask = 0;
 };

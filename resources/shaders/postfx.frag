@@ -3,6 +3,8 @@
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
 
+#include "fxaa.glsl"
+
 // Inputs
 layout(location = 0) out vec4 fragmentColor;
 layout(binding = 0) uniform sampler2D tex;
@@ -38,12 +40,14 @@ struct PostFX {
   float z_near;
   float z_far;
   int debug_mask;
+  bool enable_fxaa;
 };
 uniform PostFX postfx;
 
-#define DEBUG_MASK_OFF 0
+#define DEBUG_MASK_NONE 0
 #define DEBUG_MASK_HORIZON 1
 #define DEBUG_MASK_GOD_RAY 2
+#define DEBUG_MASK_PASSTHROUGH 3
 
 // Constants
 const float Epsilon = 1e-10;
@@ -117,7 +121,31 @@ void main() {
     return;
   }
 
-  vec3 out_color = texture(tex, In.tex_coord).xyz;
+  vec3 out_color;
+  if (postfx.enable_fxaa) {
+      ivec2 screen_size = textureSize(tex, 0);
+
+      mediump vec2 v_rgbNW;
+      mediump vec2 v_rgbNE;
+      mediump vec2 v_rgbSW;
+      mediump vec2 v_rgbSE;
+      mediump vec2 v_rgbM;
+
+      //compute the texture coords
+      texcoords(gl_FragCoord.xy, screen_size, v_rgbNW, v_rgbNE, v_rgbSW, v_rgbSE, v_rgbM);
+
+      //compute FXAA
+      out_color = fxaa(tex, gl_FragCoord.xy, screen_size, v_rgbNW, v_rgbNE, v_rgbSW, v_rgbSE, v_rgbM).rgb;
+  }
+  else {
+    out_color = texture(tex, In.tex_coord).xyz;
+  }
+
+
+  if (postfx.debug_mask == DEBUG_MASK_PASSTHROUGH) {
+    fragmentColor = vec4(out_color, 1);
+    return;
+  }
   float depth = texture(depth_tex, In.tex_coord).x;
   float linear_depth = linearizeDepth(depth);
 
