@@ -133,9 +133,6 @@ struct Water {
       ImGui::Text("Color Attachment");
       ImGui::Image((void*)(intptr_t)screen_fbo.colorTextureTargets[0], ImVec2(252, 252),
                    ImVec2(0, 1), ImVec2(1, 0));
-      ImGui::Text("Depth Attachment");
-      ImGui::Image((void*)(intptr_t)screen_fbo.depthBuffer, ImVec2(252, 252), ImVec2(0, 1),
-                   ImVec2(1, 0));
     }
   }
 
@@ -144,8 +141,8 @@ struct Water {
     glm::ivec2 depth_buffer_size;
     Projection projection;
 
-    float z_thickness = 0.01;
-    float stride = 15.00;
+    float z_thickness = 1.0;
+    float stride = 10.00;
     float jitter = 0.5;
     float max_steps = 50.0;
     float max_distance = 3000.0;

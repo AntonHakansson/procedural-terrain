@@ -224,10 +224,6 @@ bool traceScreenSpaceRay(vec3 ray_origin, vec3 ray_dir, mat4 pixel_projection,
 }
 
 vec3 getDuDv(vec2 tex_coord) {
-  if (debug_flag == DEBUG_SSR_REFLECTION) {
-    return vec3(0);
-  }
-
   vec3 dudv_x
       = texture(dudv_map, (tex_coord / water.wave_scale) + vec2(current_time * water.wave_speed, 0))
             .rgb;
@@ -258,16 +254,15 @@ void main() {
   vec3 view_dir = normalize(In.view_space_position);
 
   vec3 dudv = getDuDv(In.world_pos.xz);
-  vec3 reflection_dir = normalize(reflect(view_dir, In.view_space_normal));
-  vec3 refraction_dir = normalize(refract(view_dir, In.view_space_normal, 0.8));
-
-  reflection_dir = normalize(reflection_dir + dudv);
-  refraction_dir = normalize(refraction_dir + dudv);
+  vec3 view_space_normal = normalize(In.view_space_normal + dudv);
+  vec3 reflection_dir = normalize(reflect(view_dir, view_space_normal));
+  vec3 refraction_dir = normalize(refract(view_dir, view_space_normal, 0.8));
 
   vec3 out_color = color;
 
   // foam
-  float ocean_mask = clamp((diff_depth - 100) / 1200.0, 0.0, 0.12) / 0.18;
+  // float ocean_mask = clamp((diff_depth - 100) / 1200.0, 0.0, 0.12) / 0.18;
+  float ocean_mask = 1 - exp(-(terrain_depth - plane_depth) * 0.008);
 
   float foam_mask;
   foam_mask += max(1.0 - diff_depth / water.foam_distance, 0);
@@ -301,12 +296,11 @@ void main() {
 
       // Use these to lookup the color in the environment map
       vec2 lookup = vec2(phi / (2.0 * PI), theta / PI);
-      reflection_color = texture(environment_map, lookup).xyz * environment_multiplier;
+      reflection_color = texture(environment_map, lookup).xyz * environment_multiplier * 0.9;
 
       float sun_threshold = 0.998;
       float wdots = max(dot(world_reflection_dir, -sun.direction), 0.0);
 
-      // reflection_color = vec3(wdots);
       float f1 = smoothstep(0.0, 1.0,
                             inverseLerpClamped(sun_threshold, (1 + sun_threshold) / 2.0, wdots));
       float f2 = smoothstep(0.2, 1.0, inverseLerpClamped(sun_threshold, 1, wdots));
@@ -348,13 +342,13 @@ void main() {
     }
   }
 
-  vec3 fresnel_color
-      = mix(reflection_color, refraction_color, max(-dot(view_dir, In.view_space_normal), 0.0));
+  refraction_color = mix(refraction_color, ocean_blue, 0.5);
+  refraction_color = mix(refraction_color, ocean_blue_deep, ocean_mask);
 
-  out_color = mix(fresnel_color, ocean_blue, 0.5);
+  float viewing_angle = max(dot(vec3(0.0, 0.0, 1.0), view_space_normal), 0.0);
+  float fresnel_factor = mix(0.6, 0.9, viewing_angle);
+  out_color = mix(reflection_color, refraction_color, fresnel_factor);
+
   out_color = out_color + (foam_mask * 0.3);
-
-  out_color = mix(out_color.xyz, ocean_blue_deep, ocean_mask);
-
   fragmentColor = vec4(out_color, 1.0);
 }
