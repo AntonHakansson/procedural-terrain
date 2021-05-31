@@ -348,7 +348,7 @@ void main() {
   light.attenuation = vec3(0.30, 0, 0);
 
   vec3 wo = -normalize(In.view_space_pos);
-  vec3 n = In.view_space_normal;
+  vec3 n = (viewMatrix * vec4(terrain_normal, 0.0)).xyz;
   vec3 wi = -sun.view_space_direction;
   out_color = pbrDirectLightning(In.view_space_pos, n, wo, wi, viewInverse, m, light,
                                  environment_multiplier, irradiance_map, reflection_map);

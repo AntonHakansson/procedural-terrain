@@ -88,14 +88,12 @@ float terrain_height(vec2 pos) {
                        // 1000.0);
 }
 
-vec3 computeNormals(vec3 WorldPos) {
+vec3 computeNormal(vec3 WorldPos) {
   vec2 eps = vec2(0.1, 0.0);
   return normalize(
       vec3(terrain_height(WorldPos.xz - eps.xy) - terrain_height(WorldPos.xz + eps.xy), 2 * eps.x,
            terrain_height(WorldPos.xz - eps.yx) - terrain_height(WorldPos.xz + eps.yx)));
 }
-
-vec3 computeTangent(vec3 WorldPos, vec3 normal) { return normalize(cross(normal, vec3(0, 1, 0))); }
 
 void main() {
   // Interpolate the attributes of the output vertex using the barycentric coordinates
@@ -108,9 +106,9 @@ void main() {
   Out.world_pos += vec3(0.0, 1.0, 0.0) * displacement;
   Out.view_space_pos = (viewMatrix * vec4(Out.world_pos, 1.0)).xyz;
 
-  Out.normal = computeNormals(Out.world_pos);
+  Out.normal = computeNormal(Out.world_pos);
   Out.view_space_normal = (viewMatrix * vec4(Out.normal, 0.0)).xyz;
-  Out.tangent = computeTangent(Out.world_pos, Out.normal);
+  Out.tangent = normalize(cross(Out.normal, vec3(0, 1, 0)));
   Out.bitangent = normalize(cross(Out.tangent, Out.normal));
 
   Out.tangent_matrix = mat3(Out.tangent, Out.bitangent, Out.normal);
