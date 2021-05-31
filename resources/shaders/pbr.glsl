@@ -3,7 +3,6 @@
 #endif
 
 const vec3 PBR_DIELECTRIC_F0 = vec3(0.04);
-const int MAX_LIGHTS 32
 
     struct Light {
   vec3 pos;
