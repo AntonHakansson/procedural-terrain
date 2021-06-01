@@ -39,11 +39,11 @@ void Terrain::init() {
   };
 
   int mipmaps = 5;
-  albedos.load2DArray<4>(albedo_paths, mipmaps);
-  normals.load2DArray<4>(normal_paths, mipmaps);
-  displacements.load2DArray<4>(displacement_paths, mipmaps);
-  roughness.load2DArray<4>(roughness_paths, mipmaps);
-  ambient_occlusions.load2DArray<4>(ao_paths, mipmaps);
+  albedos.load2DArray<4>(albedo_paths, 3, mipmaps);
+  normals.load2DArray<4>(normal_paths, 3, mipmaps);
+  displacements.load2DArray<4>(displacement_paths, 1, mipmaps);
+  roughness.load2DArray<4>(roughness_paths, 1, mipmaps);
+  ambient_occlusions.load2DArray<4>(ao_paths, 1, mipmaps);
 }
 
 void Terrain::deinit() {
