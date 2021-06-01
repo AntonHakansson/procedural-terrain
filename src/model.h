@@ -65,6 +65,8 @@ namespace gpu {
       glTextureParameteri(gl_id, GL_TEXTURE_MAX_ANISOTROPY, 16);
 
       glTextureStorage3D(gl_id, miplevels, internal_formats[0], widths[0], heights[0], filepaths.size());
+      this->width = widths[0];
+      this->height = heights[0];
 
       for (int i = 0; i < filepaths.size(); i++) {
         auto w = widths[i];

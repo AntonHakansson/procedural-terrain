@@ -214,17 +214,6 @@ struct App {
 
       glUseProgram(current_program);
 
-      // vec3 light_pos = -terrain.sun.direction * 500.F;
-      vec4 view_light_pos = view_matrix * vec4(vec3(debug_light.model_matrix[3]), 1);
-
-      ImGuizmo::Manipulate(&view_matrix[0][0], &proj_matrix[0][0], ImGuizmo::TRANSLATE,
-                           ImGuizmo::WORLD, &debug_light.model_matrix[0][0], nullptr, nullptr);
-      // ImGuizmo::DrawCubes(&view_matrix[0][0], &proj_matrix[0][0], &debug_light_matrix[0][0], 1);
-      // ImGuizmo::DrawCubes(&view_matrix[0][0], &proj_matrix[0][0], &(glm::translate(vec3(0, 500,
-      // 0)) * glm::scale(terrain.sun.direction * 20.F))[0][0], 1);
-
-      gpu::setUniformSlow(current_program, "viewSpaceLightPosition", vec3(view_light_pos));
-
       // Fighter
       gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
                           light_proj_matrix * light_view_matrix * fighter_model_matrix);
@@ -248,7 +237,12 @@ struct App {
 
   void renderPass(GLuint current_program, const mat4& view_matrix, const mat4& proj_matrix,
                   const mat4& light_view_matrix) {
+    vec3 view_space_light_pos = vec3(view_matrix * vec4(vec3(debug_light.model_matrix[3]), 1));
+    ImGuizmo::Manipulate(&view_matrix[0][0], &proj_matrix[0][0], ImGuizmo::TRANSLATE,
+                          ImGuizmo::WORLD, &debug_light.model_matrix[0][0], nullptr, nullptr);
+
     glUseProgram(current_program);
+    gpu::setUniformSlow(current_program, "viewSpaceLightPosition", view_space_light_pos);
 
     vec3 cam_pos = static_camera_enabled ? static_camera_world_pos : camera.getWorldPos();
     vec3 center = static_camera_enabled ? static_camera_pos : camera.position;
@@ -271,6 +265,13 @@ struct App {
                    environment_map.multiplier);
 
     glUseProgram(current_program);
+    gpu::setUniformSlow(current_program, "environment_multiplier", environment_map.multiplier);
+    gpu::setUniformSlow(current_program, "point_light_color", debug_light.color);
+    gpu::setUniformSlow(current_program, "point_light_intensity_multiplier", debug_light.intensity);
+
+    gpu::setUniformSlow(current_program, "viewSpaceLightPosition", view_space_light_pos);
+    gpu::setUniformSlow(current_program, "point_light_color", debug_light.color);
+    gpu::setUniformSlow(current_program, "point_light_intensity_multiplier", debug_light.intensity);
 
     // Fighter
     gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
@@ -282,9 +283,6 @@ struct App {
     gpu::render(models.fighter);
 
     // Material test
-    gpu::setUniformSlow(current_program, "environment_multiplier", environment_map.multiplier);
-    gpu::setUniformSlow(current_program, "point_light_color", debug_light.color);
-    gpu::setUniformSlow(current_program, "point_light_intensity_multiplier", debug_light.intensity);
     gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
                         proj_matrix * view_matrix * material_test_matrix);
     gpu::setUniformSlow(current_program, "modelViewMatrix", view_matrix * material_test_matrix);
