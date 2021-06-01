@@ -49,6 +49,8 @@ struct App {
     GLuint environmentMap, irradianceMap, reflectionMap;
   } environment_map;
 
+  gpu::Texture ibl_brdf_lut;
+
   struct Models {
     gpu::Model* fighter = nullptr;
     gpu::Model* landingpad = nullptr;
@@ -126,6 +128,9 @@ struct App {
 
     loadShaders(false);
 
+    // Load BRDF LUT
+    ibl_brdf_lut.load("resources/textures/", "ibl_brdf_lut.png", 3);
+
     // Load models and set up model matrices
     models.fighter = gpu::loadModelFromOBJ("resources/models/NewShip.obj");
     models.landingpad = gpu::loadModelFromOBJ("resources/models/landingpad.obj");
@@ -164,6 +169,8 @@ struct App {
     gpu::freeModel(models.landingpad);
     gpu::freeModel(models.material_test);
     gpu::freeModel(models.sphere);
+
+    glDeleteTextures(1, &ibl_brdf_lut.gl_id);
   }
 
   void debugDrawLight(const glm::mat4& view_matrix, const glm::mat4& proj_matrix,
@@ -342,13 +349,10 @@ struct App {
     shadowPass(shader_program, cam_view_matrix, proj_matrix, lightViewMatrix);
 
     // Bind the environment map(s) to unused texture units
-    glActiveTexture(GL_TEXTURE6);
-    glBindTexture(GL_TEXTURE_2D, environment_map.environmentMap);
-    glActiveTexture(GL_TEXTURE7);
-    glBindTexture(GL_TEXTURE_2D, environment_map.irradianceMap);
-    glActiveTexture(GL_TEXTURE8);
-    glBindTexture(GL_TEXTURE_2D, environment_map.reflectionMap);
-    glActiveTexture(GL_TEXTURE0);
+    glBindTextureUnit(6, environment_map.environmentMap);
+    glBindTextureUnit(7, environment_map.irradianceMap);
+    glBindTextureUnit(8, environment_map.reflectionMap);
+    glBindTextureUnit(9, ibl_brdf_lut.gl_id);
 
     // Draw into postfx FBO
     postfx.bind(window.width, window.height);

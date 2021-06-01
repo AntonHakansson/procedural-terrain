@@ -2,7 +2,7 @@
 #define _UTILS_H_
 
 #ifndef PI
-#define PI 3.14159265359
+#  define PI 3.14159265359
 #endif
 
 float inverseLerp(float a, float b, float x) { return (x - a) / (b - a); }
@@ -23,5 +23,4 @@ vec2 sphericalCoordinate(vec3 world_dir) {
   return vec2(phi / (2.0 * PI), theta / PI);
 }
 
-
-#endif // _UTILS_H_
+#endif  // _UTILS_H_

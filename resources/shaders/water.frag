@@ -1,7 +1,7 @@
 #version 420
 
-#include "utils.glsl"
 #include "sun.glsl"
+#include "utils.glsl"
 
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
@@ -320,9 +320,8 @@ void main() {
 
       vec3 offset_color;
       if (offset_depth < plane_depth) {
-          offset_color = color;
-      }
-      else {
+        offset_color = color;
+      } else {
         vec3 offset_color = texelFetch(pixel_buffer, offset_pixel_coord, 0).xyz;
         if ((offset_pixel_coord.x < 0) || (offset_pixel_coord.x > screen_size.x)
             || (offset_pixel_coord.y < 0) || (offset_pixel_coord.y > screen_size.y)) {

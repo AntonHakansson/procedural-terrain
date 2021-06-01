@@ -3,9 +3,9 @@
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
 
-#include "utils.glsl"
 #include "pbr.glsl"
 #include "sun.glsl"
+#include "utils.glsl"
 
 in DATA {
   vec3 world_pos;
@@ -28,6 +28,7 @@ layout(binding = 4) uniform sampler2DArray ambient_occlusion;
 
 layout(binding = 7) uniform sampler2D irradiance_map;
 layout(binding = 8) uniform sampler2D reflection_map;
+layout(binding = 9) uniform sampler2D brdf_lut;
 uniform float environment_multiplier;
 
 uniform vec3 eyeWorldPos;
@@ -350,8 +351,8 @@ void main() {
   vec3 wo = -normalize(In.view_space_pos);
   vec3 n = (viewMatrix * vec4(terrain_normal, 0.0)).xyz;
   vec3 wi = -sun.view_space_direction;
-  out_color = pbrDirectLightning(In.view_space_pos, n, wo, wi, viewInverse, m, light,
-                                 environment_multiplier, irradiance_map, reflection_map);
+  out_color = pbrLightning(In.view_space_pos, n, wo, wi, viewInverse, m, light,
+                           environment_multiplier, irradiance_map, reflection_map, brdf_lut);
   out_color *= shadow_factor;
 
   // Debug normals

@@ -10,4 +10,4 @@ struct Sun {
   float intensity;
 };
 
-#endif // _SUN_H_
+#endif  // _SUN_H_

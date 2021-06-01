@@ -69,9 +69,9 @@ float geometrySmith(vec3 n, vec3 wo, vec3 wi, float roughness) {
 // n is the surface normal
 // wo is the direction from the fragment to the camera
 // wi is the direction form the fragment to the light
-vec3 pbrDirectLightning(vec3 p, vec3 n, vec3 wo, vec3 wi, mat4 view_inverse, Material m,
-                        Light light, float environment_multiplier, sampler2D irradiance_map,
-                        sampler2D reflection_map) {
+vec3 pbrLightning(vec3 p, vec3 n, vec3 wo, vec3 wi, mat4 view_inverse, Material m, Light light,
+                  float environment_multiplier, sampler2D irradiance_map, sampler2D reflection_map,
+                  sampler2D brdf_lut) {
   float cos_theta = max(dot(n, wi), 0.0);
   vec3 f0 = mix(m.fresnel, m.albedo, m.metallic);
 
@@ -137,8 +137,8 @@ vec3 pbrDirectLightning(vec3 p, vec3 n, vec3 wo, vec3 wi, mat4 view_inverse, Mat
     prefiltered_color = environment_multiplier
                         * textureLod(reflection_map, lookup, m.roughness * MAX_REFLECTION_LOD).rgb;
   }
-  // TODO: brdfLUT
-  vec3 specular = prefiltered_color * (F * m.reflective);
+  vec2 brdf = texture(brdf_lut, vec2(max(dot(n, wo), 0.0), m.roughness)).rg;
+  vec3 specular = prefiltered_color * (F * brdf.x + brdf.y);
 
   vec3 ambient = (kD * diffuse + specular) * m.ao;
   vec3 color = ambient + out_radiance;
@@ -152,4 +152,4 @@ vec3 pbrDirectLightning(vec3 p, vec3 n, vec3 wo, vec3 wi, mat4 view_inverse, Mat
   return color;
 }
 
-#endif // _PBR_H_
+#endif  // _PBR_H_

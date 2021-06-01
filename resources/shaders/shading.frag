@@ -26,6 +26,7 @@ layout(binding = 5) uniform sampler2D emissiveMap;
 layout(binding = 6) uniform sampler2D environmentMap;
 layout(binding = 7) uniform sampler2D irradianceMap;
 layout(binding = 8) uniform sampler2D reflectionMap;
+layout(binding = 9) uniform sampler2D brdf_lut;
 uniform float environment_multiplier;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -197,7 +198,6 @@ void main() {
   vec3 wi = normalize(viewSpaceLightPosition - viewSpacePosition);
   vec3 n = normalize(viewSpaceNormal);
 
-#if 1
   Material m;
   m.albedo = material_color;
   m.metallic = material_metalness;
@@ -212,25 +212,8 @@ void main() {
   light.intensity = point_light_intensity_multiplier * (1);
   light.attenuation = vec3(0, 0, 1);
 
-  vec3 direct_illumination_term
-      = pbrDirectLightning(viewSpacePosition, n, wo, wi, viewInverse, m, light,
-                           environment_multiplier, irradianceMap, reflectionMap);
-  // vec3 indirect_illumination_term = pbrIndirectLightning(n, wo, m, viewInverse,
-  // environment_multiplier, irradianceMap, reflectionMap);
-  vec3 indirect_illumination_term = vec3(0);
-#else
-  vec3 direct_illumination_term = visibility * calculateDirectIllumiunation(wo, n, wi);
-  vec3 indirect_illumination_term = calculateIndirectIllumination(wo, n);
-#endif
+  vec3 shading = pbrLightning(viewSpacePosition, n, wo, wi, viewInverse, m, light,
+                              environment_multiplier, irradianceMap, reflectionMap, brdf_lut);
 
-  ///////////////////////////////////////////////////////////////////////////
-  // Add emissive term. If emissive texture exists, sample this term.
-  ///////////////////////////////////////////////////////////////////////////
-  vec3 emission_term = material_emission * material_color;
-  if (has_emission_texture == 1) {
-    emission_term = texture(emissiveMap, texCoord).xyz;
-  }
-
-  vec3 shading = direct_illumination_term + indirect_illumination_term + emission_term;
   fragmentColor = vec4(shading * visibility, 1.0);
 }

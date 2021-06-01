@@ -3,9 +3,9 @@
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
 
-#include "utils.glsl"
 #include "fxaa.glsl"
 #include "sun.glsl"
+#include "utils.glsl"
 
 // Inputs
 layout(location = 0) out vec4 fragmentColor;
