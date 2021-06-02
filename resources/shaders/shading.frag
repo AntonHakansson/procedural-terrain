@@ -194,12 +194,14 @@ void main() {
   float visibility = 1.0;
   float attenuation = 1.0;
 
+  vec3 albedo = texture(colorMap, -texCoord).rgb;
+
   vec3 wo = -normalize(viewSpacePosition);
   vec3 wi = normalize(viewSpaceLightPosition - viewSpacePosition);
   vec3 n = normalize(viewSpaceNormal);
 
   Material m;
-  m.albedo = material_color;
+  m.albedo = has_color_texture != 0 ? albedo : material_color;
   m.metallic = material_metalness;
   m.roughness = sqrt(sqrt(2.0 / (material_shininess + 2.0)));
   m.reflective = material_reflectivity;

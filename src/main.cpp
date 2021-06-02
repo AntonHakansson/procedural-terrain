@@ -56,6 +56,7 @@ struct App {
     gpu::Model* landingpad = nullptr;
     gpu::Model* material_test = nullptr;
     gpu::Model* sphere = nullptr;
+    gpu::Model* shrek = nullptr;
   } models;
 
   Terrain terrain;
@@ -76,6 +77,7 @@ struct App {
 
   bool fighter_draggable = false;
   mat4 fighter_model_matrix = translate(vec3(0, 500, 0));
+  mat4 shrek_model_matrix = translate(vec3(-50, 500, 0));
   mat4 material_test_matrix = translate(vec3(50, 500, 0));
 
   struct DebugLight {
@@ -136,6 +138,7 @@ struct App {
     models.landingpad = gpu::loadModelFromOBJ("resources/models/landingpad.obj");
     models.material_test = gpu::loadModelFromOBJ("resources/models/materialtest.obj");
     models.sphere = gpu::loadModelFromOBJ("resources/models/sphere.obj");
+    models.shrek = gpu::loadModelFromOBJ("resources/models/shrek/Shrek.obj");
 
     // Load environment map
     {
@@ -280,6 +283,14 @@ struct App {
     gpu::setUniformSlow(current_program, "point_light_color", debug_light.color);
     gpu::setUniformSlow(current_program, "point_light_intensity_multiplier", debug_light.intensity);
 
+    // shrek
+    gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
+                        proj_matrix * view_matrix * shrek_model_matrix);
+    gpu::setUniformSlow(current_program, "modelViewMatrix", view_matrix * shrek_model_matrix);
+    gpu::setUniformSlow(current_program, "normalMatrix",
+                        inverse(transpose(view_matrix * shrek_model_matrix)));
+    gpu::render(models.shrek);
+
     // Fighter
     gpu::setUniformSlow(current_program, "modelViewProjectionMatrix",
                         proj_matrix * view_matrix * fighter_model_matrix);
@@ -296,6 +307,7 @@ struct App {
     gpu::setUniformSlow(current_program, "normalMatrix",
                         inverse(transpose(view_matrix * material_test_matrix)));
     gpu::render(models.material_test);
+
 
     water.render(&terrain, window.width, window.height, current_time, proj_matrix, view_matrix,
                  center, camera.projection, environment_map.multiplier);
