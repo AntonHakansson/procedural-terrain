@@ -1,6 +1,7 @@
 #version 420
 
-#define PI 3.14159265359
+#include "sun.glsl"
+#include "utils.glsl"
 
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
@@ -32,10 +33,6 @@ In;
 // Uniforms
 uniform float current_time;
 
-struct Sun {
-  vec3 direction;
-  vec3 color;
-};
 uniform Sun sun;
 
 struct Water {
@@ -71,11 +68,11 @@ uniform mat4 inv_view_matrix;
 uniform mat4 pixel_projection;  // `pixel_projection` projects from view space to pixel coordinate
 uniform float environment_multiplier;
 
-#define DEBUG_OFF 0
+#define DEBUG_NONE 0
 #define DEBUG_SSR_REFLECTION 1
 #define DEBUG_SSR_REFRACTION 2
 #define DEBUG_SSR_REFRACTION_MISSES 3
-uniform int debug_flag;  // 0 = off; 1 = screen space reflection; 2 = screen space refraction;
+uniform int debug_flag;  // 0 = none; 1 = screen space reflection; 2 = screen space refraction;
 
 // Constants
 const vec3 ocean_blue = vec3(0.1, 0.3, 0.6);
@@ -98,10 +95,6 @@ float distanceSquared(vec2 a, vec2 b) {
 float distanceSquared(vec3 a, vec3 b) {
   a -= b;
   return dot(a, a);
-}
-
-float linearizeDepth(float depth, float near, float far) {
-  return 2.0 * near * far / (far + near - (2.0 * depth - 1.0) * (far - near));
 }
 
 /**
@@ -224,10 +217,6 @@ bool traceScreenSpaceRay(vec3 ray_origin, vec3 ray_dir, mat4 pixel_projection,
 }
 
 vec3 getDuDv(vec2 tex_coord) {
-  if (debug_flag == DEBUG_SSR_REFLECTION) {
-    return vec3(0);
-  }
-
   vec3 dudv_x
       = texture(dudv_map, (tex_coord / water.wave_scale) + vec2(current_time * water.wave_speed, 0))
             .rgb;
@@ -239,9 +228,6 @@ vec3 getDuDv(vec2 tex_coord) {
   vec3 dudv = normalize(dudv_x + dudv_y) * water.wave_strength;
   return dudv;
 }
-
-float inverseLerp(float a, float b, float x) { return (x - a) / (b - a); }
-float inverseLerpClamped(float a, float b, float x) { return clamp(inverseLerp(a, b, x), 0, 1); }
 
 void main() {
   vec3 color = texelFetch(pixel_buffer, ivec2(gl_FragCoord.xy), 0).xyz;
@@ -258,16 +244,15 @@ void main() {
   vec3 view_dir = normalize(In.view_space_position);
 
   vec3 dudv = getDuDv(In.world_pos.xz);
-  vec3 reflection_dir = normalize(reflect(view_dir, In.view_space_normal));
-  vec3 refraction_dir = normalize(refract(view_dir, In.view_space_normal, 0.8));
-
-  reflection_dir = normalize(reflection_dir + dudv);
-  refraction_dir = normalize(refraction_dir + dudv);
+  vec3 view_space_normal = normalize(In.view_space_normal + dudv);
+  vec3 reflection_dir = normalize(reflect(view_dir, view_space_normal));
+  vec3 refraction_dir = normalize(refract(view_dir, view_space_normal, 0.8));
 
   vec3 out_color = color;
 
   // foam
-  float ocean_mask = clamp((diff_depth - 100) / 1200.0, 0.0, 0.12) / 0.18;
+  // float ocean_mask = clamp((diff_depth - 100) / 1200.0, 0.0, 0.12) / 0.18;
+  float ocean_mask = 1 - exp(-(terrain_depth - plane_depth) * 0.008);
 
   float foam_mask;
   foam_mask += max(1.0 - diff_depth / water.foam_distance, 0);
@@ -291,22 +276,15 @@ void main() {
     if (reflection_hit) {
       reflection_color = texelFetch(pixel_buffer, ivec2(hit_pixel), 0).rgb;
     } else {
+      // reflection from environment map
       vec3 world_reflection_dir = normalize((inv_view_matrix * vec4(reflection_dir, 0.0)).xyz);
+      vec2 lookup = sphericalCoordinate(world_reflection_dir);
+      reflection_color = texture(environment_map, lookup).xyz * environment_multiplier * 0.9;
 
-      // Calculate the spherical coordinates of the direction
-      float theta = acos(max(-1.0f, min(1.0f, world_reflection_dir.y)));
-      float phi = atan(world_reflection_dir.z, world_reflection_dir.x);
-
-      if (phi < 0.0f) phi = phi + 2.0f * PI;
-
-      // Use these to lookup the color in the environment map
-      vec2 lookup = vec2(phi / (2.0 * PI), theta / PI);
-      reflection_color = texture(environment_map, lookup).xyz * environment_multiplier;
-
+      // sun influence
       float sun_threshold = 0.998;
       float wdots = max(dot(world_reflection_dir, -sun.direction), 0.0);
 
-      // reflection_color = vec3(wdots);
       float f1 = smoothstep(0.0, 1.0,
                             inverseLerpClamped(sun_threshold, (1 + sun_threshold) / 2.0, wdots));
       float f2 = smoothstep(0.2, 1.0, inverseLerpClamped(sun_threshold, 1, wdots));
@@ -333,13 +311,24 @@ void main() {
     } else {
       // REVIEW: is there some other hack here? Maybe project refraction_dir to screen space and
       // sample in that direction?
+
       ivec2 screen_size = textureSize(pixel_buffer, 0);
       ivec2 offset_pixel_coord = ivec2(gl_FragCoord.xy) + ivec2(vec2(dudv * 0.2) * screen_size);
-      vec3 offset_color = texelFetch(pixel_buffer, offset_pixel_coord, 0).xyz;
-      if ((offset_pixel_coord.x < 0) || (offset_pixel_coord.x > screen_size.x)
-          || (offset_pixel_coord.y < 0) || (offset_pixel_coord.y > screen_size.y)) {
+
+      float offset_depth = texelFetch(depth_buffer, offset_pixel_coord, 0).r;
+      offset_depth = -linearizeDepth(offset_depth, ssr_reflection.z_near, ssr_reflection.z_far);
+
+      vec3 offset_color;
+      if (offset_depth < plane_depth) {
         offset_color = color;
+      } else {
+        vec3 offset_color = texelFetch(pixel_buffer, offset_pixel_coord, 0).xyz;
+        if ((offset_pixel_coord.x < 0) || (offset_pixel_coord.x > screen_size.x)
+            || (offset_pixel_coord.y < 0) || (offset_pixel_coord.y > screen_size.y)) {
+          offset_color = color;
+        }
       }
+
       refraction_color = debug_flag == DEBUG_SSR_REFRACTION_MISSES ? vec3(0) : offset_color;
     }
     if (debug_flag == DEBUG_SSR_REFRACTION || debug_flag == DEBUG_SSR_REFRACTION_MISSES) {
@@ -348,13 +337,13 @@ void main() {
     }
   }
 
-  vec3 fresnel_color
-      = mix(reflection_color, refraction_color, max(-dot(view_dir, In.view_space_normal), 0.0));
+  refraction_color = mix(refraction_color, ocean_blue, 0.5);
+  refraction_color = mix(refraction_color, ocean_blue_deep, ocean_mask);
 
-  out_color = mix(fresnel_color, ocean_blue, 0.5);
+  float viewing_angle = max(dot(vec3(0.0, 0.0, 1.0), view_space_normal), 0.0);
+  float fresnel_factor = mix(0.6, 0.9, viewing_angle);
+  out_color = mix(reflection_color, refraction_color, fresnel_factor);
+
   out_color = out_color + (foam_mask * 0.3);
-
-  out_color = mix(out_color.xyz, ocean_blue_deep, ocean_mask);
-
   fragmentColor = vec4(out_color, 1.0);
 }

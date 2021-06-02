@@ -4,14 +4,16 @@
 precision highp float;
 
 #include "pbr.glsl"
+#include "sun.glsl"
+#include "utils.glsl"
 
 in DATA {
   vec3 world_pos;
-  vec3 view_pos;
+  vec3 view_space_pos;
+  vec3 view_space_normal;
   vec4 shadow_coord;
   vec2 tex_coord;
   vec3 normal;
-  vec3 view_normal;
   vec3 tangent;
   vec3 bitangent;
   mat3 tangent_matrix;
@@ -26,8 +28,11 @@ layout(binding = 4) uniform sampler2DArray ambient_occlusion;
 
 layout(binding = 7) uniform sampler2D irradiance_map;
 layout(binding = 8) uniform sampler2D reflection_map;
+layout(binding = 9) uniform sampler2D brdf_lut;
 uniform float environment_multiplier;
 
+uniform vec3 eyeWorldPos;
+uniform mat4 viewMatrix;
 uniform mat4 viewInverse;
 
 /**
@@ -69,11 +74,6 @@ layout(binding = 10) uniform sampler2DArrayShadow shadow_tex;
 /**
  * Sun
  */
-struct Sun {
-  vec3 direction;
-  vec3 color;
-  float intensity;
-};
 uniform Sun sun;
 
 /**
@@ -102,71 +102,38 @@ vec3 triplanarSampling(sampler2D tex, vec3 worldpos, vec3 normal) {
   return texture(tex, scaled_worldpos.xz).xyz;
 }
 
-float inverseLerp(float a, float b, float x) { return (x - a) / (b - a); }
-float inverseLerpClamped(float a, float b, float x) { return clamp(inverseLerp(a, b, x), 0, 1); }
-
-vec3 blendTextures(vec3 t1, vec3 t2, float a, float b) {
-  vec3 col1 = texture(albedos, t1).rgb;
-  vec3 col2 = texture(albedos, t2).rgb;
-
-  float disp1 = texture(displacement, t1).r;
-  float disp2 = texture(displacement, t2).r;
-
-  float depth = 0.1;
-  float ma = max(disp1 + a, disp2 + b) - depth;
-
-  float w1 = max(disp1 + a - ma, 0);
-  float w2 = max(disp2 + b - ma, 0);
-
-  return (col1 * w1 + col2 * w2) / (w1 + w2);
-}
-
 vec3 getWorldNormal(vec3 tex_coord) {
   vec3 tangent_normal = normalize(2.0 * texture(normals, tex_coord).xyz - 1.0);
   return In.tangent_matrix * tangent_normal;
 }
 
-void blendTextures(vec3 t1, vec3 t2, vec3 t3, vec3 t4, float[4] w, out vec3 color,
-                   out vec3 normal, out float r, out float ao) {
-  vec3 col1 = texture(albedos, t1).rgb;
-  vec3 col2 = texture(albedos, t2).rgb;
-  vec3 col3 = texture(albedos, t3).rgb;
-  vec3 col4 = texture(albedos, t4).rgb;
+float[4] getTextureWeightsByDisplacement(vec3[4] t, float[4] a) {
+  const float depth = 0.1;
 
-  vec3 normal1 = getWorldNormal(t1);
-  vec3 normal2 = getWorldNormal(t2);
-  vec3 normal3 = getWorldNormal(t3);
-  vec3 normal4 = getWorldNormal(t4);
+  float disp[t.length];
+  for (int i = 0; i < t.length; i++) {
+    disp[i] = texture(displacement, t[i]).r * texture_displacement_weights[i];
+  }
 
-  float r1 = texture(roughness, t1).r;
-  float r2 = texture(roughness, t2).r;
-  float r3 = texture(roughness, t3).r;
-  float r4 = texture(roughness, t4).r;
+  float ma = 0;
+  for (int i = 0; i < t.length; i++) {
+    ma = max(ma, disp[i] + a[i]);
+  }
+  ma -= depth;
 
-  float a1 = texture(ambient_occlusion, t1).r;
-  float a2 = texture(ambient_occlusion, t2).r;
-  float a3 = texture(ambient_occlusion, t3).r;
-  float a4 = texture(ambient_occlusion, t4).r;
+  float total_w = 0;
+  float[t.length] w;
+  for (int i = 0; i < t.length; i++) {
+    w[i] = max(disp[i] + a[i] - ma, 0);
+    total_w += w[i];
+  }
 
-  float disp1 = texture(displacement, t1).r * texture_displacement_weights[0];
-  float disp2 = texture(displacement, t2).r * texture_displacement_weights[1];
-  float disp3 = texture(displacement, t3).r * texture_displacement_weights[2];
-  float disp4 = texture(displacement, t4).r * texture_displacement_weights[3];
+  // normalize
+  for (int i = 0; i < t.length; i++) {
+    w[i] /= total_w;
+  }
 
-  float depth = 0.1;
-  float ma = max(max(max(disp1 + w[0], disp2 + w[1]), disp3 + w[2]), disp4 + w[3]) - depth;
-
-  float w1 = max(disp1 + w[0] - ma, 0);
-  float w2 = max(disp2 + w[1] - ma, 0);
-  float w3 = max(disp3 + w[2] - ma, 0);
-  float w4 = max(disp4 + w[3] - ma, 0);
-
-  float total_w = (w1 + w2 + w3 + w4);
-
-  color = (col1 * w1 + col2 * w2 + col3 * w3 + col4 * w4) / total_w;
-  normal = normalize((normal1 * w1 + normal2 * w2 + normal3 * w3 + normal4 * w4) / total_w);
-  r = (r1 * w1 + r2 * w2 + r3 * w3 + r4 * w4) / total_w;
-  ao = (a1 * w1 + a2 * w2 + a3 * w3 + a4 * w4) / total_w;
+  return w;
 }
 
 float[4] terrainBlending(vec3 world_pos, vec3 normal) {
@@ -223,10 +190,7 @@ float[4] terrainBlending(vec3 world_pos, vec3 normal) {
 }
 
 vec3 getTextureCoordinate(vec3 world_pos, int texture_index) {
-  vec2 scaled_worldpos = (world_pos / (2048.0)).xz;
-  vec2 tex_coord = scaled_worldpos * texture_sizes[texture_index];
-
-  return vec3(tex_coord, texture_index);
+  return vec3(In.tex_coord * texture_sizes[texture_index], texture_index);
 }
 
 vec3 terrainNormal(vec3 world_pos, vec3 normal) {
@@ -346,58 +310,92 @@ void main() {
 
   float[4] draw_strengths = terrainBlending(In.world_pos, In.normal);
 
-  vec3 terrain_color;
-  vec3 terrain_normal;
-  float terrain_roughness;
-  float ao;
-  blendTextures(getTextureCoordinate(In.world_pos, 0), getTextureCoordinate(In.world_pos, 1),
-                getTextureCoordinate(In.world_pos, 2), getTextureCoordinate(In.world_pos, 3),
-                draw_strengths, terrain_color, terrain_normal, terrain_roughness, ao);
+  vec3[4] tex_coords;
+  tex_coords[0] = getTextureCoordinate(In.world_pos, 0);
+  tex_coords[1] = getTextureCoordinate(In.world_pos, 1);
+  tex_coords[2] = getTextureCoordinate(In.world_pos, 2);
+  tex_coords[3] = getTextureCoordinate(In.world_pos, 3);
+
+  vec3 terrain_color = vec3(0);
+  vec3 terrain_normal = vec3(0);
+  float terrain_roughness = 0;
+  float ao = 0;
 
 #if 1
+  float w[4] = getTextureWeightsByDisplacement(tex_coords, draw_strengths);
+#else
+  float w[4] = draw_strengths;
+#endif
+
+  for (int i = 0; i < w.length; i++) {
+    terrain_color += texture(albedos, tex_coords[i]).rgb * w[i];
+    terrain_normal += getWorldNormal(tex_coords[i]) * w[i];
+    terrain_roughness += texture(roughness, tex_coords[i]).r * w[i];
+    ao += texture(ambient_occlusion, tex_coords[i]).r * w[i];
+  }
+  terrain_normal = normalize(terrain_normal);
+
   Material m;
   m.albedo = terrain_color;
-  m.metallic = 0.0;
+  m.metallic = 0.2;
   m.roughness = terrain_roughness;
   m.ao = ao;
-  // m.ao = 1;
-  m.reflective = 0.8;
-  m.fresnel = 0.04;
+  m.reflective = 0.0;
+  m.fresnel = PBR_DIELECTRIC_F0;
 
   Light light;
-  light.color = vec3(1);
+  light.color = mix(sun.color, vec3(0.9), pow(max(dot(-sun.direction, vec3(0, 1, 0)), 0.0), 1.5));
   light.intensity = sun.intensity;
+  light.attenuation = vec3(0.30, 0, 0);
 
-  vec3 wo = -normalize(In.view_pos);
-  vec3 wi = normalize((viewInverse * vec4(-sun.direction, 0.0)).xyz);
-  vec3 n = (viewInverse * vec4(terrain_normal, 0.0)).xyz;
-  out_color = pbrDirectLightning(In.view_pos, n, wo, wi, m, light, true);
-  out_color += pbrIndirectLightning(n, wo, m, viewInverse, environment_multiplier, irradiance_map, reflection_map);
+  vec3 wo = -normalize(In.view_space_pos);
+  vec3 n = (viewMatrix * vec4(terrain_normal, 0.0)).xyz;
+  vec3 wi = -sun.view_space_direction;
+  out_color = pbrLightning(In.view_space_pos, n, wo, wi, viewInverse, m, light,
+                           environment_multiplier, irradiance_map, reflection_map, brdf_lut);
   out_color *= shadow_factor;
-#else
-  vec3 ambient = ambient();
-  vec3 diffuse = diffuse(In.world_pos, terrain_normal);
-  out_color = vec3(terrain_color * shadow_factor * (ambient + diffuse));
-#endif
 
   // Debug normals
 #if 0
-  out_color = terrain_normal;
+  fragmentColor = vec4(terrain_normal, 1.0);
   return;
 #endif
 
-  // Debug for draw_weights
+  // Debug draw_strengths
 #if 0
-  float[4] draw_strengths = terrainBlending(In.world_pos, In.normal);
   float tot = draw_strengths[0] + draw_strengths[1] + draw_strengths[2] + draw_strengths[3];
   if (tot > 1.0001) {
       out_color = vec3(1.0, 0.0, 0.0);
-      return;
   }
   else if (tot < 0.9999) {
       out_color = vec3(0.0, 0.0, 1.0);
-      return;
   }
+  fragmentColor = vec4(out_color, 1.0);
+  return;
+#endif
+
+  // Parallax mapping playground
+#if 0
+  vec3 world_pos = In.world_pos;
+  int texture_index = 2;
+
+  vec3 world_view_dir = normalize(world_pos - eyeWorldPos);
+
+  vec2 tex_coord = In.tex_coord * texture_sizes[texture_index];
+
+  mat3 TBN = transpose(mat3(vec3(1, 0, 0), vec3(0, 0, -1), vec3(0, 1, 0)));
+  vec3 tangent_view_pos = TBN * eyeWorldPos;
+  vec3 tangent_frag_pos = TBN * world_pos;
+
+  vec3 tangent_view_dir = normalize(tangent_view_pos - tangent_frag_pos);
+
+  float height = 1.0 - texture(displacement, vec3(tex_coord, texture_index)).r;
+  vec3 tc = vec3(tex_coord - world_view_dir.xy * height * 0.09, texture_index);
+  vec3 parallaxed_albedo = texture(albedos, tc).rgb;
+
+  fragmentColor = vec4(tangent_view_dir.xy, 0.0, 1.0);
+  fragmentColor = vec4(parallaxed_albedo, 1.0);
+
   return;
 #endif
 

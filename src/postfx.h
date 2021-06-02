@@ -53,21 +53,24 @@ struct PostFX {
     glBindTexture(GL_TEXTURE_2D, screen_fbo.depthBuffer);
 
     gpu::setUniformSlow(shader_program, "viewMatrix", view_matrix);
+    gpu::setUniformSlow(shader_program, "view_inverse", inverse(view_matrix));
     gpu::setUniformSlow(shader_program, "projMatrix", proj_matrix);
+    gpu::setUniformSlow(shader_program, "proj_inverse", inverse(proj_matrix));
     gpu::setUniformSlow(shader_program, "currentTime", current_time);
     gpu::setUniformSlow(shader_program, "water.height", water->height);
-    gpu::setUniformSlow(shader_program, "sun.direction", sun->direction);
-    gpu::setUniformSlow(shader_program, "sun.color", sun->color);
-    gpu::setUniformSlow(shader_program, "sun.intensity", sun->intensity);
+    sun->upload(shader_program, "sun", view_matrix);
     gpu::setUniformSlow(shader_program, "postfx.z_near", projection.near);
     gpu::setUniformSlow(shader_program, "postfx.z_far", projection.far);
     gpu::setUniformSlow(shader_program, "postfx.debug_mask", debug_mask);
+    gpu::setUniformSlow(shader_program, "postfx.enable_fxaa", enable_fxaa);
 
     gpu::drawFullScreenQuad();
   }
 
   void gui() {
     if (ImGui::CollapsingHeader("Post FX")) {
+      ImGui::Checkbox("Enable FXAA", &enable_fxaa);
+
       ImGui::Image((void*)(intptr_t)screen_fbo.colorTextureTargets[0], ImVec2(252, 252),
                    ImVec2(0, 1), ImVec2(1, 0));
 
@@ -86,7 +89,10 @@ struct PostFX {
   GLuint shader_program;
   FboInfo screen_fbo;
 
-  static constexpr std::array<const char*, 3> DebugMasks{{"Off", "Horizon mask", "God ray mask"}};
+  bool enable_fxaa = true;
+
+  static constexpr std::array<const char*, 4> DebugMasks{
+      {"None", "Horizon mask", "God ray mask", "Off"}};
 
   int debug_mask = 0;
 };

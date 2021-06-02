@@ -127,7 +127,7 @@ namespace gpu {
   void setUniformSlow(GLuint shaderProgram, const char* name, const glm::ivec2& value);
 
   size_t createSubdividedPlane(float size, unsigned int subdivisions, GLuint* out_vao,
-                               GLuint* out_vbo, GLuint* out_ebo);
+                               GLuint* out_position_bo, GLuint* out_texcoord_bo, GLuint* out_ebo);
 
   /**
    * Helper to draw a single quad (two triangles) that cover the entire screen

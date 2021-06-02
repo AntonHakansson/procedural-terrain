@@ -17,9 +17,11 @@ namespace gpu {
     uint8_t* data = nullptr;
     bool load(const std::string& directory, const std::string& filename, int nof_components);
 
-    template <int N> void load2DArray(const std::array<std::string, N>& filepaths, int miplevels) {
+    template <int N> void load2DArray(const std::array<std::string, N>& filepaths, int _components, int miplevels) {
       std::array<int, N> widths;
       std::array<int, N> heights;
+      std::array<GLenum, N> formats;
+      std::array<GLenum, N> internal_formats;
       std::array<uint8_t*, N> tex_data;
 
       for (int i = 0; i < filepaths.size(); i++) {
@@ -27,7 +29,7 @@ namespace gpu {
         int width;
         int height;
         int components;
-        uint8_t* data = stbi_load(filepath.c_str(), &width, &height, &components, 3);
+        uint8_t* data = stbi_load(filepath.c_str(), &width, &height, &components, _components);
 
         if (data == nullptr) {
           std::cout << "ERROR: Failed to load texture:" << filepaths[i] << "\n";
@@ -37,6 +39,22 @@ namespace gpu {
         widths[i] = width;
         heights[i] = height;
         tex_data[i] = data;
+
+        if (_components == 1) {
+          formats[i] = GL_RED;
+          internal_formats[i] = GL_R8;
+        }
+        else if (_components == 3) {
+          formats[i] = GL_RGB;
+          internal_formats[i] = GL_RGB8;
+        }
+        else if (_components == 4) {
+          formats[i] = GL_RGBA;
+          internal_formats[i] = GL_RGBA8;
+        }
+        else {
+          assert(false && "Texture loading not implemented for this number of components");
+        }
       }
 
       glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &gl_id);
@@ -46,16 +64,20 @@ namespace gpu {
       glTextureParameteri(gl_id, GL_TEXTURE_WRAP_T, GL_REPEAT);
       glTextureParameteri(gl_id, GL_TEXTURE_MAX_ANISOTROPY, 16);
 
-      glTextureStorage3D(gl_id, miplevels, GL_RGB8, widths[0], heights[0], filepaths.size());
+      glTextureStorage3D(gl_id, miplevels, internal_formats[0], widths[0], heights[0], filepaths.size());
+      this->width = widths[0];
+      this->height = heights[0];
 
       for (int i = 0; i < filepaths.size(); i++) {
         auto w = widths[i];
         auto h = heights[i];
-        glTextureSubImage3D(gl_id, 0, 0, 0, i, w, h, 1, GL_RGB, GL_UNSIGNED_BYTE, tex_data[i]);
+        glTextureSubImage3D(gl_id, 0, 0, 0, i, w, h, 1, formats[i], GL_UNSIGNED_BYTE, tex_data[i]);
         stbi_image_free(tex_data[i]);
       }
 
       glGenerateTextureMipmap(gl_id);
+
+      // CHECK_GL_ERROR();
     }
   };
   //////////////////////////////////////////////////////////////////////////////

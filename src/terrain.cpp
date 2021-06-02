@@ -39,11 +39,11 @@ void Terrain::init() {
   };
 
   int mipmaps = 5;
-  albedos.load2DArray<4>(albedo_paths, mipmaps);
-  normals.load2DArray<4>(normal_paths, mipmaps);
-  displacements.load2DArray<4>(displacement_paths, mipmaps);
-  roughness.load2DArray<4>(roughness_paths, mipmaps);
-  ambient_occlusions.load2DArray<4>(ao_paths, mipmaps);
+  albedos.load2DArray<4>(albedo_paths, 3, mipmaps);
+  normals.load2DArray<4>(normal_paths, 3, mipmaps);
+  displacements.load2DArray<4>(displacement_paths, 1, mipmaps);
+  roughness.load2DArray<4>(roughness_paths, 1, mipmaps);
+  ambient_occlusions.load2DArray<4>(ao_paths, 1, mipmaps);
 }
 
 void Terrain::deinit() {
@@ -97,7 +97,7 @@ void Terrain::buildMesh(bool is_reload) {
   }
   this->indices_count
       = gpu::createSubdividedPlane(this->terrain_size, this->terrain_subdivision, &this->vao,
-                                   &this->positions_bo, &this->indices_bo);
+                                   &this->positions_bo, nullptr, &this->indices_bo);
 }
 
 void Terrain::update(float delta_time, float current_time) {
@@ -112,7 +112,8 @@ void Terrain::begin(bool simple) {
 }
 
 void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 center,
-                     glm::vec3 camera_position, glm::mat4 light_matrix, float water_height, float environment_multiplier) {
+                     glm::vec3 camera_position, glm::mat4 light_matrix, float water_height,
+                     float environment_multiplier) {
   GLint prev_polygon_mode;
 
   GLuint shader_program = this->simple ? this->shader_program_simple : this->shader_program;
@@ -149,9 +150,7 @@ void Terrain::render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::ve
     gpu::setUniformSlow(shader_program, "noise.persistence", noise.persistence);
     gpu::setUniformSlow(shader_program, "noise.lacunarity", noise.lacunarity);
 
-    gpu::setUniformSlow(shader_program, "sun.direction", sun.direction);
-    gpu::setUniformSlow(shader_program, "sun.color", sun.color);
-    gpu::setUniformSlow(shader_program, "sun.intensity", sun.intensity);
+    sun.upload(shader_program, "sun", view_matrix);
     gpu::setUniformSlow(shader_program, "environment_multiplier", environment_multiplier);
 
     gpu::setUniformSlow(shader_program, "noise.num_octaves", (GLint)noise.num_octaves);

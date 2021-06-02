@@ -52,6 +52,15 @@ struct Sun {
 
   glm::mat4 matrix = inverse(glm::lookAt(vec3(0), -direction, vec3(0, 1, 0)));
 
+  void upload(GLuint program, std::string uniform_name, const glm::mat4 view_matrix) {
+    vec3 view_space_direction = vec3(view_matrix * vec4(direction, 0.0));
+
+    gpu::setUniformSlow(program, (uniform_name + ".direction").c_str(), direction);
+    gpu::setUniformSlow(program, (uniform_name + ".view_space_direction").c_str(), view_space_direction);
+    gpu::setUniformSlow(program, (uniform_name + ".color").c_str(), color);
+    gpu::setUniformSlow(program, (uniform_name + ".intensity").c_str(), intensity);
+  }
+
   bool gui(Camera* camera) {
     auto did_change = false;
 
@@ -115,7 +124,7 @@ struct Terrain {
 
   std::array<float, 4> texture_start_heights{155, 270, 520, 866};
   std::array<float, 4> texture_blends{0.0, 80, 415, 610};
-  std::array<float, 4> texture_sizes{70.40, 16.229, 6.629, 11.657};
+  std::array<float, 4> texture_sizes{70.40F, 16.229F, 6.629F, 11.657F};
   std::array<float, 4> texture_displacement_weights{0.5, 0.671, 0.676, 0.869};
 
   // Buffers on GPU
@@ -135,6 +144,7 @@ struct Terrain {
 
   void begin(bool simple);
   void render(glm::mat4 projection_matrix, glm::mat4 view_matrix, glm::vec3 center,
-              glm::vec3 camera_position, glm::mat4 light_matrix, float water_height, float environment_multiplier);
+              glm::vec3 camera_position, glm::mat4 light_matrix, float water_height,
+              float environment_multiplier);
   void gui(Camera* camera);
 };

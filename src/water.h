@@ -10,17 +10,8 @@
 #include "shader.h"
 
 struct Water {
-  static constexpr std::array<const char*, 4> DebugNames{
-      {"Off", "SSR Reflection", "SSR Refraction", "SSR Refraction Misses"}};
-  enum WaterDebugFlags {
-    Off,
-    SSR_Reflection,
-    SSR_Refraction,
-    SSR_Refraction_Misses,
-  };
-
   void init() {
-    indices_count = gpu::createSubdividedPlane(1, 0, &vao, &positions_bo, &indices_bo);
+    indices_count = gpu::createSubdividedPlane(1, 0, &vao, &positions_bo, nullptr, &indices_bo);
     loadShader(false);
     dudv_map.load("resources/textures/", "water_dudv_tile.jpg", 3);
   }
@@ -98,8 +89,7 @@ struct Water {
     gpu::setUniformSlow(this->shader_program, "projection_matrix", projection_matrix);
     gpu::setUniformSlow(this->shader_program, "pixel_projection", pixel_projection);
 
-    gpu::setUniformSlow(this->shader_program, "sun.direction", terrain->sun.direction);
-    gpu::setUniformSlow(this->shader_program, "sun.color", terrain->sun.color);
+    terrain->sun.upload(shader_program, "sun", view_matrix);
 
     gpu::setUniformSlow(this->shader_program, "water.height", this->height);
     gpu::setUniformSlow(this->shader_program, "water.foam_distance", foam_distance);
@@ -142,9 +132,6 @@ struct Water {
       ImGui::Text("Color Attachment");
       ImGui::Image((void*)(intptr_t)screen_fbo.colorTextureTargets[0], ImVec2(252, 252),
                    ImVec2(0, 1), ImVec2(1, 0));
-      ImGui::Text("Depth Attachment");
-      ImGui::Image((void*)(intptr_t)screen_fbo.depthBuffer, ImVec2(252, 252), ImVec2(0, 1),
-                   ImVec2(1, 0));
     }
   }
 
@@ -153,15 +140,18 @@ struct Water {
     glm::ivec2 depth_buffer_size;
     Projection projection;
 
-    float z_thickness = 0.01;
-    float stride = 15.00;
+    float z_thickness = 1.0;
+    float stride = 10.00;
     float jitter = 0.5;
     float max_steps = 50.0;
-    float max_distance = 500.0;
+    float max_distance = 3000.0;
 
     ScreenSpaceReflection() = default;
-    ScreenSpaceReflection(float z_thickness, float stride, float max_steps)
-        : z_thickness(z_thickness), stride(stride), max_steps(max_steps) {}
+    ScreenSpaceReflection(float z_thickness, float stride, float max_steps, float max_distance)
+        : z_thickness(z_thickness),
+          stride(stride),
+          max_steps(max_steps),
+          max_distance(max_distance) {}
 
     void upload(GLuint program, std::string uniform_name, int width, int height,
                 Projection projection) {
@@ -190,7 +180,9 @@ struct Water {
     }
   };
 
-  int debug_flag = WaterDebugFlags::Off;
+  static constexpr std::array<const char*, 4> DebugNames{
+      {"None", "SSR Reflection", "SSR Refraction", "SSR Refraction Misses"}};
+  int debug_flag = 0;
 
   int indices_count;
 
@@ -202,7 +194,7 @@ struct Water {
   float wave_strength = 0.053f;
   float wave_scale = 406;
   ScreenSpaceReflection ssr_reflection;
-  ScreenSpaceReflection ssr_refraction = ScreenSpaceReflection(20, 10, 20);
+  ScreenSpaceReflection ssr_refraction = ScreenSpaceReflection(20, 10, 20, 500);
   gpu::Texture dudv_map;
 
   GLuint shader_program;

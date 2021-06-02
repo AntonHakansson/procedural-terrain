@@ -3,6 +3,10 @@
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
 
+#include "fxaa.glsl"
+#include "sun.glsl"
+#include "utils.glsl"
+
 // Inputs
 layout(location = 0) out vec4 fragmentColor;
 layout(binding = 0) uniform sampler2D tex;
@@ -27,23 +31,20 @@ struct Water {
 };
 uniform Water water;
 
-struct Sun {
-  vec3 direction;
-  vec3 color;
-  float intensity;
-};
 uniform Sun sun;
 
 struct PostFX {
   float z_near;
   float z_far;
   int debug_mask;
+  bool enable_fxaa;
 };
 uniform PostFX postfx;
 
-#define DEBUG_MASK_OFF 0
+#define DEBUG_MASK_NONE 0
 #define DEBUG_MASK_HORIZON 1
 #define DEBUG_MASK_GOD_RAY 2
+#define DEBUG_MASK_PASSTHROUGH 3
 
 // Constants
 const float Epsilon = 1e-10;
@@ -85,11 +86,8 @@ float linearizeDepth(float depth) {
          / (postfx.z_far + postfx.z_near - (2.0 * depth - 1.0) * (postfx.z_far - postfx.z_near));
 }
 
-float inverseLerp(float a, float b, float x) { return (x - a) / (b - a); }
-float inverseLerpClamped(float a, float b, float x) { return clamp(inverseLerp(a, b, x), 0, 1); }
-
 float calculateGodMask(float depth, float wdots, float sun_threshold) {
-  float linear_depth = linearizeDepth(depth);
+  float linear_depth = linearizeDepth(depth, postfx.z_near, postfx.z_far);
   if (linear_depth == postfx.z_far) {
     if (wdots > sun_threshold) return 1.0;
 
@@ -117,9 +115,32 @@ void main() {
     return;
   }
 
-  vec3 out_color = texture(tex, In.tex_coord).xyz;
+  vec3 out_color;
+  if (postfx.enable_fxaa) {
+    ivec2 screen_size = textureSize(tex, 0);
+
+    mediump vec2 v_rgbNW;
+    mediump vec2 v_rgbNE;
+    mediump vec2 v_rgbSW;
+    mediump vec2 v_rgbSE;
+    mediump vec2 v_rgbM;
+
+    // compute the texture coords
+    texcoords(gl_FragCoord.xy, screen_size, v_rgbNW, v_rgbNE, v_rgbSW, v_rgbSE, v_rgbM);
+
+    // compute FXAA
+    out_color
+        = fxaa(tex, gl_FragCoord.xy, screen_size, v_rgbNW, v_rgbNE, v_rgbSW, v_rgbSE, v_rgbM).rgb;
+  } else {
+    out_color = texture(tex, In.tex_coord).xyz;
+  }
+
+  if (postfx.debug_mask == DEBUG_MASK_PASSTHROUGH) {
+    fragmentColor = vec4(out_color, 1);
+    return;
+  }
   float depth = texture(depth_tex, In.tex_coord).x;
-  float linear_depth = linearizeDepth(depth);
+  float linear_depth = linearizeDepth(depth, postfx.z_near, postfx.z_far);
 
   // Increase saturation for more vididness
   out_color = shiftHSV(out_color, 0.0, 0.1, 0.0);
@@ -158,7 +179,7 @@ void main() {
           vec2 offset = vec2(texel * vec2(l, k));
 
           float depth = texture(depth_tex, In.tex_coord + offset).x;
-          float linear_depth = linearizeDepth(depth);
+          float linear_depth = linearizeDepth(depth, postfx.z_near, postfx.z_far);
 
           if (wdots > sun_threshold && linear_depth == postfx.z_far) {
             percentage_lit++;

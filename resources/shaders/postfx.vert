@@ -3,7 +3,9 @@
 layout(location = 0) in vec2 position;
 
 uniform mat4 viewMatrix;
+uniform mat4 view_inverse;
 uniform mat4 projMatrix;
+uniform mat4 proj_inverse;
 
 out DATA {
   vec2 tex_coord;
@@ -17,9 +19,6 @@ void main() {
   gl_Position = vec4(position, 0.0, 1.0);
 
   Out.tex_coord = 0.5 * (position + vec2(1, 1));
-
-  mat4 view_inverse = inverse(viewMatrix);
-  mat4 proj_inverse = inverse(projMatrix);
 
   vec3 screen_space_position = vec3(Out.tex_coord, 0) * 2.0 - vec3(1);
   Out.view_pos = (proj_inverse * vec4(screen_space_position, 1.0)).xyz;

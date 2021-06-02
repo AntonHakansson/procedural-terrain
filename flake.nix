@@ -26,6 +26,7 @@
             cppcheck
             include-what-you-use
             cmake-language-server
+            glslang
           ];
           buildInputs = with pkgs; [
             libglvnd

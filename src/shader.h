@@ -5,6 +5,7 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <iostream>
 
 #include "gpu.h"
@@ -30,8 +31,8 @@ static bool readShaderSource(const std::filesystem::path& filepath, std::ifstrea
     if (line.find(include_keyword, 0) == 0) {
       auto end = line.find_last_of('\"');
       if (end == std::string::npos) {
-        std::cout << filepath << ":" << line_number << ": GLSL: Invalid include format: " << line
-                  << "\n";
+        std::cout << filepath.u8string() << ":" << line_number
+                  << ": GLSL: Invalid include format: " << line << "\n";
         return false;
       }
       auto include_file = line.substr(include_keyword.size(), end - include_keyword.size());
@@ -39,12 +40,13 @@ static bool readShaderSource(const std::filesystem::path& filepath, std::ifstrea
       std::filesystem::path include_filepath = filepath.parent_path() / include_file;
       std::ifstream s_file(include_filepath);
       if (!s_file.is_open()) {
-        std::cout << filepath << ": GLSL: Could not find include file " << include_filepath << "\n";
+        std::cout << filepath.u8string() << ": GLSL: Could not find include file "
+                  << include_filepath.u8string() << "\n";
         return false;
       }
 
       {
-        out << "#line 0 " << level + 1 << "\n";
+        out << "#line 0 " << (level + 1) << "\n";
         auto success = readShaderSource(include_filepath, s_file, out, level + 1);
         if (!success) {
           return false;
@@ -74,7 +76,7 @@ GLuint loadShaderProgram(const std::array<ShaderInput, N>& shaders, bool allow_e
     auto success = readShaderSource(s.filepath, s_file, shader_source, 0);
     if (!success) {
       if (!allow_errors) {
-        gpu::fatal_error("Preprocessor error", s.filepath);
+        gpu::fatal_error("Preprocessor error", s.filepath.u8string());
       }
       return 0;
     }
@@ -91,9 +93,9 @@ GLuint loadShaderProgram(const std::array<ShaderInput, N>& shaders, bool allow_e
     if (!compileOk) {
       std::string err = gpu::GetShaderInfoLog(gl_shader);
       if (allow_errors) {
-        gpu::non_fatal_error(err, s.filepath);
+        gpu::non_fatal_error(err, s.filepath.u8string());
       } else {
-        gpu::fatal_error(err, s.filepath);
+        gpu::fatal_error(err, s.filepath.u8string());
       }
       return 0;
     }
@@ -104,7 +106,9 @@ GLuint loadShaderProgram(const std::array<ShaderInput, N>& shaders, bool allow_e
   if (!allow_errors) {
     CHECK_GL_ERROR();
   }
-  if (!gpu::linkShaderProgram(gl_program, allow_errors)) return 0;
+  if (!gpu::linkShaderProgram(gl_program, allow_errors)) {
+    return 0;
+  }
 
   return gl_program;
 }
