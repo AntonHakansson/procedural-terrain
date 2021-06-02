@@ -308,6 +308,11 @@ void main() {
     }
   }
 
+  if (shadow_map.debug_show_splits) {
+    fragmentColor = vec4(cascade_indicator, 1.0);
+    return;
+  }
+
   float[4] draw_strengths = terrainBlending(In.world_pos, In.normal);
 
   vec3[4] tex_coords;
