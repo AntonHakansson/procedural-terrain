@@ -1,5 +1,5 @@
 {
-  description = "Advanced Computer Graphics project";
+  description = "OpenGL procedural terrain engine";
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-unstable";

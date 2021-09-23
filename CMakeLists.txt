@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 # ---- Project ----
 
 project(
-  AdvGfxProject
+  procedural-terrain
   VERSION 1.0
   LANGUAGES CXX
 )
@@ -120,18 +120,18 @@ file(GLOB_RECURSE shaders CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/resourc
 # list all files that will either be used for compilation or that should show up in the ide of your
 # choice
 add_executable(
-  AdvGfxProject ${headers} ${sources} ${shaders} ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.cpp
+  procedural-terrain ${headers} ${sources} ${shaders} ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl.cpp
                 ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
-set_target_properties(AdvGfxProject PROPERTIES CXX_STANDARD 17)
+set_target_properties(procedural-terrain PROPERTIES CXX_STANDARD 17)
 
 # being a cross-platform target, we enforce standards conformance on MSVC
-target_compile_options(AdvGfxProject PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive->")
+target_compile_options(procedural-terrain PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive->")
 
 # Link dependencies
 target_link_libraries(
-  AdvGfxProject
+  procedural-terrain
   PUBLIC ${CMAKE_DL_LIBS}
          glad
          glm
@@ -144,7 +144,7 @@ target_link_libraries(
 
 if(FALSE)
   target_include_directories(
-    AdvGfxProject PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    procedural-terrain PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                          $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
   )
 endif()
