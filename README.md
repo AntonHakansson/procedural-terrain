@@ -1,5 +1,7 @@
 # Advanced Computer Graphics Project (DAT205)
 
+https://user-images.githubusercontent.com/15860608/134507664-d40b17b1-c3ac-4082-bff8-971591c49c1e.mov
+
 ## Terrain
 
 ## Build
